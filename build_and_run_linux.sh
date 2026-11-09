@@ -2,6 +2,31 @@
 set -e
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if ! command -v cargo >/dev/null 2>&1; then
+    if [ -f "$HOME/.cargo/env" ]; then
+        source "$HOME/.cargo/env"
+    else
+        echo "[HDMI-CEC Studio] Установка компилятора Rust (rustup)..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+    fi
+fi
+
+if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
+    echo "[HDMI-CEC Studio] Проверка системных библиотек для сборки..."
+    if command -v pacman >/dev/null 2>&1; then
+        sudo steamos-readonly disable 2>/dev/null || true
+        sudo pacman-key --init 2>/dev/null || true
+        sudo pacman-key --populate archlinux holo 2>/dev/null || true
+        sudo pacman -Sy --needed --noconfirm base-devel pkgconf webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg systemd-libs 2>/dev/null || true
+    elif command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libudev-dev pkg-config build-essential curl file
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y webkit2gtk4.1-devel gtk3-devel libayatana-appindicator-gtk3-devel librsvg2-devel systemd-devel pkgconf-pkg-config @development-tools
+    fi
+fi
+
 cd "$ROOT_DIR/tauri_app/src-tauri"
 
 echo "[HDMI-CEC Studio] Сборка нативного бинарного файла для Linux / SteamOS (x86_64)..."
