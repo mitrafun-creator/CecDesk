@@ -79,8 +79,9 @@ pub fn spawn_serial_reader_thread(
                         // Проверка статуса питания телевизора (0x90 Power Status или 0x36 Standby)
                         let is_power_rep = trimmed.contains(": 90 ");
                         let is_standby_cmd = trimmed.contains(": 36");
+                        let is_from_tv = trimmed.starts_with("RX 0->") || trimmed.starts_with("RX 0 ");
 
-                        if trimmed.starts_with("RX ") && (is_power_rep || is_standby_cmd) {
+                        if is_from_tv && (is_power_rep || is_standby_cmd) {
                             let cfg = safe_lock(&cfg_arc).clone();
                             if is_power_rep && trimmed.contains(": 90 00") {
                                 // ТВ ВКЛЮЧЕН

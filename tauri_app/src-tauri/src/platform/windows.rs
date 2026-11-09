@@ -787,14 +787,14 @@ pub fn type_special_key(key: &str) {
 }
 
 pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
-    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::Foundation::{HWND, POINT};
     use windows_sys::Win32::Graphics::Gdi::{
-        GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+        GetMonitorInfoW, MonitorFromPoint, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY,
     };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GetForegroundWindow, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, ShowWindow,
-        GWL_EXSTYLE, HWND_TOPMOST, SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_SHOWNOACTIVATE,
-        WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+        GetCursorPos, GetForegroundWindow, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, ShowWindow,
+        GWL_EXSTYLE, HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_SHOWNOACTIVATE,
+        WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
     };
 
     let _ = hud_win.show();
@@ -802,19 +802,24 @@ pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
 
     let hud_w = 480i32;
     let hud_h = 170i32;
-    let prev_fg = unsafe { GetForegroundWindow() };
 
+    // Сначала пробуем монитор по текущему положению курсора, иначе берем Primary (ТВ 1920x1080)
     let mut pos_x = (1920 - hud_w) / 2;
-    let mut pos_y = 48i32;
+    let mut pos_y = 36i32;
     unsafe {
-        let hmon = MonitorFromWindow(
+        let mut pt: POINT = std::mem::zeroed();
+        let has_cursor = GetCursorPos(&mut pt) != 0;
+        let hmon = if has_cursor {
+            MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY)
+        } else {
+            let prev_fg = GetForegroundWindow();
             if !prev_fg.is_null() {
-                prev_fg
+                MonitorFromWindow(prev_fg, MONITOR_DEFAULTTOPRIMARY)
             } else {
                 std::ptr::null_mut()
-            },
-            MONITOR_DEFAULTTONEAREST,
-        );
+            }
+        };
+
         if !hmon.is_null() {
             let mut mi: MONITORINFO = std::mem::zeroed();
             mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
@@ -829,10 +834,14 @@ pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
     if let Ok(raw_hwnd) = hud_win.hwnd() {
         let hwnd = raw_hwnd.0 as HWND;
         let ex_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) };
-        let new_style = (ex_style & !0x00080000_isize /* WS_EX_LAYERED */)
+        // Обязательно СОХРАНЯЕМ WS_EX_LAYERED для корректного рендеринга прозрачности WebView2
+        // и добавляем WS_EX_NOACTIVATE, WS_EX_TOPMOST, WS_EX_TOOLWINDOW и WS_EX_TRANSPARENT (0x20)
+        let new_style = ex_style
+            | (WS_EX_LAYERED as isize)
             | (WS_EX_NOACTIVATE as isize)
             | (WS_EX_TOPMOST as isize)
-            | (WS_EX_TOOLWINDOW as isize);
+            | (WS_EX_TOOLWINDOW as isize)
+            | 0x00000020_isize /* WS_EX_TRANSPARENT (click-through) */;
         unsafe {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
@@ -843,7 +852,7 @@ pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
                 pos_y,
                 hud_w,
                 hud_h,
-                SWP_SHOWWINDOW | SWP_NOACTIVATE,
+                SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_FRAMECHANGED,
             );
         }
         return true;

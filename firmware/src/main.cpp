@@ -130,11 +130,9 @@ public:
     return remoteCaptureEnabled && isPcHostActive();
   }
 
-  // Двухпрофильная адресация CEC для телевизора:
-  // Профиль 1 (Перехват пульта ВКЛ): реальный физический адрес HDMI-порта ПК (например, 2000 или 3000)
-  // Профиль 2 (Перехват пульта ВЫКЛ): парковочный адрес F000 вне HDMI 1..4, полностью освобождающий пульт ТВ
+  // Физический адрес HDMI-порта ПК (по умолчанию HDMI 3 - 0x3000)
   uint16_t getReportedPhysicalAddr() const {
-    return isCaptureActive() ? myPhysicalAddr : 0xF000;
+    return myPhysicalAddr;
   }
 
   virtual bool LineState() override {
@@ -293,9 +291,8 @@ public:
       enqueueOsdName(source);
     }
     else if (opcode == 0x8F && dest == _logicalAddress) {
-      // В профиле с пультом отвечаем Power ON (0x00), а без пульта — Standby (0x01),
-      // чтобы телевизор не перехватывал пульт на текущем входе HDMI
-      uint8_t frame[2] = {0x90, (uint8_t)(isCaptureActive() ? 0x00 : 0x01)};
+      // Всегда отвечаем Power ON (0x00), чтобы телевизор держал HDMI-аудиопоток активным
+      uint8_t frame[2] = {0x90, 0x00};
       enqueueTx(source, frame, 2);
     }
     else if ((opcode == 0x8D || opcode == 0x8E) && dest == _logicalAddress) {
@@ -327,13 +324,12 @@ public:
     }
     else if (opcode == 0x44 && dest == _logicalAddress) {
       if (!isCaptureActive()) {
-        // Полный отказ от перехвата пульта: переводим профиль на парковочный адрес F000 + Standby 0x90 0x01 + Feature Abort Refused
+        // Полный отказ от перехвата пульта без сброса физического адреса:
+        // Отвечаем Feature Abort (Refused), освобождая пульт для собственных функций ТВ
         uint8_t abortFrame[3] = {0x00, 0x44, 0x04};
         enqueueTx(source, abortFrame, 3);
-        uint8_t parkedPa[4] = {0x84, 0xF0, 0x00, 0x04};
-        enqueueTx(0x0F, parkedPa, 4);
-        uint8_t pwrStby[2] = {0x90, 0x01};
-        enqueueTx(source, pwrStby, 2);
+        uint8_t menuFrame[2] = {0x8E, 0x01};
+        enqueueTx(source, menuFrame, 2);
       }
     }
     else if (opcode == 0x45 && dest == _logicalAddress) {
@@ -415,15 +411,13 @@ public:
     remoteCaptureEnabled = false;
     MonitorMode = false;
     SetAddress(_logicalAddress);
-    // Активируем Профиль 2 (Без перехвата пульта):
-    // 1. Переносим физический адрес устройства на парковочный F.0.0.0 (0x84 F0 00 04),
-    //    чтобы телевизор считал текущий вход HDMI чистым видеовходом без CEC-перехватчика
-    uint8_t parkedPa[4] = {0x84, 0xF0, 0x00, 0x04};
-    enqueueTx(0x0F, parkedPa, 4);
-    // 2. Сообщаем телевизору статус питания Standby (0x90 0x01) и Deck Stop (0x1B 0x20),
-    //    при которых телевизор полностью возвращает пульт в штатное управление ТВ
-    uint8_t pwrStby[2] = {0x90, 0x01};
-    enqueueTx(0x00, pwrStby, 2);
+    // При выключении перехвата пульта сохраняем реальный физический адрес HDMI (3000) и статус питания ON (0x90 0x00),
+    // но переводим статус меню в неактивное (0x8E 0x01) и останавливаем деку (0x1B 0x20).
+    // Телевизор полностью освобождает пульт для собственных функций, НЕ отключая звук и видеосигнал HDMI!
+    uint8_t reportPa[4] = {0x84, (uint8_t)(myPhysicalAddr >> 8), (uint8_t)(myPhysicalAddr & 0xFF), 0x04};
+    enqueueTx(0x0F, reportPa, 4);
+    uint8_t pwrOn[2] = {0x90, 0x00};
+    enqueueTx(0x00, pwrOn, 2);
     uint8_t deckStop[2] = {0x1B, 0x20};
     enqueueTx(0x00, deckStop, 2);
     uint8_t menuFrame[2] = {0x8E, 0x01};

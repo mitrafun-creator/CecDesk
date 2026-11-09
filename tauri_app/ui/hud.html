@@ -460,6 +460,10 @@
     }
 
     function showMouseCockpit() {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
       const mouseCard = document.getElementById("mouse-hud");
       const stdCard = document.getElementById("hud-card");
       if (stdCard) stdCard.classList.remove("visible");
