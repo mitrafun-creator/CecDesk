@@ -679,6 +679,14 @@ pub fn hide_hud_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn app_win_start_dragging(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.start_dragging();
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn app_win_minimize(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.minimize();

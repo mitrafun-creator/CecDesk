@@ -5,6 +5,7 @@
   "windows": ["main", "osk"],
   "permissions": [
     "core:default",
-    "core:event:default"
+    "core:event:default",
+    "core:window:default"
   ]
 }

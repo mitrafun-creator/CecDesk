@@ -378,6 +378,7 @@ fn main() {
             commands::get_mouse_mode,
             commands::show_hud_window,
             commands::hide_hud_window,
+            commands::app_win_start_dragging,
             commands::app_win_minimize,
             commands::app_win_toggle_maximize,
             commands::app_win_hide_to_tray,

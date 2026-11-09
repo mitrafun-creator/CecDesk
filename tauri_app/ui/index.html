@@ -11,12 +11,7 @@
 
   <!-- ==================== КАСТОМНАЯ ШАПКА ОКНА (TITLEBAR) ==================== -->
   <header class="app-titlebar" data-tauri-drag-region>
-    <div class="titlebar-left" data-tauri-drag-region>
-      <div class="app-brand" data-tauri-drag-region>
-        <svg class="app-brand-icon" viewBox="0 0 24 24"><polygon points="6 2 18 2 18 6 6 6"></polygon><rect x="3" y="6" width="18" height="12" rx="2"></rect><circle cx="12" cy="12" r="2.5"></circle><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="18" x2="12" y2="21"></line></svg>
-        <span class="app-brand-name" data-tauri-drag-region>CEC Studio</span>
-      </div>
-    </div>
+    <div class="titlebar-left" data-tauri-drag-region></div>
 
     <div class="titlebar-center">
       <nav class="segmented-nav">
@@ -40,13 +35,13 @@
     </div>
 
     <div class="titlebar-controls">
-      <button class="win-btn btn-min" onclick="appWinMinimize()" title="Свернуть">
+      <button class="win-btn btn-min" onclick="appWinMinimize()" data-tooltip="Свернуть">
         <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"></line></svg>
       </button>
-      <button class="win-btn btn-max" onclick="appWinToggleMaximize()" title="Развернуть">
+      <button class="win-btn btn-max" onclick="appWinToggleMaximize()" data-tooltip="Развернуть">
         <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1"></rect></svg>
       </button>
-      <button class="win-btn btn-close" onclick="appWinHideToTray()" title="Свернуть в трей">
+      <button class="win-btn btn-close" onclick="appWinHideToTray()" data-tooltip="Свернуть в трей">
         <svg viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9"></line><line x1="9" y1="3" x2="3" y2="9"></line></svg>
       </button>
     </div>
@@ -78,7 +73,8 @@
               <!-- Единая умная кнопка питания ТВ: Включить / Выключить / Определение состояния -->
               <div class="power-single-row">
                 <button class="apple-btn power-toggle-btn is-syncing" id="btn-tv-power" onclick="toggleTvPower()" disabled>
-                  <svg class="ico ico-lg ico-spin" id="ico-tv-power" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"></circle></svg>
+                  <svg class="ico ico-lg ico-spin" id="spin-tv-power" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"></circle></svg>
+                  <svg class="ico ico-lg" id="ico-tv-power" viewBox="0 0 24 24" style="display:none;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
                   <span id="lbl-tv-power" data-i18n="remote.syncing_tv_state">Определение состояния...</span>
                 </button>
               </div>
@@ -95,17 +91,17 @@
             <!-- Единственный переключатель пульта: включен / выключен -->
             <div class="glass-panel glass-panel-padd">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                <div style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1;" title="Управление компьютером при помощи пульта телевизора">
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1;" data-tooltip="Управление компьютером при помощи пульта телевизора">
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="toggle-title" style="font-size:13px; font-weight:600;" data-i18n="remote.intercept_title">Перехват пульта</span>
-                    <span class="remote-count-chip" id="lbl-remote-count" title="Количество распознанных и доступных кнопок">
+                    <span class="remote-count-chip" id="lbl-remote-count" data-tooltip="Доступно кнопок в конструкторе">
                       <span class="count-num" id="lbl-count-value">0</span>
                       <span class="count-text" id="lbl-count-unit" data-i18n="remote.keys_unit">кнопок</span>
                     </span>
                   </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-                  <button class="apple-btn btn-action" onclick="startCalibration()" title="Обучить пульт нажатиями реальных кнопок" style="padding:5px 10px; font-size:11.5px;">
+                  <button class="apple-btn btn-action" onclick="startCalibration()" data-tooltip="Обучить пульт нажатиями кнопок" style="padding:5px 10px; font-size:11.5px;">
                     <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     <span data-i18n="remote.btn_calib">Калибровка</span>
                   </button>
@@ -124,7 +120,7 @@
                   <svg class="ico" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"></rect><rect x="2" y="14" width="20" height="8" rx="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
                   <span data-i18n="remote.hw_status_title">Статус</span>
                 </div>
-                <button id="btn-refresh-hw" class="apple-btn btn-refresh-large" onclick="checkHardwareLineNow()" title="Обновить статус">
+                <button id="btn-refresh-hw" class="apple-btn btn-refresh-large" onclick="checkHardwareLineNow()" data-tooltip="Обновить статус">
                   <svg class="ico ico-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                 </button>
               </div>
@@ -138,7 +134,7 @@
                   <div class="hw-info">
                     <div class="hw-title-row">
                       <span class="hw-title" data-i18n="remote.usb_adapter">USB-контроллер</span>
-                      <span class="status-lamp lamp-gray" id="lamp-usb" data-tooltip="Отключен" title="Отключен"></span>
+                      <span class="status-lamp lamp-gray" id="lamp-usb" data-tooltip="Отключен"></span>
                     </div>
                   </div>
                 </div>
@@ -151,7 +147,7 @@
                   <div class="hw-info">
                     <div class="hw-title-row">
                       <span class="hw-title" data-i18n="remote.cec_bus">Связь с ТВ (CEC)</span>
-                      <span class="status-lamp lamp-gray" id="lamp-cec" data-tooltip="Не проверено" title="Не проверено"></span>
+                      <span class="status-lamp lamp-gray" id="lamp-cec" data-tooltip="Не проверено"></span>
                     </div>
                   </div>
                 </div>
@@ -164,7 +160,7 @@
                   <div class="hw-info">
                     <div class="hw-title-row">
                       <span class="hw-title" data-i18n="remote.bridge">Перехват пульта</span>
-                      <span class="status-lamp lamp-green" id="lamp-remote" data-tooltip="Включен" title="Включен"></span>
+                      <span class="status-lamp lamp-green" id="lamp-remote" data-tooltip="Включен"></span>
                     </div>
                   </div>
                 </div>

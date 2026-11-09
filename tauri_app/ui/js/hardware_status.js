@@ -10,13 +10,14 @@ let tvPowerPingWatchdog = null;
 let lastTvPowerVerifiedTime = 0;
 
 /**
- * Единая умная кнопка питания ТВ: Включить / Выключить / Определение состояния (серая с вращающимся спиннером)
+ * Единая умная кнопка питания ТВ: Включить / Выключить / Определение состояния
  * @param {"syncing" | boolean | "on" | "off"} state
  */
 function updateTvPowerButtonUi(state) {
   const btn = document.getElementById("btn-tv-power");
   const lbl = document.getElementById("lbl-tv-power");
-  const ico = document.getElementById("ico-tv-power");
+  const spinIco = document.getElementById("spin-tv-power");
+  const pwrIco = document.getElementById("ico-tv-power");
   const desc = document.getElementById("min-status-desc");
 
   if (state === "syncing" || state === null || state === undefined) {
@@ -28,10 +29,8 @@ function updateTvPowerButtonUi(state) {
     if (lbl) {
       lbl.textContent = typeof t === "function" ? t("remote.syncing_tv_state", "Определение состояния...") : "Определение состояния...";
     }
-    if (ico) {
-      ico.className = "ico ico-lg ico-spin";
-      ico.innerHTML = '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"></circle>';
-    }
+    if (spinIco) spinIco.style.display = "inline-block";
+    if (pwrIco) pwrIco.style.display = "none";
     if (desc) {
       desc.textContent = typeof t === "function" ? t("remote.syncing", "Синхронизация...") : "Синхронизация...";
     }
@@ -47,9 +46,10 @@ function updateTvPowerButtonUi(state) {
     btn.disabled = false;
     btn.className = isOn ? "apple-btn power-toggle-btn is-on" : "apple-btn power-toggle-btn is-off";
   }
-  if (ico) {
-    ico.className = "ico ico-lg";
-    ico.innerHTML = '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>';
+  if (spinIco) spinIco.style.display = "none";
+  if (pwrIco) {
+    pwrIco.style.display = "inline-block";
+    pwrIco.setAttribute("class", "ico ico-lg");
   }
 
   if (isOn) {
@@ -131,7 +131,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-green";
       lampUsb.setAttribute("data-tooltip", tipText);
-      lampUsb.setAttribute("title", tipText);
+      lampUsb.removeAttribute("title");
     }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-online";
@@ -143,7 +143,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-yellow";
       lampUsb.setAttribute("data-tooltip", tipText);
-      lampUsb.setAttribute("title", tipText);
+      lampUsb.removeAttribute("title");
     }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-warning";
@@ -155,7 +155,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-gray";
       lampUsb.setAttribute("data-tooltip", tipText);
-      lampUsb.setAttribute("title", tipText);
+      lampUsb.removeAttribute("title");
     }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-error";
@@ -173,7 +173,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampCec) {
       lampCec.className = "status-lamp lamp-gray";
       lampCec.setAttribute("data-tooltip", tipText);
-      lampCec.setAttribute("title", tipText);
+      lampCec.removeAttribute("title");
     }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-neutral";
@@ -185,7 +185,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       if (lampCec) {
         lampCec.className = "status-lamp lamp-green";
         lampCec.setAttribute("data-tooltip", tipText);
-        lampCec.setAttribute("title", tipText);
+        lampCec.removeAttribute("title");
       }
       if (cecBadge) {
         cecBadge.className = "hw-badge badge-online";
@@ -196,7 +196,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       if (lampCec) {
         lampCec.className = "status-lamp lamp-yellow";
         lampCec.setAttribute("data-tooltip", tipText);
-        lampCec.setAttribute("title", tipText);
+        lampCec.removeAttribute("title");
       }
       if (cecBadge) {
         cecBadge.className = "hw-badge badge-warning";
@@ -208,7 +208,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampCec) {
       lampCec.className = "status-lamp lamp-red";
       lampCec.setAttribute("data-tooltip", tipText);
-      lampCec.setAttribute("title", tipText);
+      lampCec.removeAttribute("title");
     }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-error";
@@ -222,7 +222,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampCec) {
       lampCec.className = "status-lamp lamp-yellow";
       lampCec.setAttribute("data-tooltip", tipText);
-      lampCec.setAttribute("title", tipText);
+      lampCec.removeAttribute("title");
     }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-warning";
@@ -241,7 +241,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampRemote) {
       lampRemote.className = "status-lamp lamp-green";
       lampRemote.setAttribute("data-tooltip", tipText);
-      lampRemote.setAttribute("title", tipText);
+      lampRemote.removeAttribute("title");
     }
     if (remBadge) {
       remBadge.className = "hw-badge badge-online";
@@ -252,7 +252,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     if (lampRemote) {
       lampRemote.className = "status-lamp lamp-gray";
       lampRemote.setAttribute("data-tooltip", tipText);
-      lampRemote.setAttribute("title", tipText);
+      lampRemote.removeAttribute("title");
     }
     if (remBadge) {
       remBadge.className = "hw-badge badge-neutral";

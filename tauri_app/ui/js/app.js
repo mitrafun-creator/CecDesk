@@ -56,6 +56,22 @@ async function appWinHideToTray() {
 }
 
 /**
+ * Инициализация плавного перетаскивания окна за шапку
+ */
+function initTitlebarDragging() {
+  const tb = document.querySelector(".app-titlebar");
+  if (!tb) return;
+  tb.addEventListener("mousedown", (e) => {
+    // Перетаскиваем только при нажатии левой кнопки мыши вне элементов управления
+    if (e.buttons === 1 && !e.target.closest("button, nav, .segmented-nav, .win-btn, .c-select, input, select, textarea")) {
+      if (invoke) {
+        invoke("app_win_start_dragging").catch(() => {});
+      }
+    }
+  });
+}
+
+/**
  * Плавное переключение экранов без микрофризов и с анимацией скроллбара
  */
 let slideTimeout = null;
@@ -799,6 +815,7 @@ function updateDynamicWindowTitle() {
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
 window.addEventListener("DOMContentLoaded", async () => {
+  initTitlebarDragging();
   updateHardwareStatusUi({ connected: false, error: "Поиск адаптера..." }, { checked: false });
 
   if (invoke) {
