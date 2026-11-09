@@ -1,0 +1,21 @@
+{
+  "id": "philips_ambilight_android",
+  "brand": "Philips",
+  "name": "Philips Ambilight Smart TV / Android TV (EasyLink 2.0)",
+  "cec_system_name": "EasyLink",
+  "edid_pnp_ids": ["PHL"],
+  "vendor_oui": "00-90-3E",
+  "cec_version": "1.4",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1 (ARC)", "pa": "1000"},
+    {"label": "HDMI 2", "pa": "2000"},
+    {"label": "HDMI 3", "pa": "3000"},
+    {"label": "HDMI 4", "pa": "4000"}
+  ],
+  "notes": "Современные телевизоры Philips на базе Android TV / Google TV / Saphi. Поддерживают как передачу пульта в ПК, так и навигацию по системе Android TV."
+}

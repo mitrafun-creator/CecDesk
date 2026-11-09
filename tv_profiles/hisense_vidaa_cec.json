@@ -1,0 +1,21 @@
+{
+  "id": "hisense_vidaa_cec",
+  "brand": "Hisense",
+  "name": "Hisense ULED / Laser TV (VIDAA / Google TV CEC)",
+  "cec_system_name": "HDMI & CEC",
+  "edid_pnp_ids": ["HIS", "HEC"],
+  "vendor_oui": "00-0C-03",
+  "cec_version": "2.0",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2", "pa": "2000"},
+    {"label": "HDMI 3 (eARC)", "pa": "3000"},
+    {"label": "HDMI 4", "pa": "4000"}
+  ],
+  "notes": "Поддерживает автоматическое включение и управление через меню Система -> HDMI и CEC."
+}

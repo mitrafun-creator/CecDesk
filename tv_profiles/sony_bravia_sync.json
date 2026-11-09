@@ -1,0 +1,21 @@
+{
+  "id": "sony_bravia_sync",
+  "brand": "Sony",
+  "name": "Sony BRAVIA XR / X90 / OLED (Bravia Sync)",
+  "cec_system_name": "BRAVIA Sync",
+  "edid_pnp_ids": ["SNY"],
+  "vendor_oui": "08-00-46",
+  "cec_version": "1.4",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2", "pa": "2000"},
+    {"label": "HDMI 3 (eARC/ARC)", "pa": "3000"},
+    {"label": "HDMI 4", "pa": "4000"}
+  ],
+  "notes": "Активируйте управление по HDMI в меню Настройки -> Внешние входы -> Настройки BRAVIA Sync."
+}

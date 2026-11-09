@@ -1,0 +1,20 @@
+{
+  "id": "toshiba_regza_link",
+  "brand": "Toshiba",
+  "name": "Toshiba REGZA / Smart TV (REGZA-Link)",
+  "cec_system_name": "REGZA-Link",
+  "edid_pnp_ids": ["TOS", "TSB"],
+  "vendor_oui": "00-00-39",
+  "cec_version": "1.4",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2", "pa": "2000"},
+    {"label": "HDMI 3", "pa": "3000"}
+  ],
+  "notes": "Управление питанием и пульт ДУ активируются в меню Настройки -> REGZA-Link."
+}

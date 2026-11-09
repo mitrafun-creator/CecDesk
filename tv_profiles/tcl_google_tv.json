@@ -1,0 +1,21 @@
+{
+  "id": "tcl_google_tv",
+  "brand": "TCL",
+  "name": "TCL QLED / Mini-LED C-Series / P-Series (T-Link)",
+  "cec_system_name": "T-Link (HDMI-CEC)",
+  "edid_pnp_ids": ["TCL", "ROK"],
+  "vendor_oui": "00-0C-03",
+  "cec_version": "2.0",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1 (144Hz)", "pa": "1000"},
+    {"label": "HDMI 2 (120Hz)", "pa": "2000"},
+    {"label": "HDMI 3", "pa": "3000"},
+    {"label": "HDMI 4 (eARC)", "pa": "4000"}
+  ],
+  "notes": "На телевизорах TCL включите HDMI-CEC (T-Link) в разделе Система -> Управление питанием и входами."
+}

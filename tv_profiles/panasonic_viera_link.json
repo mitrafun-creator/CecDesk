@@ -1,0 +1,21 @@
+{
+  "id": "panasonic_viera_link",
+  "brand": "Panasonic",
+  "name": "Panasonic VIERA OLED / LED (VIERA Link / HDAVI Control)",
+  "cec_system_name": "VIERA Link",
+  "edid_pnp_ids": ["MEI", "PNA"],
+  "vendor_oui": "00-80-45",
+  "cec_version": "1.4",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": false,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2 (ARC)", "pa": "2000"},
+    {"label": "HDMI 3", "pa": "3000"},
+    {"label": "HDMI 4", "pa": "4000"}
+  ],
+  "notes": "Поддерживает включение по сигналу (Power on Link) и выключение (Power off Link) в настройках VIERA Link."
+}

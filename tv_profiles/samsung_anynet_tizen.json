@@ -1,0 +1,21 @@
+{
+  "id": "samsung_anynet_tizen",
+  "brand": "Samsung",
+  "name": "Samsung QLED / Crystal UHD / Smart TV (Anynet+)",
+  "cec_system_name": "Anynet+ (HDMI-CEC)",
+  "edid_pnp_ids": ["SAM"],
+  "vendor_oui": "00-00-F0",
+  "cec_version": "1.4",
+  "wake_sequence": ["RAW 00 0D", "ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2", "pa": "2000"},
+    {"label": "HDMI 3 (eARC)", "pa": "3000"},
+    {"label": "HDMI 4", "pa": "4000"}
+  ],
+  "notes": "Телевизоры Samsung Tizen лучше пробуждаются комбинацией 0x0D (Text View On) + 0x04 (Image View On) + 0x82 (Active Source)."
+}

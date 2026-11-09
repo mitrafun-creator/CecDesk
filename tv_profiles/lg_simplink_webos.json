@@ -1,0 +1,21 @@
+{
+  "id": "lg_simplink_webos",
+  "brand": "LG",
+  "name": "LG OLED / NanoCell / UHD (SimpLink webOS)",
+  "cec_system_name": "SimpLink",
+  "edid_pnp_ids": ["GSM", "LGD"],
+  "vendor_oui": "00-E0-91",
+  "cec_version": "1.4",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2 (eARC)", "pa": "2000"},
+    {"label": "HDMI 3", "pa": "3000"},
+    {"label": "HDMI 4", "pa": "4000"}
+  ],
+  "notes": "Для отображения имени порта (OSD Name) требует обязательного ответа на запросы 0x83 (Physical Address) и 0x8C (Vendor ID)."
+}

@@ -1,0 +1,40 @@
+{
+  "id": "philips_32pfl9705h",
+  "brand": "Philips",
+  "name": "Philips 32PFL9705H/60 (EasyLink Q551.1E LA)",
+  "display_name": null,
+  "cec_system_name": "EasyLink",
+  "edid_pnp_ids": [
+    "PHL"
+  ],
+  "vendor_oui": "00-90-3E",
+  "cec_version": "1.3a",
+  "wake_sequence": [
+    "ON",
+    "ACTIVE"
+  ],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "REMOTE_ON",
+  "supports_tv_ui_keys_tx": false,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {
+      "label": "HDMI 1",
+      "pa": "1000"
+    },
+    {
+      "label": "HDMI 2",
+      "pa": "2000"
+    },
+    {
+      "label": "HDMI 3",
+      "pa": "3000"
+    },
+    {
+      "label": "HDMI Side",
+      "pa": "4000"
+    }
+  ],
+  "notes": "Флагман серии 9000 (шасси Q551.1E LA). Отлично отдает нажатия кнопок пульта ТВ в ПК после активации Menu Status (0x8E 00), управляет питанием (0x04/0x36) и входами (0x82/0x86). Входящие команды 0x44 (стрелки/громкость от ПК в ТВ) отклоняет кодом Feature Abort (0x00 0x44 0x00).",
+  "supported_keys": []
+}

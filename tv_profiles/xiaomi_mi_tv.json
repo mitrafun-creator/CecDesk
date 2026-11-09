@@ -1,0 +1,20 @@
+{
+  "id": "xiaomi_mi_tv",
+  "brand": "Xiaomi",
+  "name": "Xiaomi Mi TV / TV A Pro / TV S Mini LED (CEC)",
+  "cec_system_name": "HDMI CEC",
+  "edid_pnp_ids": ["XMI", "FMT"],
+  "vendor_oui": "00-0C-03",
+  "cec_version": "1.4",
+  "wake_sequence": ["ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2 (eARC)", "pa": "2000"},
+    {"label": "HDMI 3", "pa": "3000"}
+  ],
+  "notes": "Активируйте переключатели CEC и Автоматическое включение ТВ в меню Входы -> HDMI CEC."
+}

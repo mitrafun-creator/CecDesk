@@ -1,0 +1,43 @@
+# Rust build artifacts
+target/
+tauri_app/src-tauri/target/
+*.pdb
+*.tmp
+
+# Tauri build binaries in subdirectories
+tauri_app/*.exe
+tauri_app/*.dll
+
+# Firmware build artifacts
+firmware/.pio/
+firmware/.vscode/
+firmware/compile_commands.json
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Session logs (keep directory, ignore runtime session logs)
+logs/*.log
+!logs/.gitkeep
+*.log
+
+# OS & Editor files
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporary debug files
+panic.txt
+trace.log
+
+# User local config (keep template)
+cec_studio_config.json
+!cec_studio_config.default.json
+
+# Auto-generated Tauri schemas
+tauri_app/src-tauri/gen/
+

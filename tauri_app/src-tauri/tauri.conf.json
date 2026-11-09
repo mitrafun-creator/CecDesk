@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "HDMI-CEC Studio",
+  "version": "1.0.0",
+  "identifier": "com.antigravity.hdmicecstudio",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "HDMI-CEC Studio",
+        "width": 1180,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      },
+      {
+        "label": "osk",
+        "title": "Smart On-Screen Keyboard",
+        "url": "osk.html",
+        "width": 1040,
+        "height": 380,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "resizable": false,
+        "shadow": false
+      },
+      {
+        "label": "hud",
+        "title": "CEC HUD Overlay",
+        "url": "hud.html",
+        "width": 480,
+        "height": 170,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "resizable": false,
+        "shadow": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": []
+  }
+}
