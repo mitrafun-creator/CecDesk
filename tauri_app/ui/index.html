@@ -550,14 +550,16 @@
                     </div>
                   </div>
                   <label class="ios-switch">
-                    <input type="checkbox" id="chk-pc-off-on-tv" onchange="autoSaveQolSettings()" />
+                    <input type="checkbox" id="chk-pc-off-on-tv" onchange="onPcOffOnTvToggleChanged()" />
                     <span class="ios-slider"></span>
                   </label>
                 </div>
 
                 <!-- Выбор режима при выключении ТВ (Сон / Выключение / Гибернация / Оптопара) -->
-                <div style="font-size:11.5px; color:var(--text-secondary); margin-top:8px;" data-i18n="settings.pc_off_mode_label">Режим при выключении ТВ:</div>
-                <div id="csel-pc-off-mode" class="c-select" style="margin-top:4px;"></div>
+                <div id="wrap-pc-off-mode" class="pc-off-mode-wrap">
+                  <div style="font-size:11.5px; color:var(--text-secondary); margin-top:8px;" data-i18n="settings.pc_off_mode_label">Режим при выключении ТВ:</div>
+                  <div id="csel-pc-off-mode" class="c-select" style="margin-top:4px;"></div>
+                </div>
 
                 <!-- Быстрые кнопки проверки оптопары и сна -->
                 <div class="row" style="gap:8px; margin-top:10px;">

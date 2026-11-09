@@ -12,6 +12,7 @@ window.addEventListener("contextmenu", (e) => e.preventDefault());
 window.addEventListener("click", (e) => {
   if (!e.target.closest(".c-select")) {
     document.querySelectorAll(".c-select.open").forEach(el => el.classList.remove("open"));
+    document.querySelectorAll(".glass-panel").forEach(p => p.style.zIndex = "");
   }
 });
 
@@ -133,6 +134,8 @@ function createCustomSelect(containerId, options, currentValue, onChange) {
       menu.querySelectorAll(".c-select-option").forEach(x => x.classList.remove("selected"));
       item.classList.add("selected");
       root.classList.remove("open");
+      const parentPanel = root.closest(".glass-panel");
+      if (parentPanel) parentPanel.style.zIndex = "";
       if (onChange) onChange(opt.value);
     };
     menu.appendChild(item);
@@ -142,7 +145,12 @@ function createCustomSelect(containerId, options, currentValue, onChange) {
     e.stopPropagation();
     const wasOpen = root.classList.contains("open");
     document.querySelectorAll(".c-select.open").forEach(el => el.classList.remove("open"));
-    if (!wasOpen) root.classList.add("open");
+    document.querySelectorAll(".glass-panel").forEach(p => p.style.zIndex = "");
+    if (!wasOpen) {
+      root.classList.add("open");
+      const parentPanel = root.closest(".glass-panel");
+      if (parentPanel) parentPanel.style.zIndex = "100";
+    }
   };
 
   root.appendChild(trigger);
@@ -501,7 +509,34 @@ function renderPcOffModeSelect() {
       autoSaveQolSettings();
     }
   });
+  updatePcOffModeEnabledState();
 }
+
+/**
+ * Блокировка/разблокировка выбора режима сна при выключении ТВ
+ */
+function updatePcOffModeEnabledState() {
+  const chk = document.getElementById("chk-pc-off-on-tv");
+  const wrap = document.getElementById("wrap-pc-off-mode");
+  if (!wrap) return;
+  const isEnabled = chk ? chk.checked : false;
+  if (isEnabled) {
+    wrap.classList.remove("is-disabled");
+  } else {
+    wrap.classList.add("is-disabled");
+    const sel = wrap.querySelector(".c-select.open");
+    if (sel) sel.classList.remove("open");
+    const panel = wrap.closest(".glass-panel");
+    if (panel) panel.style.zIndex = "";
+  }
+}
+
+function onPcOffOnTvToggleChanged() {
+  updatePcOffModeEnabledState();
+  autoSaveQolSettings();
+}
+window.onPcOffOnTvToggleChanged = onPcOffOnTvToggleChanged;
+window.updatePcOffModeEnabledState = updatePcOffModeEnabledState;
 
 let savedOsdName = "GAMING PC";
 
@@ -1036,27 +1071,30 @@ window.addEventListener("DOMContentLoaded", async () => {
 let activeTooltipEl = null;
 
 function initFloatingTooltips() {
-  const tip = document.createElement("div");
-  tip.className = "apple-floating-tooltip";
-  tip.id = "global-floating-tooltip";
-  tip.innerHTML = '<span class="tooltip-title"></span><span class="tooltip-sub"></span>';
-  document.body.appendChild(tip);
+  let tip = document.getElementById("global-floating-tooltip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.className = "apple-floating-tooltip";
+    tip.id = "global-floating-tooltip";
+    tip.innerHTML = '<span class="tooltip-title"></span><span class="tooltip-sub"></span>';
+    document.body.appendChild(tip);
+  }
 
   const titleSpan = tip.querySelector(".tooltip-title");
   const subSpan = tip.querySelector(".tooltip-sub");
 
   document.addEventListener("pointerover", (e) => {
-    const target = e.target.closest("[data-tooltip], [title], .remote-btn, .rem-round-btn, .rem-color-btn, .rem-num-btn, .dpad-dir, .clickpad-center");
+    const target = e.target.closest("[data-tooltip], [title], .remote-btn, .rem-round-btn, .rem-color-btn, .rem-num-btn, .dpad-dir, .clickpad-center, .status-lamp, .win-btn");
     if (!target) return;
 
     let titleText = target.dataset.tooltip;
     let subText = target.dataset.tooltipSub || "";
 
-    if (!titleText && target.title) {
-      titleText = target.title;
-      target.dataset.tooltip = titleText;
-      target.removeAttribute("title"); // Удаляем стандартный браузерный title во избежание дублирования
+    if (target.hasAttribute("title")) {
+      if (!titleText) titleText = target.getAttribute("title");
+      target.removeAttribute("title"); // Удаляем нативный title во избежание дублирования
     }
+    target.querySelectorAll("[title]").forEach(el => el.removeAttribute("title"));
 
     if (!titleText && !subText) return;
 
@@ -1073,6 +1111,13 @@ function initFloatingTooltips() {
 
   document.addEventListener("pointerout", (e) => {
     if (activeTooltipEl && (e.target === activeTooltipEl || activeTooltipEl.contains(e.target))) {
+      tip.classList.remove("visible");
+      activeTooltipEl = null;
+    }
+  });
+
+  document.addEventListener("pointerdown", () => {
+    if (activeTooltipEl) {
       tip.classList.remove("visible");
       activeTooltipEl = null;
     }

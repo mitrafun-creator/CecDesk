@@ -204,43 +204,94 @@ function renderDynamicRemote() {
     container.appendChild(cRow);
   }
 
-  // 4. Сетка звука и медиа
-  const ctrlKeys = ["0x4C", "0x44", "0x4B", "0x42", "0x43", "0x41", "0x45", "0x46", "0x48", "0x49", "0x30", "0x31"]
-    .filter(k => keySet.has(k));
-  if (ctrlKeys.length > 0) {
-    const grid = document.createElement("div");
-    grid.className = "remote-grid-controls";
+  // 4a. Медиа-управление (Предыдущий трек, Воспроизведение, Следующий трек)
+  const transportKeys = ["0x4C", "0x44", "0x4B"].filter(k => keySet.has(k));
+  if (transportKeys.length > 0) {
+    const tGrid = document.createElement("div");
+    tGrid.className = "remote-grid-controls";
 
-    ctrlKeys.forEach(k => {
+    transportKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
       const btn = document.createElement("button");
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
 
-      if (k === "0x41") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
-      } else if (k === "0x42") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
-      } else if (k === "0x43") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
-      } else if (k === "0x44") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
-      } else if (k === "0x45") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>';
+      if (k === "0x4C") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>';
+        btn.style.gridColumn = "1";
       } else if (k === "0x4B") {
         btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>';
-      } else if (k === "0x4C") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>';
+        btn.style.gridColumn = "3";
+      } else if (k === "0x44") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+        btn.style.gridColumn = "2";
+      }
+
+      btn.onclick = () => uiRemoteOrOsClick(k);
+      tGrid.appendChild(btn);
+    });
+
+    container.appendChild(tGrid);
+  }
+
+  // 4b. Регулировка громкости (Громкость -, Без звука, Громкость +)
+  const volKeys = ["0x42", "0x43", "0x41"].filter(k => keySet.has(k));
+  if (volKeys.length > 0) {
+    const vGrid = document.createElement("div");
+    vGrid.className = "remote-grid-controls";
+
+    volKeys.forEach(k => {
+      const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
+      const btn = document.createElement("button");
+      btn.id = `rem-btn-${k}`;
+      btn.className = "rem-round-btn";
+      applyButtonTooltip(btn, k);
+
+      if (k === "0x42") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+        btn.style.gridColumn = "1";
+      } else if (k === "0x43") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+        btn.style.gridColumn = "2";
+      } else if (k === "0x41") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+        btn.style.gridColumn = "3";
+      }
+
+      btn.onclick = () => uiRemoteOrOsClick(k);
+      vGrid.appendChild(btn);
+    });
+
+    container.appendChild(vGrid);
+  }
+
+  // 4c. Прочие клавиши управления (Стоп, Пауза, Каналы)
+  const otherCtrlKeys = ["0x45", "0x46", "0x48", "0x49", "0x30", "0x31"].filter(k => keySet.has(k));
+  if (otherCtrlKeys.length > 0) {
+    const oRow = document.createElement("div");
+    oRow.className = "remote-extra-row";
+
+    otherCtrlKeys.forEach(k => {
+      const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
+      const btn = document.createElement("button");
+      btn.id = `rem-btn-${k}`;
+      btn.className = "rem-round-btn";
+      applyButtonTooltip(btn, k);
+
+      if (k === "0x45") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>';
+      } else if (k === "0x46") {
+        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><line x1="10" y1="4" x2="10" y2="20"></line><line x1="14" y1="4" x2="14" y2="20"></line></svg>';
       } else {
         btn.textContent = def.sym;
       }
 
       btn.onclick = () => uiRemoteOrOsClick(k);
-      grid.appendChild(btn);
+      oRow.appendChild(btn);
     });
 
-    container.appendChild(grid);
+    container.appendChild(oRow);
   }
 
   // 5. Цифровая клавиатура 0-9

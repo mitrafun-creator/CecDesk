@@ -1038,13 +1038,11 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
     0 10px 28px rgba(0, 0, 0, 0.55),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
 }
 
 .dpad-dir {
-  position: absolute;
+  position: absolute !important;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -1057,47 +1055,60 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   cursor: pointer;
   transition: all 0.15s var(--spring-ease);
 }
-.dpad-dir:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
+.dpad-dir svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+.dpad-dir:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
 .dpad-dir.rem-active {
   background: var(--apple-blue) !important;
   color: #ffffff !important;
   box-shadow: 0 0 22px rgba(10, 132, 255, 0.9) !important;
 }
 
-.dpad-up { top: 5px; left: 50%; transform: translateX(-50%); }
+.dpad-up { top: 6px; left: 50%; transform: translateX(-50%); }
 .dpad-up:active, .dpad-up.rem-active { transform: translateX(-50%) scale(0.88); }
 
-.dpad-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.dpad-down { bottom: 6px; left: 50%; transform: translateX(-50%); }
 .dpad-down:active, .dpad-down.rem-active { transform: translateX(-50%) scale(0.88); }
 
-.dpad-left { left: 5px; top: 50%; transform: translateY(-50%); }
+.dpad-left { left: 6px; top: 50%; transform: translateY(-50%); }
 .dpad-left:active, .dpad-left.rem-active { transform: translateY(-50%) scale(0.88); }
 
-.dpad-right { right: 5px; top: 50%; transform: translateY(-50%); }
+.dpad-right { right: 6px; top: 50%; transform: translateY(-50%); }
 .dpad-right:active, .dpad-right.rem-active { transform: translateY(-50%) scale(0.88); }
 
 .clickpad-center {
+  position: absolute !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 74px;
   height: 74px;
   border-radius: 50%;
-  background: linear-gradient(145deg, rgba(68, 68, 78, 0.9), rgba(36, 36, 42, 0.95));
+  background: linear-gradient(145deg, rgba(68, 68, 78, 0.95), rgba(36, 36, 42, 0.98));
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition: all 0.16s var(--spring-ease);
 }
 .clickpad-center:hover {
-  background: linear-gradient(145deg, rgba(82, 82, 94, 0.95), rgba(44, 44, 52, 0.98));
+  background: linear-gradient(145deg, rgba(82, 82, 94, 0.98), rgba(44, 44, 52, 1));
 }
 .clickpad-center:active, .clickpad-center.rem-active {
   background: var(--apple-blue) !important;
   border-color: #90CAF9 !important;
   color: #ffffff !important;
-  transform: scale(0.90) !important;
+  transform: translate(-50%, -50%) scale(0.90) !important;
   box-shadow: 0 0 26px rgba(10, 132, 255, 0.95) !important;
 }
 
@@ -1282,72 +1293,6 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   50% { opacity: 1; box-shadow: 0 0 14px rgba(255, 69, 58, 0.95); }
 }
 
-/* ==================== УНИВЕРСАЛЬНЫЕ СТЕКЛЯННЫЕ ПОДСКАЗКИ (TOOLTIPS) ==================== */
-[data-tooltip] {
-  position: relative;
-}
-
-[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) scale(0.92);
-  transform-origin: center top;
-  background: rgba(18, 19, 24, 0.96);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  color: #F5F5F7;
-  font-size: 11.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  padding: 5px 11px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-top-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
-  z-index: 250;
-}
-
-[data-tooltip]:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) scale(1);
-}
-
-/* Детализация статуса при наведении курсора на боковые лампочки */
-.status-lamp[data-tooltip]::after {
-  top: 50%;
-  left: auto;
-  right: calc(100% + 12px);
-  transform: translateY(-50%) scale(0.92);
-  transform-origin: right center;
-}
-
-.status-lamp[data-tooltip]:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) scale(1);
-}
-
-/* Подсказки кнопок заголовка окна */
-.win-btn[data-tooltip]::after {
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%) scale(0.92);
-  transform-origin: center top;
-}
-
-.win-btn[data-tooltip]:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) scale(1);
-}
-
 /* ==================== ДИАГНОСТИЧЕСКАЯ СЕТКА (СИСТЕМА) ==================== */
 .sys-diag-grid {
   display: grid;
@@ -1398,11 +1343,11 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   inset: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 0;
-  pointer-events: none;
-  filter: blur(28px);
-  -webkit-filter: blur(28px);
-  opacity: 0.88;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  filter: blur(40px);
+  -webkit-filter: blur(40px);
+  opacity: 0.65;
 }
 
 /* ==================== КАСТОМНЫЕ ВЫПАДАЮЩИЕ СПИСКИ ==================== */
@@ -2037,13 +1982,14 @@ input:focus, textarea:focus { border-color: var(--apple-blue); }
   position: fixed;
   z-index: 999999;
   pointer-events: none;
-  background: rgba(22, 22, 30, 0.94);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #14151a !important;
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  border-top-color: rgba(255, 255, 255, 0.38) !important;
   border-radius: 9px;
-  padding: 6px 11px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  padding: 6px 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.90), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   font-size: 11.5px;
   color: #ffffff;
   max-width: 280px;
@@ -2063,11 +2009,58 @@ input:focus, textarea:focus { border-color: var(--apple-blue); }
 .apple-floating-tooltip .tooltip-title {
   font-weight: 600;
   color: #ffffff;
+  font-size: 11.5px;
 }
 .apple-floating-tooltip .tooltip-sub {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #64B5F6;
   font-weight: 500;
+}
+
+/* ==================== МИНИМАЛЬНАЯ ПРОЗРАЧНОСТЬ ДЛЯ ТЕКСТА, ЛОГОВ И КОНФИГОВ ==================== */
+.console-card {
+  background: #0d0e12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.console-body,
+#log-container {
+  background: #08090c !important;
+  color: #e0e0e6 !important;
+}
+
+#txt-profile-json {
+  background: #08090c !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+}
+
+.profiles-list,
+#profiles-catalog {
+  background: #0d0e12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+
+.profile-item {
+  background: #131418 !important;
+}
+
+.pc-off-mode-wrap {
+  transition: opacity 0.22s var(--spring-ease), filter 0.22s var(--spring-ease);
+}
+.pc-off-mode-wrap.is-disabled {
+  opacity: 0.35 !important;
+  pointer-events: none !important;
+  filter: grayscale(0.6);
+  user-select: none;
+}
+
+.glass-panel:has(.c-select.open) {
+  z-index: 100 !important;
+}
+
+.c-select.open {
+  z-index: 1000 !important;
 }
 
 

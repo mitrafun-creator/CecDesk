@@ -1,6 +1,6 @@
 /**
  * ambient_fluid.js - Мягкий светящийся атмосферный туман (Ambient Aura Mist)
- * Находится глубоко на фоне, реагирует на курсор, переключение вкладок и ивенты.
+ * Расположен строго на глубоком фоне (без курсорных фонариков и без наложений на окна)
  */
 
 (function () {
@@ -48,29 +48,15 @@
     glow: [30, 140, 255]
   };
 
-  // Мягкие блуждающие узлы светящегося тумана
+  // Мягкие гармонические узлы светящегося тумана на заднем плане
   const mistNodes = [
-    { xRatio: 0.25, yRatio: 0.78, radiusRatio: 0.45, speedX: 0.0006, speedY: 0.0008, phase: 0.0, alpha: 0.16 },
-    { xRatio: 0.72, yRatio: 0.82, radiusRatio: 0.50, speedX: -0.0007, speedY: 0.0005, phase: 1.8, alpha: 0.14 },
-    { xRatio: 0.48, yRatio: 0.65, radiusRatio: 0.40, speedX: 0.0005, speedY: -0.0006, phase: 3.5, alpha: 0.12 },
-    { xRatio: 0.88, yRatio: 0.60, radiusRatio: 0.38, speedX: -0.0004, speedY: 0.0007, phase: 4.9, alpha: 0.10 }
+    { xRatio: 0.22, yRatio: 0.82, radiusRatio: 0.48, speedX: 0.0005, speedY: 0.0006, phase: 0.0, alpha: 0.14 },
+    { xRatio: 0.76, yRatio: 0.85, radiusRatio: 0.52, speedX: -0.0006, speedY: 0.0004, phase: 1.8, alpha: 0.12 },
+    { xRatio: 0.46, yRatio: 0.68, radiusRatio: 0.42, speedX: 0.0004, speedY: -0.0005, phase: 3.5, alpha: 0.10 },
+    { xRatio: 0.90, yRatio: 0.62, radiusRatio: 0.38, speedX: -0.0003, speedY: 0.0005, phase: 4.9, alpha: 0.09 }
   ];
 
-  // Физика курсора
-  const mouse = {
-    x: -2000,
-    y: -2000,
-    targetX: -2000,
-    targetY: -2000,
-    vx: 0,
-    vy: 0,
-    active: false,
-    alpha: 0,
-    targetAlpha: 0,
-    radius: 280
-  };
-
-  // Мягкие импульсы (риплы тумана)
+  // Мягкие импульсы (риплы тумана при клике по вкладкам/кнопкам)
   const ripples = [];
   let time = 0;
 
@@ -87,25 +73,12 @@
     onResize();
     window.addEventListener("resize", onResize, { passive: true });
 
-    // Интеракция с курсором
-    window.addEventListener("mousemove", (e) => {
-      mouse.targetX = e.clientX;
-      mouse.targetY = e.clientY;
-      mouse.active = true;
-      mouse.targetAlpha = 0.15;
-    }, { passive: true });
-
-    window.addEventListener("mouseleave", () => {
-      mouse.active = false;
-      mouse.targetAlpha = 0;
-    });
-
-    // Мягкий импульс тумана при кликах по кнопкам и вкладкам
+    // Мягкий рассеивающийся импульс тумана при переключении разделов и кликах
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("button, .hdmi-chip, .seg-btn, .apple-btn");
       if (btn) {
         const rect = btn.getBoundingClientRect();
-        triggerRipple(rect.left + rect.width / 2, rect.top + rect.height / 2, 0.9);
+        triggerRipple(rect.left + rect.width / 2, rect.top + rect.height / 2, 0.7);
       }
     }, { passive: true });
 
@@ -114,7 +87,7 @@
 
   function onResize() {
     if (!canvas) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
     width = window.innerWidth;
     height = window.innerHeight;
     canvas.width = Math.floor(width * dpr);
@@ -127,14 +100,14 @@
   }
 
   function triggerRipple(x, y, strength = 1.0) {
-    if (ripples.length > 5) ripples.shift();
+    if (ripples.length > 4) ripples.shift();
     ripples.push({
       x: x,
       y: y,
-      radius: 40,
-      maxRadius: Math.max(width, height) * 0.42,
-      alpha: 0.18 * strength,
-      growth: 3.2
+      radius: 30,
+      maxRadius: Math.max(width, height) * 0.38,
+      alpha: 0.14 * strength,
+      growth: 2.8
     });
   }
 
@@ -144,7 +117,7 @@
 
   function updateColors() {
     const target = COLOR_PALETTES[currentMood] || COLOR_PALETTES.blue;
-    const speed = 0.055; // Быстрый, но мягкий переход оттенков
+    const speed = 0.05; // Плавный переход оттенков
     for (let i = 0; i < 3; i++) {
       curColors.primary[i] = lerp(curColors.primary[i], target.primary[i], speed);
       curColors.secondary[i] = lerp(curColors.secondary[i], target.secondary[i], speed);
@@ -160,8 +133,8 @@
 
     const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
     grad.addColorStop(0, `rgba(${rInt}, ${gInt}, ${bInt}, ${maxAlpha})`);
-    grad.addColorStop(0.35, `rgba(${rInt}, ${gInt}, ${bInt}, ${maxAlpha * 0.65})`);
-    grad.addColorStop(0.70, `rgba(${rInt}, ${gInt}, ${bInt}, ${maxAlpha * 0.22})`);
+    grad.addColorStop(0.35, `rgba(${rInt}, ${gInt}, ${bInt}, ${maxAlpha * 0.60})`);
+    grad.addColorStop(0.70, `rgba(${rInt}, ${gInt}, ${bInt}, ${maxAlpha * 0.18})`);
     grad.addColorStop(1, `rgba(${rInt}, ${gInt}, ${bInt}, 0)`);
 
     ctx.fillStyle = grad;
@@ -176,17 +149,16 @@
       return;
     }
 
-    time += 0.012;
+    time += 0.010;
     updateColors();
 
-    // Очистка холста
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Отрисовка базовых плавно дрейфующих пятен тумана в нижней части экрана
+    // Отрисовка плавно дышащих сфер тумана глубоко на заднем плане
     mistNodes.forEach((node, idx) => {
-      const offsetX = Math.sin(time * 0.7 + node.phase) * (width * 0.08);
-      const offsetY = Math.cos(time * 0.6 + node.phase * 1.3) * (height * 0.05);
-      const breath = 1.0 + Math.sin(time * 1.2 + node.phase) * 0.12;
+      const offsetX = Math.sin(time * 0.6 + node.phase) * (width * 0.07);
+      const offsetY = Math.cos(time * 0.5 + node.phase * 1.3) * (height * 0.04);
+      const breath = 1.0 + Math.sin(time * 1.1 + node.phase) * 0.10;
 
       const posX = node.xRatio * width + offsetX;
       const posY = node.yRatio * height + offsetY;
@@ -196,25 +168,11 @@
       drawSoftMistSpot(posX, posY, radius, col, node.alpha);
     });
 
-    // 2. Мягкий светящийся след курсора
-    if (mouse.active || mouse.alpha > 0.005) {
-      mouse.vx = (mouse.targetX - mouse.x) * 0.08;
-      mouse.vy = (mouse.targetY - mouse.y) * 0.08;
-      mouse.x += mouse.vx;
-      mouse.y += mouse.vy;
-
-      mouse.alpha = lerp(mouse.alpha, mouse.active ? mouse.targetAlpha : 0, 0.05);
-
-      if (mouse.alpha > 0.005) {
-        drawSoftMistSpot(mouse.x, mouse.y, mouse.radius, curColors.glow, mouse.alpha);
-      }
-    }
-
-    // 3. Мягкие расходящиеся импульсы (риплы тумана)
+    // Мягкие расходящиеся импульсы тумана (растворяются в фоне)
     for (let i = ripples.length - 1; i >= 0; i--) {
       const rip = ripples[i];
       rip.radius += rip.growth;
-      rip.alpha *= 0.965; // плавное растворение в фоне
+      rip.alpha *= 0.96;
 
       if (rip.alpha > 0.003 && rip.radius < rip.maxRadius) {
         drawSoftMistSpot(rip.x, rip.y, rip.radius, curColors.glow, rip.alpha);
@@ -232,9 +190,6 @@
     }
   }
 
-  /**
-   * Смена цветового состояния тумана
-   */
   window.setAmbientMood = function (mood, durationMs = 0) {
     if (!COLOR_PALETTES[mood]) return;
     currentMood = mood;
@@ -249,9 +204,6 @@
     }
   };
 
-  /**
-   * Запуск мягкого импульса тумана из точки (x, y)
-   */
   window.triggerAmbientRipple = function (x, y, strength = 1.0) {
     triggerRipple(x, y, strength);
   };

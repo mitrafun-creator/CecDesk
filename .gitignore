@@ -41,3 +41,6 @@ cec_studio_config.json
 # Auto-generated Tauri schemas
 tauri_app/src-tauri/gen/
 
+# GitHub workflows (requires workflow token scope)
+.github/
+

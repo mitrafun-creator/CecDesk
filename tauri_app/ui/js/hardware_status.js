@@ -392,12 +392,19 @@ function updateSystemDiagnostics() {
 }
 
 /**
- * Показ/скрытие модального перекрытия раздела «Пульт»
+ * Показ/скрытие модального перекрытия раздела «Пульт» с контекстными действиями
  */
 function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
   const stage = document.getElementById("remote-stage");
   const overlay = document.getElementById("remote-offline-overlay");
+  const titleEl = document.getElementById("remote-offline-title");
+  const descEl = document.getElementById("remote-offline-desc");
   const reasonEl = document.getElementById("remote-offline-reason");
+  const dotEl = document.getElementById("remote-offline-dot");
+  const btnEl = document.getElementById("btn-remote-offline-refresh");
+  const lblEl = document.getElementById("lbl-remote-offline-btn");
+  const icoEl = document.getElementById("ico-remote-offline-refresh");
+
   if (!stage || !overlay) return;
 
   if (isTvOnline) {
@@ -406,21 +413,100 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
   } else {
     stage.classList.add("is-blurred");
     overlay.classList.add("visible");
-    if (reasonEl) {
-      if (!lastHwStatus.usbConnected) {
-        if (isReconnecting) {
-          reasonEl.textContent = "Поиск и переподключение к контроллеру...";
-        } else {
-          reasonEl.textContent = "Нет связи с ПК: контроллер отключен или порт не отвечает";
-        }
-      } else if (confirmedLineLow) {
-        reasonEl.textContent = "Линия HDMI-CEC 0V: проверьте кабель или питание телевизора";
+
+    if (!lastHwStatus.usbConnected) {
+      if (isReconnecting) {
+        if (titleEl) titleEl.textContent = "Поиск контроллера...";
+        if (descEl) descEl.textContent = "Попытка автоматического переподключения к адаптеру RP2040 на порту " + (curPort || "COM") + "...";
+        if (reasonEl) reasonEl.textContent = "Поиск COM-порта...";
+        if (dotEl) { dotEl.style.background = "var(--apple-amber)"; }
+        if (lblEl) lblEl.textContent = "Поиск...";
+        if (btnEl) btnEl.disabled = true;
       } else {
-        reasonEl.textContent = curPort ? `Контроллер подключен (${curPort}), но телевизор не отвечает` : "Контроллер подключен, но телевизор не отвечает";
+        if (titleEl) titleEl.textContent = "USB-контроллер отключен";
+        if (descEl) descEl.textContent = "Связь с адаптером RP2040 разорвана. Нажмите «Подключить», чтобы открыть COM-порт и возобновить управление телевизором.";
+        if (reasonEl) reasonEl.textContent = curPort ? `Порт ${curPort} отключен` : "Контроллер не подключен";
+        if (dotEl) { dotEl.style.background = "var(--apple-gray)"; }
+        if (lblEl) lblEl.textContent = "Подключить";
+        if (btnEl) btnEl.disabled = false;
+        if (icoEl) {
+          icoEl.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        }
+      }
+    } else if (confirmedLineLow) {
+      if (titleEl) titleEl.textContent = "Ошибка линии CEC (0V)";
+      if (descEl) descEl.textContent = "Контроллер подключен к " + (curPort || "порту") + ", но на шине CEC зафиксировано 0V (короткое замыкание или обрыв). Проверьте кабель HDMI и пины.";
+      if (reasonEl) reasonEl.textContent = "Линия HDMI-CEC 0V: проверьте кабель или питание телевизора";
+      if (dotEl) { dotEl.style.background = "var(--apple-red)"; }
+      if (lblEl) lblEl.textContent = "Опросить шину";
+      if (btnEl) btnEl.disabled = false;
+      if (icoEl) {
+        icoEl.innerHTML = '<polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>';
+      }
+    } else {
+      if (titleEl) titleEl.textContent = "Нет связи с телевизором";
+      if (descEl) descEl.textContent = curPort
+        ? `Контроллер подключен к ${curPort}, но телевизор не отвечает по шине HDMI-CEC. Убедитесь, что ТВ включен в розетку и провод HDMI подключен.`
+        : "Контроллер подключен, но телевизор не отвечает по шине HDMI-CEC. Убедитесь, что ТВ включен в розетку и провод HDMI подключен.";
+      if (reasonEl) reasonEl.textContent = curPort ? `Контроллер подключен (${curPort}), но телевизор не отвечает` : "Контроллер подключен, но телевизор не отвечает";
+      if (dotEl) { dotEl.style.background = "var(--apple-amber)"; }
+      if (lblEl) lblEl.textContent = "Опросить шину";
+      if (btnEl) btnEl.disabled = false;
+      if (icoEl) {
+        icoEl.innerHTML = '<polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>';
       }
     }
   }
 }
+
+/**
+ * Обработчик действия в модальном окне отключенного состояния
+ */
+async function handleRemoteOfflineAction() {
+  const btn = document.getElementById("btn-remote-offline-refresh");
+  const lbl = document.getElementById("lbl-remote-offline-btn");
+  const ico = document.getElementById("ico-remote-offline-refresh");
+
+  if (!lastHwStatus.usbConnected) {
+    if (lbl) lbl.textContent = "Подключение...";
+    if (btn) btn.disabled = true;
+    if (ico) ico.classList.add("spinning");
+    try {
+      if (typeof refreshPorts === "function") {
+        await refreshPorts();
+      }
+      if (typeof connectDeviceNow === "function") {
+        await connectDeviceNow(true);
+      }
+    } catch (e) {
+      console.error(e);
+      if (typeof addLog === "function") addLog(`[Подключение] Ошибка: ${e}`, "log-err");
+    } finally {
+      if (ico) ico.classList.remove("spinning");
+      if (btn) btn.disabled = false;
+      if (lbl) lbl.textContent = lastHwStatus.usbConnected ? "Опросить шину" : "Подключить";
+    }
+  } else {
+    if (lbl) lbl.textContent = "Опрос шины...";
+    if (btn) btn.disabled = true;
+    if (ico) ico.classList.add("spinning");
+    try {
+      if (typeof checkHardwareLineNow === "function") {
+        await checkHardwareLineNow();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTimeout(() => {
+        if (ico) ico.classList.remove("spinning");
+        if (btn) btn.disabled = false;
+        if (lbl) lbl.textContent = "Опросить шину";
+      }, 700);
+    }
+  }
+}
+window.refreshRemoteConnectionModal = handleRemoteOfflineAction;
+window.handleRemoteOfflineAction = handleRemoteOfflineAction;
 
 /**
  * Ручной опрос состояния шины CEC
