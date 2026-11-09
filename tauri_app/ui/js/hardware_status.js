@@ -1,54 +1,95 @@
 /**
- * hardware_status.js - Управление статусом адаптера, линией CEC и умным питанием ТВ
+ * hardware_status.js - Управление статусом оборудования, шиной CEC и умным питанием ТВ
  */
 
 let lastHwStatus = { usbConnected: false, tvConnected: false, lineHigh: false, port: "" };
-let isTvPowerOn = false;
+let tvPowerState = "syncing"; // "syncing" | "on" | "off"
 let lineLowDebounceTimer = null;
 let confirmedLineLow = false;
+let tvPowerPingWatchdog = null;
+let lastTvPowerVerifiedTime = 0;
 
 /**
- * Единая кнопка включения/выключения ТВ в зависимости от реального статуса
+ * Единая умная кнопка питания ТВ: Включить / Выключить / Определение состояния (серая с вращающимся спиннером)
+ * @param {"syncing" | boolean | "on" | "off"} state
  */
-function updateTvPowerButtonUi(isOn) {
-  isTvPowerOn = !!isOn;
+function updateTvPowerButtonUi(state) {
   const btn = document.getElementById("btn-tv-power");
   const lbl = document.getElementById("lbl-tv-power");
   const ico = document.getElementById("ico-tv-power");
-  if (!btn || !lbl || !ico) return;
+  const desc = document.getElementById("min-status-desc");
 
-  if (isTvPowerOn) {
-    btn.className = "apple-btn power-toggle-btn is-on";
-    lbl.textContent = typeof t === "function" ? t("remote.turn_off_tv") : "Выключить ТВ";
+  if (state === "syncing" || state === null || state === undefined) {
+    tvPowerState = "syncing";
+    if (btn) {
+      btn.className = "apple-btn power-toggle-btn is-syncing";
+      btn.disabled = true;
+    }
+    if (lbl) {
+      lbl.textContent = typeof t === "function" ? t("remote.syncing_tv_state", "Определение состояния...") : "Определение состояния...";
+    }
+    if (ico) {
+      ico.className = "ico ico-lg ico-spin";
+      ico.innerHTML = '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"></circle>';
+    }
+    if (desc) {
+      desc.textContent = typeof t === "function" ? t("remote.syncing", "Синхронизация...") : "Синхронизация...";
+    }
+    updateSystemDiagnostics();
+    return;
+  }
+
+  const isOn = (state === true || state === "on");
+  tvPowerState = isOn ? "on" : "off";
+  lastTvPowerVerifiedTime = Date.now();
+
+  if (btn) {
+    btn.disabled = false;
+    btn.className = isOn ? "apple-btn power-toggle-btn is-on" : "apple-btn power-toggle-btn is-off";
+  }
+  if (ico) {
+    ico.className = "ico ico-lg";
     ico.innerHTML = '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>';
-    const desc = document.getElementById("min-status-desc");
+  }
+
+  if (isOn) {
+    if (lbl) lbl.textContent = typeof t === "function" ? t("remote.turn_off_tv") : "Выключить ТВ";
     if (desc) desc.textContent = typeof t === "function" ? t("remote.connection_active") : "Телевизор включен";
   } else {
-    btn.className = "apple-btn power-toggle-btn is-off";
-    lbl.textContent = typeof t === "function" ? t("remote.turn_on_tv") : "Включить ТВ";
-    ico.innerHTML = '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>';
-    const desc = document.getElementById("min-status-desc");
+    if (lbl) lbl.textContent = typeof t === "function" ? t("remote.turn_on_tv") : "Включить ТВ";
     if (desc) desc.textContent = typeof t === "function" ? t("remote.status_offline") : "В режиме сна";
   }
+
+  updateSystemDiagnostics();
 }
 
 /**
  * Интеллектуальное переключение питания
  */
 async function toggleTvPower() {
-  if (isTvPowerOn) {
+  if (tvPowerState === "syncing") {
+    return; // Кнопка неактивна при неопределенном состоянии
+  }
+
+  if (typeof window.setAmbientMood === "function") {
+    window.setAmbientMood("amber", 2200);
+  }
+
+  if (tvPowerState === "on") {
     addLog("[Питание] Выключение экрана телевизора...", "log-tx");
     await standbyTv();
-    updateTvPowerButtonUi(false);
+    updateTvPowerButtonUi("off");
+    if (typeof window.setAmbientMood === "function") window.setAmbientMood("green", 1800);
   } else {
     addLog("[Питание] Включение экрана телевизора...", "log-tx");
     await wakeAndSelectTv();
-    updateTvPowerButtonUi(true);
+    updateTvPowerButtonUi("on");
+    if (typeof window.setAmbientMood === "function") window.setAmbientMood("green", 1800);
   }
 }
 
 /**
- * Лаконичное обновление аппаратного статуса без лишней детализации
+ * Обновление статусов оборудования: цветные лампочки + всплывающая подсказка с деталями
  */
 function updateHardwareStatusUi(usbState, tvState, remoteState) {
   if (usbState) {
@@ -66,127 +107,175 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lastHwStatus.tvConnected = !!tvState.tvConnected;
       lastHwStatus.lineHigh = true;
     } else {
-      // Защита от мигания при отправке фреймов: линия физически в нуле во время передачи байта
       if (!confirmedLineLow && !lineLowDebounceTimer) {
         lineLowDebounceTimer = setTimeout(() => {
           confirmedLineLow = true;
           lastHwStatus.lineHigh = false;
           lastHwStatus.tvConnected = false;
+          updateTvPowerButtonUi("syncing");
           updateHardwareStatusUi(null, { checked: true, lineHigh: false, tvConnected: false });
         }, 1200);
       }
     }
   }
 
-  const curPort = lastHwStatus.port || selectedPort || "COM6";
+  const curPort = lastHwStatus.port || selectedPort || "COM10";
 
-  // 1. USB адаптер
-  const usbBadge = document.getElementById("hw-usb-badge");
+  // 1. USB-контроллер (лампочка #lamp-usb)
+  const lampUsb = document.getElementById("lamp-usb");
+  const usbBadge = document.getElementById("hw-usb-badge"); // fallback для совместимости
 
   if (lastHwStatus.usbConnected) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(true);
+    const tipText = `Подключен (${curPort})`;
+    if (lampUsb) {
+      lampUsb.className = "status-lamp lamp-green";
+      lampUsb.setAttribute("data-tooltip", tipText);
+      lampUsb.setAttribute("title", tipText);
+    }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-online";
-      const connStr = typeof t === "function" ? t("remote.status_connected") : "Подключен";
-      usbBadge.textContent = `${connStr} (${curPort})`;
+      usbBadge.textContent = tipText;
     }
   } else if (usbState && usbState.reconnecting) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(false);
+    const tipText = "Поиск контроллера...";
+    if (lampUsb) {
+      lampUsb.className = "status-lamp lamp-yellow";
+      lampUsb.setAttribute("data-tooltip", tipText);
+      lampUsb.setAttribute("title", tipText);
+    }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-warning";
-      usbBadge.textContent = typeof t === "function" ? t("status.reconnecting") : "Поиск...";
+      usbBadge.textContent = tipText;
     }
   } else {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(false);
+    const tipText = "Отключен";
+    if (lampUsb) {
+      lampUsb.className = "status-lamp lamp-gray";
+      lampUsb.setAttribute("data-tooltip", tipText);
+      lampUsb.setAttribute("title", tipText);
+    }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-error";
-      usbBadge.textContent = typeof t === "function" ? t("remote.status_disconnected") : "Отключен";
+      usbBadge.textContent = tipText;
     }
+    updateTvPowerButtonUi("syncing");
   }
 
-  // 2. Линия CEC / ТВ
+  // 2. Связь с ТВ (CEC) (лампочка #lamp-cec)
+  const lampCec = document.getElementById("lamp-cec");
   const cecBadge = document.getElementById("hw-cec-badge");
 
   if (!lastHwStatus.usbConnected) {
+    const tipText = "Нет питания USB";
+    if (lampCec) {
+      lampCec.className = "status-lamp lamp-gray";
+      lampCec.setAttribute("data-tooltip", tipText);
+      lampCec.setAttribute("title", tipText);
+    }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-neutral";
-      cecBadge.textContent = typeof t === "function" ? t("status.line_no_power") : "Нет питания";
+      cecBadge.textContent = tipText;
     }
   } else if (lastHwStatus.lineHigh) {
     if (lastHwStatus.tvConnected) {
+      const tipText = "3.3V ТВ в сети (Контакт надежен)";
+      if (lampCec) {
+        lampCec.className = "status-lamp lamp-green";
+        lampCec.setAttribute("data-tooltip", tipText);
+        lampCec.setAttribute("title", tipText);
+      }
       if (cecBadge) {
         cecBadge.className = "hw-badge badge-online";
-        cecBadge.textContent = typeof t === "function" ? t("remote.status_online") : "3.3V ТВ в сети";
+        cecBadge.textContent = "3.3V ТВ в сети";
       }
     } else {
+      const tipText = "Шина свободна (ТВ не отвечает)";
+      if (lampCec) {
+        lampCec.className = "status-lamp lamp-yellow";
+        lampCec.setAttribute("data-tooltip", tipText);
+        lampCec.setAttribute("title", tipText);
+      }
       if (cecBadge) {
         cecBadge.className = "hw-badge badge-warning";
-        cecBadge.textContent = typeof t === "function" ? t("status.line_free_badge") : "Шина свободна";
+        cecBadge.textContent = "Шина свободна";
       }
     }
   } else if (confirmedLineLow) {
+    const tipText = "0V / Ошибка линии CEC (КЗ или кабель)";
+    if (lampCec) {
+      lampCec.className = "status-lamp lamp-red";
+      lampCec.setAttribute("data-tooltip", tipText);
+      lampCec.setAttribute("title", tipText);
+    }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-error";
-      cecBadge.textContent = typeof t === "function" ? t("status.line_err_badge") : "0V / Ошибка";
+      cecBadge.textContent = "0V / Ошибка";
+    }
+    if (typeof window.setAmbientMood === "function") {
+      window.setAmbientMood("red");
     }
   } else {
+    const tipText = "Опрос шины...";
+    if (lampCec) {
+      lampCec.className = "status-lamp lamp-yellow";
+      lampCec.setAttribute("data-tooltip", tipText);
+      lampCec.setAttribute("title", tipText);
+    }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-warning";
-      cecBadge.textContent = typeof t === "function" ? t("remote.syncing") : "Опрос шины...";
+      cecBadge.textContent = "Опрос...";
     }
   }
 
-  // 3. Мост пульта
+  // 3. Перехват пульта (лампочка #lamp-remote)
+  const lampRemote = document.getElementById("lamp-remote");
   const remBadge = document.getElementById("hw-remote-badge");
   const chkRemote = document.getElementById("chk-remote-os");
   const isPass = remoteState !== undefined ? remoteState : (chkRemote ? chkRemote.checked : true);
 
   if (isPass) {
+    const tipText = "Включен (управление ПК)";
+    if (lampRemote) {
+      lampRemote.className = "status-lamp lamp-green";
+      lampRemote.setAttribute("data-tooltip", tipText);
+      lampRemote.setAttribute("title", tipText);
+    }
     if (remBadge) {
       remBadge.className = "hw-badge badge-online";
-      remBadge.textContent = typeof t === "function" ? t("remote.status_enabled") : "Включен";
+      remBadge.textContent = "Включен";
     }
   } else {
+    const tipText = "Выключен (пульт освобожден для ТВ)";
+    if (lampRemote) {
+      lampRemote.className = "status-lamp lamp-gray";
+      lampRemote.setAttribute("data-tooltip", tipText);
+      lampRemote.setAttribute("title", tipText);
+    }
     if (remBadge) {
       remBadge.className = "hw-badge badge-neutral";
-      remBadge.textContent = typeof t === "function" ? t("remote.status_disabled") : "Выключен";
+      remBadge.textContent = "Выключен";
     }
   }
 
-  // Обновление главного верхнего индикатора статуса
-  if (!lastHwStatus.usbConnected) {
-    setHumanStatus(
-      "offline",
-      typeof t === "function" ? t("status.usb_disconnected") : "USB: Отключен",
-      typeof t === "function" ? t("status.usb_disconnected_desc") : "Подключите адаптер к компьютеру"
-    );
-  } else if (lastHwStatus.lineHigh && lastHwStatus.tvConnected) {
-    setHumanStatus(
-      "online",
-      typeof t === "function" ? t("status.ready_online") : "Готово • ТВ в сети",
-      typeof t === "function" ? t("status.ready_online_desc") : "Связь с телевизором активна"
-    );
-  } else if (lastHwStatus.lineHigh && !lastHwStatus.tvConnected) {
-    setHumanStatus(
-      "standby",
-      typeof t === "function" ? t("status.tv_no_response") : "ТВ не отвечает",
-      typeof t === "function" ? t("status.tv_no_response_desc") : "Проверьте HDMI кабель или питание ТВ"
-    );
-  } else if (confirmedLineLow) {
-    setHumanStatus(
-      "offline",
-      typeof t === "function" ? t("status.line_error") : "Линия CEC 0V",
-      typeof t === "function" ? t("status.line_error_desc") : "Короткое замыкание или ТВ выключен из розетки"
-    );
-  } else {
-    setHumanStatus(
-      "standby",
-      typeof t === "function" ? t("remote.syncing") : "Опрос шины...",
-      typeof t === "function" ? t("remote.syncing") : "Проверка связи с телевизором..."
-    );
+  // Обновление состояния Ambient Fluid
+  if (typeof window.setAmbientMood === "function") {
+    if (!lastHwStatus.usbConnected || confirmedLineLow) {
+      window.setAmbientMood("red");
+    } else if (lastHwStatus.lineHigh && lastHwStatus.tvConnected) {
+      window.setAmbientMood("blue");
+    }
   }
 
-  // Управление размытием и модальным окном раздела «Пульт» при отсутствии связи с ПК или ТВ
+  // Проверка актуальности состояния питания телевизора
+  ensureTvPowerFreshness();
+
+  // Обновление детальной системной диагностики
+  updateSystemDiagnostics();
+
+  // Управление размытием раздела «Пульт»
   const isTvOnline = lastHwStatus.usbConnected && lastHwStatus.lineHigh && lastHwStatus.tvConnected;
   updateRemoteOfflineOverlay(isTvOnline, !!(usbState && usbState.reconnecting), curPort);
 
@@ -196,7 +285,114 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
 }
 
 /**
- * Показ/скрытие модального перекрытия раздела «Пульт», если нет связи с модулем или ТВ не отвечает
+ * Проверка свежести пинга питания ТВ: если за 35 секунд не было подтверждения,
+ * кнопка переводится в режим безопасного определения ("syncing").
+ */
+function ensureTvPowerFreshness() {
+  if (!lastHwStatus.usbConnected || confirmedLineLow) {
+    if (tvPowerState !== "syncing") {
+      updateTvPowerButtonUi("syncing");
+    }
+    return;
+  }
+
+  if (tvPowerState !== "syncing" && lastTvPowerVerifiedTime > 0) {
+    const elapsed = Date.now() - lastTvPowerVerifiedTime;
+    if (elapsed > 35000) {
+      updateTvPowerButtonUi("syncing");
+      sendCmd("RAW 00 8F"); // фоновый повторный запрос статуса
+    }
+  }
+}
+
+/**
+ * Обновление подробной аппаратной диагностики в разделе «Система»
+ */
+function updateSystemDiagnostics() {
+  const elPort = document.getElementById("diag-usb-port");
+  const elConn = document.getElementById("diag-usb-conn");
+  const elChip = document.getElementById("diag-usb-chip");
+
+  const elLevel = document.getElementById("diag-cec-level");
+  const elPull = document.getElementById("diag-cec-pull");
+  const elContact = document.getElementById("diag-cec-contact");
+
+  const elPwr = document.getElementById("diag-tv-pwr");
+  const elPhys = document.getElementById("diag-tv-phys");
+  const elLa = document.getElementById("diag-tv-la");
+
+  const elRemActive = document.getElementById("diag-remote-active");
+  const elRemKeys = document.getElementById("diag-remote-keys-cnt");
+  const elRemSubsys = document.getElementById("diag-remote-subsys");
+
+  const curPort = lastHwStatus.port || selectedPort || "COM10";
+
+  if (elPort) elPort.textContent = lastHwStatus.usbConnected ? curPort : "Не подключен";
+  if (elConn) {
+    elConn.textContent = lastHwStatus.usbConnected ? "Связь установлена (115200)" : "Отключен";
+    elConn.style.color = lastHwStatus.usbConnected ? "var(--apple-green)" : "var(--apple-red)";
+  }
+  if (elChip) elChip.textContent = "RP2040-Zero (USB CDC • GP0/GP1)";
+
+  if (elLevel) {
+    if (!lastHwStatus.usbConnected) {
+      elLevel.textContent = "Нет питания";
+      elLevel.style.color = "var(--text-secondary)";
+    } else if (lastHwStatus.lineHigh) {
+      elLevel.textContent = "3.3V (Высокий уровень)";
+      elLevel.style.color = "var(--apple-green)";
+    } else if (confirmedLineLow) {
+      elLevel.textContent = "0V (КЗ / Обрыв)";
+      elLevel.style.color = "var(--apple-red)";
+    } else {
+      elLevel.textContent = "Опрос шины...";
+      elLevel.style.color = "var(--apple-amber)";
+    }
+  }
+
+  if (elPull) {
+    elPull.textContent = lastHwStatus.tvConnected ? "Активна (ТВ в сети 27k)" : "Внутренняя RP2040";
+  }
+
+  if (elContact) {
+    elContact.textContent = (lastHwStatus.lineHigh && lastHwStatus.tvConnected) ? "Надежный контакт" : "Нет ответа ТВ";
+    elContact.style.color = (lastHwStatus.lineHigh && lastHwStatus.tvConnected) ? "var(--apple-green)" : "var(--apple-amber)";
+  }
+
+  if (elPwr) {
+    if (tvPowerState === "on") {
+      elPwr.textContent = "Включен (ON)";
+      elPwr.style.color = "var(--apple-green)";
+    } else if (tvPowerState === "off") {
+      elPwr.textContent = "Режим ожидания (Standby)";
+      elPwr.style.color = "var(--apple-amber)";
+    } else {
+      elPwr.textContent = "Определение состояния...";
+      elPwr.style.color = "var(--text-secondary)";
+    }
+  }
+
+  if (elPhys) {
+    elPhys.textContent = typeof selectedPa !== "undefined" && selectedPa ? `${selectedPa[0]}.${selectedPa[1]}.${selectedPa[2]}.${selectedPa[3]} (HDMI ${selectedPa[0]})` : "3.0.0.0 (HDMI 3)";
+  }
+  if (elLa) elLa.textContent = "0x04 (Playback Device 1)";
+
+  const chkRemote = document.getElementById("chk-remote-os");
+  const isPass = chkRemote ? chkRemote.checked : true;
+  if (elRemActive) {
+    elRemActive.textContent = isPass ? "Активен (Перехват кнопок)" : "Отключен (Штатный пульт)";
+    elRemActive.style.color = isPass ? "var(--apple-green)" : "var(--text-secondary)";
+  }
+
+  const countVal = document.getElementById("lbl-count-value");
+  if (elRemKeys && countVal) {
+    elRemKeys.textContent = `${countVal.textContent || "0"} кнопок`;
+  }
+  if (elRemSubsys) elRemSubsys.textContent = "Windows SendInput / Enigo";
+}
+
+/**
+ * Показ/скрытие модального перекрытия раздела «Пульт»
  */
 function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
   const stage = document.getElementById("remote-stage");
@@ -213,60 +409,16 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
     if (reasonEl) {
       if (!lastHwStatus.usbConnected) {
         if (isReconnecting) {
-          reasonEl.textContent = typeof t === "function"
-            ? t("remote.offline_reason_reconnecting", "Поиск и переподключение к USB-модулю...")
-            : "Поиск и переподключение к USB-модулю...";
+          reasonEl.textContent = "Поиск и переподключение к контроллеру...";
         } else {
-          reasonEl.textContent = typeof t === "function"
-            ? t("remote.offline_reason_no_usb", "Нет связи с ПК: модуль отключен или порт не отвечает")
-            : "Нет связи с ПК: модуль отключен или порт не отвечает";
+          reasonEl.textContent = "Нет связи с ПК: контроллер отключен или порт не отвечает";
         }
       } else if (confirmedLineLow) {
-        reasonEl.textContent = typeof t === "function"
-          ? t("remote.offline_reason_line_low", "Линия HDMI-CEC 0V: проверьте кабель или питание ТВ")
-          : "Линия HDMI-CEC 0V: проверьте кабель или питание ТВ";
+        reasonEl.textContent = "Линия HDMI-CEC 0V: проверьте кабель или питание телевизора";
       } else {
-        const baseMsg = typeof t === "function"
-          ? t("remote.offline_reason_tv_no_resp", "Модуль подключен, но ТВ или пульт не отвечает")
-          : "Модуль подключен, но ТВ или пульт не отвечает";
-        reasonEl.textContent = curPort ? `${baseMsg} (${curPort})` : baseMsg;
+        reasonEl.textContent = curPort ? `Контроллер подключен (${curPort}), но телевизор не отвечает` : "Контроллер подключен, но телевизор не отвечает";
       }
     }
-  }
-}
-
-/**
- * Кнопка «Обновить» внутри модального окна отсутствия связи с телевизором
- */
-async function refreshRemoteConnectionModal() {
-  const ico = document.getElementById("ico-remote-offline-refresh");
-  const btn = document.getElementById("btn-remote-offline-refresh");
-  const reasonEl = document.getElementById("remote-offline-reason");
-  if (ico) {
-    ico.classList.add("spinning");
-    setTimeout(() => ico.classList.remove("spinning"), 650);
-  }
-  if (btn) {
-    btn.disabled = true;
-    setTimeout(() => { btn.disabled = false; }, 650);
-  }
-  if (reasonEl) {
-    reasonEl.textContent = typeof t === "function"
-      ? t("remote.offline_reason_checking", "Опрос модуля и проверка связи с телевизором...")
-      : "Опрос модуля и проверка связи с телевизором...";
-  }
-
-  if (typeof refreshPorts === "function") {
-    await refreshPorts();
-  }
-
-  if (!isConnected || (selectedPort && typeof connectedPort !== "undefined" && selectedPort !== connectedPort)) {
-    if (typeof connectDeviceNow === "function") {
-      await connectDeviceNow(true);
-    }
-  } else {
-    await checkHardwareLineNow();
-    setTimeout(() => sendCmd("RAW 00 8F"), 220);
   }
 }
 
@@ -277,28 +429,20 @@ async function checkHardwareLineNow() {
   const btn = document.getElementById("btn-refresh-hw");
   if (btn) {
     btn.classList.add("spinning");
-    setTimeout(() => btn.classList.remove("spinning"), 500);
+    setTimeout(() => btn.classList.remove("spinning"), 600);
   }
-  const cecBadge = document.getElementById("hw-cec-badge");
-  if (cecBadge) {
-    cecBadge.className = "hw-badge badge-warning";
-    cecBadge.textContent = "Замер...";
-  }
-  await sendCmd("STATE");
-}
 
-/**
- * Установка читаемого пользователем глобального статуса
- */
-function setHumanStatus(stateType, topLabel, detailText) {
-  const led = document.getElementById("top-led");
-  if (led) led.className = "status-led " + stateType;
-  const topText = document.getElementById("top-status-text");
-  if (topText) topText.textContent = topLabel;
-  if (detailText) {
-    const desc = document.getElementById("min-status-desc");
-    if (desc) desc.textContent = detailText;
+  const lampCec = document.getElementById("lamp-cec");
+  if (lampCec) {
+    lampCec.className = "status-lamp lamp-yellow";
+    lampCec.setAttribute("data-tooltip", "Замер линии...");
   }
+
+  if (typeof window.setAmbientMood === "function") {
+    window.setAmbientMood("amber", 1200);
+  }
+
+  await sendCmd("STATE");
 }
 
 /**
@@ -306,7 +450,6 @@ function setHumanStatus(stateType, topLabel, detailText) {
  */
 function decodeCecLine(line) {
   if (line.includes("Logical address assigned: 4") || line.startsWith("OK:READY_LA_4") || line.startsWith("OK:AUTO_ANNOUNCED")) {
-    setHumanStatus("online", "Готово", "Телевизор обнаружен и готов");
     setTimeout(() => sendCmd("RAW 00 8F"), 200);
     return "Канал синхронизирован";
   }
@@ -325,17 +468,15 @@ function decodeCecLine(line) {
     );
     return isHigh && hasPull
       ? "Замер: 3.3V (ТВ в сети, контакт надежен)"
-      : (isHigh ? "Замер: Шина свободна (3.3V ESP32, ТВ не обнаружен)" : "Замер: КЗ на шине CEC (0V)");
+      : (isHigh ? "Замер: Шина свободна (3.3V RP2040, ТВ не обнаружен)" : "Замер: КЗ на шине CEC (0V)");
   }
 
   if (line.startsWith("OK:REMOTE_CAPTURE_ON")) {
-    setHumanStatus("online", "Готово", "Пульт подключен");
     return "Перехват пульта включен";
   }
 
   if (!(line.startsWith("RX ") || line.startsWith("TX "))) return "";
   if (line.startsWith("RX ")) {
-    // Любой входящий пакет от телевизора подтверждает живую связь по шине HDMI-CEC
     lastHwStatus.tvConnected = true;
     lastHwStatus.lineHigh = true;
     confirmedLineLow = false;
@@ -359,14 +500,12 @@ function decodeCecLine(line) {
     handleCalibrationKeyCapture(kHex);
   }
 
-  // Статус питания (0x90)
+  // Статус питания (0x90): Report Power Status
   if (op === 0x90 && bytes.length >= 2) {
     const p = POWER_MAP[bytes[1]] || "";
     if (bytes[1] === 0) {
-      setHumanStatus("online", "Готово", "Телевизор включен");
       updateTvPowerButtonUi(true);
     } else {
-      setHumanStatus("standby", "Настройка", "В режиме сна");
       updateTvPowerButtonUi(false);
     }
     return `${name} (${p})`;
@@ -381,3 +520,9 @@ function decodeCecLine(line) {
 
   return name;
 }
+
+// Первоначальная инициализация в безопасном состоянии
+window.addEventListener("DOMContentLoaded", () => {
+  updateTvPowerButtonUi("syncing");
+  updateHardwareStatusUi({ connected: false }, { checked: false }, true);
+});

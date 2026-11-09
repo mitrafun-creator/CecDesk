@@ -679,6 +679,36 @@ pub fn hide_hud_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn app_win_minimize(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.minimize();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn app_win_toggle_maximize(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        if let Ok(is_max) = w.is_maximized() {
+            if is_max {
+                let _ = w.unmaximize();
+            } else {
+                let _ = w.maximize();
+            }
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn app_win_hide_to_tray(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn set_window_title(app: AppHandle, title: String) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.set_title(&title);

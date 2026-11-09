@@ -23,6 +23,39 @@ let selectedPort = "";
 let selectedPa = "3000";
 
 /**
+ * Управление кастомным окном (Titlebar controls)
+ */
+async function appWinMinimize() {
+  if (invoke) {
+    try {
+      await invoke("app_win_minimize");
+    } catch (e) {
+      console.warn("Minimize error:", e);
+    }
+  }
+}
+
+async function appWinToggleMaximize() {
+  if (invoke) {
+    try {
+      await invoke("app_win_toggle_maximize");
+    } catch (e) {
+      console.warn("Toggle maximize error:", e);
+    }
+  }
+}
+
+async function appWinHideToTray() {
+  if (invoke) {
+    try {
+      await invoke("app_win_hide_to_tray");
+    } catch (e) {
+      console.warn("Hide to tray error:", e);
+    }
+  }
+}
+
+/**
  * Плавное переключение экранов без микрофризов и с анимацией скроллбара
  */
 let slideTimeout = null;
@@ -37,6 +70,10 @@ function switchViewIndex(idx, btn) {
   }
   if (slider) {
     slider.style.transform = `translateX(-${idx * 25}%)`;
+  }
+  if (typeof window.triggerAmbientRipple === "function" && btn) {
+    const rect = btn.getBoundingClientRect();
+    window.triggerAmbientRipple(rect.left + rect.width / 2, rect.bottom + 10, 1.25);
   }
   if (slideTimeout) clearTimeout(slideTimeout);
   slideTimeout = setTimeout(() => {
@@ -454,9 +491,15 @@ let savedOsdName = "GAMING PC";
 
 async function sendCmd(cmd) {
   if (!invoke || !cmd) return;
+  if (typeof window.setAmbientMood === "function") {
+    window.setAmbientMood("amber", 1200);
+  }
   try {
     await invoke("send_cec_command", { cmd });
   } catch (err) {
+    if (typeof window.setAmbientMood === "function") {
+      window.setAmbientMood("red", 2500);
+    }
     addLog(`[Ошибка отправки (${cmd})] ${err}`, "log-err");
   }
 }

@@ -378,6 +378,9 @@ fn main() {
             commands::get_mouse_mode,
             commands::show_hud_window,
             commands::hide_hud_window,
+            commands::app_win_minimize,
+            commands::app_win_toggle_maximize,
+            commands::app_win_hide_to_tray,
             commands::set_window_title,
             commands::get_app_version,
             commands::open_browser_url
