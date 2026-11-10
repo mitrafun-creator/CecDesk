@@ -83,7 +83,14 @@ function handleCalibrationKeyCapture(codeHex) {
     const pill = document.createElement("div");
     pill.className = "calib-key-pill";
     pill.id = `calib-pill-${norm}`;
-    pill.innerHTML = `<span>${def.sym}</span><span style="opacity:0.75; font-weight:400;">${def.name}</span>`;
+    const symSpan = document.createElement("span");
+    symSpan.textContent = def.sym;
+    const nameSpan = document.createElement("span");
+    nameSpan.style.opacity = "0.75";
+    nameSpan.style.fontWeight = "400";
+    nameSpan.textContent = def.name;
+    pill.appendChild(symSpan);
+    pill.appendChild(nameSpan);
     list.appendChild(pill);
     list.scrollTop = list.scrollHeight;
   }

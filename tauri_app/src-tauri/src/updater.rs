@@ -1,5 +1,9 @@
-use crate::config::{find_base_dir, find_profiles_dir, save_atomic};
+use crate::config::{
+    find_bundled_profiles_dir, find_resource_dir, find_user_profiles_dir, save_atomic,
+};
+use crate::logger::{log_info, log_warn};
 use crate::platform::create_hidden_command;
+use crate::telemetry::{sanitize_profile_id, validate_trusted_repo_url};
 use crate::types::TvProfile;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -70,20 +74,74 @@ pub struct FirmwareFlashProgress {
     pub message: String,
 }
 
-/// Кроссплатформенное семантическое сравнение версий (SemVer: "1.2.3" vs "1.2.4")
+/// Семантическое сравнение версий SemVer 2.0 (`major.minor.patch[-prerelease][+build]`).
 pub fn compare_semver(v1: &str, v2: &str) -> Ordering {
-    let parse_parts = |s: &str| -> (u32, u32, u32) {
-        let clean = s.trim().trim_start_matches('v').trim_start_matches('V');
-        let mut parts = clean.split('.').filter_map(|p| p.parse::<u32>().ok());
-        (
-            parts.next().unwrap_or(0),
-            parts.next().unwrap_or(0),
-            parts.next().unwrap_or(0),
-        )
-    };
-    let p1 = parse_parts(v1);
-    let p2 = parse_parts(v2);
-    p1.cmp(&p2)
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    enum PreIdent {
+        Num(u64),
+        Alpha(String),
+    }
+
+    impl Ord for PreIdent {
+        fn cmp(&self, other: &Self) -> Ordering {
+            match (self, other) {
+                (PreIdent::Num(a), PreIdent::Num(b)) => a.cmp(b),
+                (PreIdent::Num(_), PreIdent::Alpha(_)) => Ordering::Less,
+                (PreIdent::Alpha(_), PreIdent::Num(_)) => Ordering::Greater,
+                (PreIdent::Alpha(a), PreIdent::Alpha(b)) => a.cmp(b),
+            }
+        }
+    }
+
+    impl PartialOrd for PreIdent {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    fn parse_semver(raw: &str) -> ((u32, u32, u32), Option<Vec<PreIdent>>) {
+        let clean = raw.trim().trim_start_matches('v').trim_start_matches('V');
+        let no_build = clean.split('+').next().unwrap_or("");
+        let (core_str, pre_str) = match no_build.split_once('-') {
+            Some((c, p)) => (c, Some(p)),
+            None => (no_build, None),
+        };
+        let mut core_it = core_str.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
+        let core = (
+            core_it.next().unwrap_or(0),
+            core_it.next().unwrap_or(0),
+            core_it.next().unwrap_or(0),
+        );
+        let pre = pre_str.filter(|p| !p.is_empty()).map(|p| {
+            p.split('.')
+                .map(|seg| match seg.parse::<u64>() {
+                    Ok(n) => PreIdent::Num(n),
+                    Err(_) => PreIdent::Alpha(seg.to_string()),
+                })
+                .collect::<Vec<_>>()
+        });
+        (core, pre)
+    }
+
+    let (c1, pre1) = parse_semver(v1);
+    let (c2, pre2) = parse_semver(v2);
+    match c1.cmp(&c2) {
+        Ordering::Equal => match (pre1, pre2) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(a), Some(b)) => {
+                for (ia, ib) in a.iter().zip(b.iter()) {
+                    let ord = ia.cmp(ib);
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                }
+                a.len().cmp(&b.len())
+            }
+        },
+        non_eq => non_eq,
+    }
 }
 
 /// Легковесный кроссплатформенный загрузчик через системный curl (без тяжелых внешних TLS библиотек)
@@ -105,7 +163,8 @@ pub fn fetch_url_text(url: &str, timeout_secs: u32) -> Result<String, String> {
     }
 }
 
-/// Генерация локального манифеста каталога профилей для отправки в онлайн-репозиторий
+/// Генерация локального манифеста каталога профилей (используется вручную при подготовке релиза).
+#[allow(dead_code)]
 pub fn generate_local_catalog_manifest(
     profiles_dir: &Path,
 ) -> Result<ProfileCatalogManifest, String> {
@@ -152,16 +211,15 @@ pub fn generate_local_catalog_manifest(
     Ok(manifest)
 }
 
-/// Онлайн-синхронизация каталога профилей телевизоров
+/// Онлайн-синхронизация каталога профилей телевизоров (загружает новые профили в data_dir/tv_profiles).
 pub fn sync_tv_profiles_online() -> ProfileSyncResult {
-    let prof_dir = find_profiles_dir();
-    let _ = fs::create_dir_all(&prof_dir);
-
-    let _ = generate_local_catalog_manifest(&prof_dir);
+    let user_prof_dir = find_user_profiles_dir();
+    let bundled_prof_dir = find_bundled_profiles_dir();
 
     let manifest_txt = match fetch_url_text(DEFAULT_CATALOG_URL, 6) {
         Ok(t) => t,
         Err(e) => {
+            log_warn("updater", &format!("TV profiles catalog fetch failed: {}", e));
             return ProfileSyncResult {
                 success: false,
                 updated_count: 0,
@@ -174,6 +232,7 @@ pub fn sync_tv_profiles_online() -> ProfileSyncResult {
     let manifest: ProfileCatalogManifest = match serde_json::from_str(&manifest_txt) {
         Ok(m) => m,
         Err(e) => {
+            log_warn("updater", &format!("TV catalog JSON parse error: {}", e));
             return ProfileSyncResult {
                 success: false,
                 updated_count: 0,
@@ -185,19 +244,52 @@ pub fn sync_tv_profiles_online() -> ProfileSyncResult {
 
     let mut updated = 0;
     for item in &manifest.profiles {
-        let target_file = prof_dir.join(format!("{}.json", item.id));
-        let needs_fetch = !target_file.exists();
+        let Ok(safe_id) = sanitize_profile_id(&item.id) else {
+            log_warn(
+                "updater",
+                &format!("Rejected unsafe profile id from remote catalog: {}", item.id),
+            );
+            continue;
+        };
+        let Ok(valid_url) = validate_trusted_repo_url(&item.url) else {
+            log_warn(
+                "updater",
+                &format!("Rejected untrusted profile URL for id={}", safe_id),
+            );
+            continue;
+        };
+
+        let target_file = user_prof_dir.join(format!("{}.json", safe_id));
+        let bundled_file = bundled_prof_dir.join(format!("{}.json", safe_id));
+        let needs_fetch = !target_file.exists() && !bundled_file.exists();
 
         if needs_fetch {
-            if let Ok(profile_json) = fetch_url_text(&item.url, 5) {
-                if serde_json::from_str::<TvProfile>(&profile_json).is_ok()
-                    && save_atomic(&target_file, &profile_json).is_ok()
-                {
-                    updated += 1;
+            match fetch_url_text(&valid_url, 5) {
+                Ok(profile_json) => {
+                    if serde_json::from_str::<TvProfile>(&profile_json).is_ok()
+                        && save_atomic(&target_file, &profile_json).is_ok()
+                    {
+                        updated += 1;
+                    }
+                }
+                Err(e) => {
+                    log_warn(
+                        "updater",
+                        &format!("Failed to download TV profile {}: {}", safe_id, e),
+                    );
                 }
             }
         }
     }
+
+    log_info(
+        "updater",
+        &format!(
+            "TV catalog sync finished: downloaded={}, total_remote={}",
+            updated,
+            manifest.profiles.len()
+        ),
+    );
 
     ProfileSyncResult {
         success: true,
@@ -214,19 +306,33 @@ pub fn sync_tv_profiles_online() -> ProfileSyncResult {
 /// Проверка наличия новых версий приложения HDMI-CEC Studio
 pub fn check_app_updates() -> AppVersionInfo {
     let current_ver = CURRENT_APP_VERSION.to_string();
+    let fallback_release_url =
+        "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases".to_string();
 
     if let Ok(txt) = fetch_url_text(DEFAULT_APP_VERSION_URL, 5) {
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&txt) {
-            let latest_ver = val["version"].as_str().unwrap_or("1.0.0").to_string();
+            let latest_ver = val["version"]
+                .as_str()
+                .unwrap_or(&current_ver)
+                .to_string();
             let has_update = compare_semver(&latest_ver, &current_ver) == Ordering::Greater;
             let release_notes = val["notes"]
                 .as_str()
                 .unwrap_or("Улучшения стабильности и новые функции.")
                 .to_string();
-            let download_url = val["download_url"]
+            let raw_download_url = val["download_url"]
                 .as_str()
-                .unwrap_or("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases")
-                .to_string();
+                .unwrap_or(&fallback_release_url);
+            let download_url = match validate_trusted_repo_url(raw_download_url) {
+                Ok(u) => u,
+                Err(e) => {
+                    log_warn(
+                        "updater",
+                        &format!("Ignored untrusted download_url in version.json: {}", e),
+                    );
+                    fallback_release_url.clone()
+                }
+            };
             let published_at = val["published_at"].as_str().unwrap_or("").to_string();
 
             return AppVersionInfo {
@@ -245,15 +351,15 @@ pub fn check_app_updates() -> AppVersionInfo {
         latest_version: current_ver,
         has_update: false,
         release_notes: "Установлена актуальная версия приложения.".to_string(),
-        download_url: "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases".to_string(),
-        published_at: "2026-11-09".to_string(),
+        download_url: fallback_release_url,
+        published_at: "2026-11-10".to_string(),
     }
 }
 
 /// Поиск директории со встроенными образами прошивок (bin/firmware)
 pub fn find_firmware_dir() -> PathBuf {
-    let base = find_base_dir();
-    let bin_fw = base.join("bin").join("firmware");
+    let res_dir = find_resource_dir();
+    let bin_fw = res_dir.join("bin").join("firmware");
     if bin_fw.exists() {
         return bin_fw;
     }
@@ -269,7 +375,6 @@ pub fn find_firmware_dir() -> PathBuf {
             }
         }
     }
-    let _ = fs::create_dir_all(&bin_fw);
     bin_fw
 }
 
@@ -278,7 +383,7 @@ pub fn find_bundled_rp2040_uf2() -> Option<PathBuf> {
     if p1.exists() {
         return Some(p1);
     }
-    let p2 = find_base_dir()
+    let p2 = find_resource_dir()
         .join("firmware")
         .join(".pio")
         .join("build")
@@ -295,7 +400,7 @@ pub fn find_bundled_esp32_bin() -> Option<PathBuf> {
     if p1.exists() {
         return Some(p1);
     }
-    let p2 = find_base_dir()
+    let p2 = find_resource_dir()
         .join("firmware")
         .join(".pio")
         .join("build")
@@ -734,5 +839,27 @@ mod tests {
         assert_eq!(compare_semver("1.0.0", "1.1.0"), Ordering::Less);
         assert_eq!(compare_semver("v2.0.0", "1.9.9"), Ordering::Greater);
         assert_eq!(compare_semver("1.0.0", "v1.0.0"), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_compare_semver_prerelease() {
+        assert_eq!(compare_semver("1.1.0", "1.1.0-beta.1"), Ordering::Greater);
+        assert_eq!(compare_semver("1.1.0-beta.1", "1.1.0"), Ordering::Less);
+        assert_eq!(
+            compare_semver("1.1.0-beta.2", "1.1.0-beta.1"),
+            Ordering::Greater
+        );
+        assert_eq!(
+            compare_semver("1.1.0-beta.10", "1.1.0-beta.2"),
+            Ordering::Greater
+        );
+        assert_eq!(
+            compare_semver("1.1.0-rc.1", "1.1.0-beta.9"),
+            Ordering::Greater
+        );
+        assert_eq!(
+            compare_semver("1.1.0-beta.1+build.42", "1.1.0-beta.1"),
+            Ordering::Equal
+        );
     }
 }

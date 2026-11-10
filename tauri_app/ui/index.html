@@ -55,6 +55,18 @@
     </div>
   </header>
 
+  <!-- ==================== БАННЕР ВОССТАНОВЛЕНИЯ ПОСЛЕ СБОЯ ==================== -->
+  <div id="crash-recovery-banner" class="crash-recovery-banner" style="display:none;">
+    <div class="crash-banner-info">
+      <svg class="ico text-amber" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <span id="lbl-crash-banner-text" data-i18n="crash.banner_default">Предыдущий запуск завершился некорректно. Вы можете собрать диагностический отчёт для отправки разработчику.</span>
+    </div>
+    <div class="crash-banner-actions">
+      <button class="apple-btn accent-blue" style="padding:5px 12px; font-size:11.5px;" onclick="openBugReportModal(true)" data-i18n="crash.create_report">Создать отчёт (.zip)</button>
+      <button class="apple-btn" style="padding:5px 10px; font-size:11.5px;" onclick="dismissCrashBanner()" data-i18n="crash.dismiss">Скрыть</button>
+    </div>
+  </div>
+
   <!-- ==================== ПЛАВНЫЙ СЛАЙДЕР ЭКРАНОВ ==================== -->
   <main class="viewport">
     <div class="screens-slider" id="screens-slider">
@@ -600,7 +612,7 @@
                     <div style="font-size:12.5px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
                       <span style="color:var(--apple-blue); font-size:10.5px; padding:2px 7px; border-radius:6px; background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.25);">ОС</span>
                       <span id="lbl-os-platform">Windows 11 / 10 x64</span>
-                      <span style="font-size:11.5px; color:var(--text-secondary); font-weight:400;">• <span data-i18n="settings.version">Версия</span> <span id="lbl-app-version-val">1.0.0</span></span>
+                      <span style="font-size:11.5px; color:var(--text-secondary); font-weight:400;">• <span data-i18n="settings.version">Версия</span> <span id="lbl-app-version-val">1.1.0-beta.1</span></span>
                     </div>
                   </div>
 
@@ -662,8 +674,9 @@
               </div>
             </div>
 
-            <!-- Правая колонка Настроек: Умные функции QoL -->
-            <div class="glass-panel" style="align-self:start;">
+            <!-- Правая колонка Настроек: Умные функции QoL + Диагностика и телеметрия -->
+            <div style="display:flex; flex-direction:column; gap:16px; align-self:start;">
+            <div class="glass-panel">
               <div class="panel-header">
                 <div class="panel-title" data-i18n="settings.qol_title">Умные функции (QoL)</div>
               </div>
@@ -720,9 +733,16 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-auto-audio" checked onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-auto-audio" onchange="onAutoAudioToggleChanged()" />
                   <span class="ios-slider"></span>
                 </label>
+              </div>
+
+              <div id="wrap-audio-devices" class="audio-routing-subbox" style="display:none;">
+                <div style="font-size:11.5px; color:var(--text-secondary);" data-i18n="settings.audio_tv_device_label">Устройство вывода ТВ (при включении):</div>
+                <div id="csel-tv-audio" class="c-select"></div>
+                <div style="font-size:11.5px; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.audio_fallback_device_label">Устройство ПК / Наушники (при сне ТВ):</div>
+                <div id="csel-fallback-audio" class="c-select"></div>
               </div>
 
               <div class="toggle-row">
@@ -777,7 +797,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-emergency-kill" checked onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-emergency-kill" onchange="autoSaveQolSettings()" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -840,6 +860,63 @@
               </div>
             </div>
 
+            <!-- Диагностика, отчёты и добровольная телеметрия -->
+            <div class="glass-panel">
+              <div class="panel-header">
+                <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
+                  <svg class="ico" style="stroke:var(--apple-blue);" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                  <span data-i18n="diag.panel_title">Диагностика, отчёты и телеметрия</span>
+                </div>
+              </div>
+
+              <div class="toggle-row" style="margin-top:4px;">
+                <div class="toggle-meta">
+                  <div class="toggle-title-row">
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="diag.telemetry_title">Анонимная телеметрия запуска</span>
+                    <div class="info-tip-anchor" tabindex="0">
+                      <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                      <div class="apple-popover">
+                        <div class="popover-title" data-i18n="diag.telemetry_title">Анонимная телеметрия запуска</div>
+                        <div class="popover-desc" data-i18n="diag.telemetry_desc">Отключена по умолчанию. Передает только случайный install_id, версию ПО, ОС, модель адаптера, EDID и счетчики ошибок на указанный вами HTTPS webhook. Не содержит имен, путей и личных данных.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <label class="ios-switch">
+                  <input type="checkbox" id="chk-telemetry-opt-in" onchange="onTelemetryOptInChanged()" />
+                  <span class="ios-slider"></span>
+                </label>
+              </div>
+
+              <div class="inset-group" style="margin-top:8px;">
+                <div class="inset-row">
+                  <span class="text-secondary" style="font-size:12px;" data-i18n="diag.storage_mode_label">Хранилище данных:</span>
+                  <span id="lbl-storage-mode" class="fw-medium" style="font-size:12px;">—</span>
+                </div>
+                <div class="inset-row">
+                  <span class="text-secondary" style="font-size:12px;" data-i18n="diag.counters_label">Ошибки / Предупреждения сессии:</span>
+                  <span id="lbl-diag-counters" class="fw-medium" style="font-size:12px;">0 / 0</span>
+                </div>
+              </div>
+
+              <div style="font-size:11.5px; color:var(--text-secondary); margin-top:10px;" data-i18n="diag.endpoint_label">HTTPS Webhook для отчётов / телеметрии (опционально):</div>
+              <div class="row" style="gap:8px; margin-top:4px;">
+                <input id="inp-telemetry-endpoint" type="url" placeholder="https://example.com/api/cec-report" style="flex:1; font-size:12px;" />
+                <button id="btn-save-telemetry-endpoint" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" onclick="saveTelemetrySettings()" data-i18n="keys.save">Сохранить</button>
+              </div>
+              <div id="lbl-telemetry-status" style="font-size:11px; color:var(--text-tertiary); margin-top:4px; min-height:14px;"></div>
+
+              <div class="row" style="gap:8px; margin-top:10px; flex-wrap:wrap;">
+                <button class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;" onclick="openBugReportModal(false)">
+                  <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span data-i18n="diag.btn_bundle">Создать отчёт (.zip)</span>
+                </button>
+                <button class="apple-btn" style="padding:7px 11px; font-size:11.5px;" onclick="openReportsFolderUi()" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
+                <button class="apple-btn" style="padding:7px 11px; font-size:11.5px;" onclick="openGithubIssueDirect()" data-i18n="diag.btn_github_issue">Сообщить об ошибке</button>
+              </div>
+            </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -878,6 +955,42 @@
         </button>
         <button class="apple-btn" type="button" tabindex="-1" onclick="cancelCalibration()" data-i18n="calib.cancel_btn">Отмена</button>
         <button class="apple-btn" type="button" tabindex="-1" onclick="resetToDefaultKeys()" style="opacity:0.6;" data-i18n="calib.reset_btn">Сбросить к базовому</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: СБОР ОТЧЁТА ОБ ОШИБКЕ ==================== -->
+  <div id="bug-report-modal" class="calib-modal-backdrop" style="display:none;">
+    <div class="calib-modal-card" style="width:560px;">
+      <div class="calib-modal-header">
+        <div class="calib-modal-title">
+          <svg class="ico" style="stroke:var(--apple-blue);" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          <span data-i18n="bug.modal_title">Диагностический отчёт</span>
+        </div>
+        <button class="apple-btn" style="padding:4px 8px; border-radius:8px;" onclick="closeBugReportModal()">
+          <svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="calib-instruction" data-i18n="bug.modal_desc">
+        В архив включаются конфигурация, информация о системе/EDID, контроллере и очищенные от персональных путей журналы.
+      </div>
+
+      <div id="bug-report-summary" class="bug-summary-box">Загрузка сводки...</div>
+
+      <div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;" data-i18n="bug.note_label">Описание проблемы (необязательно):</div>
+        <textarea id="inp-bug-note" class="bug-note-textarea" placeholder="Опишите, что произошло и как воспроизвести проблему..." data-i18n-placeholder="bug.note_ph"></textarea>
+      </div>
+
+      <div id="bug-report-result" class="bug-result-banner" style="display:none;"></div>
+
+      <div class="calib-actions" style="flex-wrap:wrap;">
+        <button id="btn-modal-create-zip" class="apple-btn accent-blue" type="button" onclick="createSupportBundleFromModal()" data-i18n="bug.btn_create_zip">Собрать .zip</button>
+        <button id="btn-modal-open-reports" class="apple-btn" type="button" onclick="openReportsFolderUi()" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
+        <button id="btn-modal-send-webhook" class="apple-btn" type="button" onclick="sendBugReportWebhookFromModal()" data-i18n="bug.btn_send_webhook">Отправить на Webhook</button>
+        <button id="btn-modal-github-issue" class="apple-btn" type="button" onclick="openGithubBugIssueFromModal()" data-i18n="bug.btn_github_issue">GitHub Issue</button>
+        <button class="apple-btn" type="button" onclick="closeBugReportModal()" data-i18n="bug.btn_close">Закрыть</button>
       </div>
     </div>
   </div>

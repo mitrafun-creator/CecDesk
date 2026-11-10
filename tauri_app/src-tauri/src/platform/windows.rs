@@ -1,5 +1,6 @@
-use crate::config::find_base_dir;
+use crate::config::find_resource_dir;
 use crate::edid::parse_edid_bytes;
+use crate::logger::log_warn;
 use crate::types::EdidInfoDto;
 use std::ffi::OsStr;
 use std::path::Path;
@@ -560,37 +561,50 @@ pub fn detect_edid_os() -> EdidInfoDto {
 }
 
 pub fn switch_audio_endpoint(target: &str) -> Result<String, String> {
-    let tool_path = find_base_dir().join("bin").join("AudioTool.exe");
+    let tool_path = find_resource_dir().join("bin").join("AudioTool.exe");
     if tool_path.exists() {
         let output = create_hidden_command(&tool_path)
             .args(["set", target])
             .output()
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                log_warn("audio", &format!("AudioTool.exe invocation failed: {}", e));
+                e.to_string()
+            })?;
         let res = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !output.status.success() {
+            let err_txt = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            log_warn("audio", &format!("AudioTool.exe exited {}: {}", output.status, err_txt));
+        }
         return Ok(res);
     }
+    log_warn("audio", "bin/AudioTool.exe not found in resource directory");
     Ok(format!("Переключен на {}", target))
 }
 
 pub fn list_audio_endpoints() -> Vec<String> {
-    let tool_path = find_base_dir().join("bin").join("AudioTool.exe");
+    let tool_path = find_resource_dir().join("bin").join("AudioTool.exe");
     if tool_path.exists() {
-        if let Ok(output) = create_hidden_command(&tool_path).arg("list").output() {
-            let txt = String::from_utf8_lossy(&output.stdout);
-            return txt
-                .lines()
-                .filter_map(|l| {
-                    let parts: Vec<&str> = l.split('\t').collect();
-                    if parts.len() >= 2 {
-                        Some(parts[1].trim().to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        match create_hidden_command(&tool_path).arg("list").output() {
+            Ok(output) => {
+                let txt = String::from_utf8_lossy(&output.stdout);
+                return txt
+                    .lines()
+                    .filter_map(|l| {
+                        let parts: Vec<&str> = l.split('\t').collect();
+                        if parts.len() >= 2 {
+                            Some(parts[1].trim().to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+            }
+            Err(e) => {
+                log_warn("audio", &format!("Failed listing audio endpoints via AudioTool.exe: {}", e));
+            }
         }
     }
-    vec!["Philips TV".to_string(), "Наушники".to_string()]
+    Vec::new()
 }
 
 pub fn switch_display_mode(extend: bool) {

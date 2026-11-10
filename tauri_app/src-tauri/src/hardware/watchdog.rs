@@ -1,4 +1,5 @@
 use crate::hardware::state::safe_lock;
+use crate::logger::log_warn;
 use crate::types::AppConfig;
 use serialport::SerialPort;
 use std::io::Write;
@@ -59,7 +60,11 @@ pub fn spawn_usb_watchdog(
                     state_ping_tick = 0;
                     if let Ok(mut guard) = writer_shared.lock() {
                         if let Some(ref mut p) = *guard {
-                            let _ = p.write_all(b"STATE\n");
+                            if let Err(e) = p.write_all(b"STATE\n") {
+                                log_warn("watchdog", &format!("Keep-alive STATE write failed: {}", e));
+                                *guard = None;
+                                let _ = app_handle.emit("cec-disconnected", ());
+                            }
                         }
                     }
                 }

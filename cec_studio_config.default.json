@@ -41,12 +41,34 @@
     "0x73": "SHOW_KEYBOARD",
     "0x74": "SPACE"
   },
-  "calibrated_keys": [],
+  "calibrated_keys": [
+    "0x00",
+    "0x01",
+    "0x02",
+    "0x03",
+    "0x04",
+    "0x0D",
+    "0x09",
+    "0x0A",
+    "0x72",
+    "0x73",
+    "0x74",
+    "0x71",
+    "0x41",
+    "0x42",
+    "0x43"
+  ],
   "auto_audio_switch": false,
+  "tv_audio_device": "",
+  "fallback_audio_device": "",
   "soundbar_passthrough": false,
   "hold_seek_accelerate": true,
-  "emergency_kill_enabled": true,
+  "emergency_kill_enabled": false,
   "non_intrusive_cec": true,
   "auto_healing_usb": true,
-  "display_disable_on_sleep": false
+  "display_disable_on_sleep": false,
+  "telemetry_opt_in": false,
+  "telemetry_endpoint": "",
+  "update_channel": "beta",
+  "last_update_check_ts": 0
 }

@@ -242,7 +242,36 @@ const I18N_DICTIONARY = {
     "sys.q_pc_sleep": "Сон ПК",
     "settings.fw_box_title": "Прошивка контроллера",
     "settings.fw_flash_bundled_btn": "Прошить (v1.1.0)",
-    "settings.fw_flash_custom_btn": "Из файла (.uf2 / .bin)"
+    "settings.fw_flash_custom_btn": "Из файла (.uf2 / .bin)",
+    "settings.audio_tv_device_label": "Устройство вывода ТВ (при включении):",
+    "settings.audio_fallback_device_label": "Устройство ПК / Наушники (при сне ТВ):",
+    "settings.audio_device_none": "— Не выбрано —",
+
+    // Сбой и диагностика
+    "crash.banner_default": "Предыдущий запуск завершился некорректно. Вы можете собрать диагностический отчёт для отправки разработчику.",
+    "crash.banner_panic": "Обнаружен отчёт о прошлом аварийном завершении. Рекомендуется собрать .zip отчёт об ошибке.",
+    "crash.banner_dirty": "Прошлый запуск завершился некорректно (возможен сбой). Вы можете сохранить диагностический отчёт.",
+    "crash.create_report": "Создать отчёт (.zip)",
+    "crash.dismiss": "Скрыть",
+    "diag.panel_title": "Диагностика, отчёты и телеметрия",
+    "diag.telemetry_title": "Анонимная телеметрия запуска",
+    "diag.telemetry_desc": "Отключена по умолчанию. Передает только случайный install_id, версию ПО, ОС, модель адаптера, EDID и счетчики ошибок на указанный вами HTTPS webhook. Не содержит имен, путей и личных данных.",
+    "diag.storage_mode_label": "Хранилище данных:",
+    "diag.counters_label": "Ошибки / Предупреждения сессии:",
+    "diag.endpoint_label": "HTTPS Webhook для отчётов / телеметрии (опционально):",
+    "diag.btn_bundle": "Создать отчёт (.zip)",
+    "diag.btn_reports_folder": "Папка отчётов",
+    "diag.btn_github_issue": "Сообщить об ошибке",
+    "diag.status_enabled": "Анонимная телеметрия включена.",
+    "diag.status_disabled": "Телеметрия отключена.",
+    "bug.modal_title": "Диагностический отчёт",
+    "bug.modal_desc": "В архив включаются конфигурация, информация о системе/EDID, контроллере и очищенные от персональных путей журналы.",
+    "bug.note_label": "Описание проблемы (необязательно):",
+    "bug.note_ph": "Опишите, что произошло и как воспроизвести проблему...",
+    "bug.btn_create_zip": "Собрать .zip",
+    "bug.btn_send_webhook": "Отправить на Webhook",
+    "bug.btn_github_issue": "GitHub Issue",
+    "bug.btn_close": "Закрыть"
   },
   en: {
     // Navigation
@@ -481,7 +510,36 @@ const I18N_DICTIONARY = {
     "sys.q_pc_sleep": "PC Sleep",
     "settings.fw_box_title": "Controller Firmware",
     "settings.fw_flash_bundled_btn": "Flash (v1.1.0)",
-    "settings.fw_flash_custom_btn": "From File (.uf2 / .bin)"
+    "settings.fw_flash_custom_btn": "From File (.uf2 / .bin)",
+    "settings.audio_tv_device_label": "TV Audio Device (on TV wake):",
+    "settings.audio_fallback_device_label": "PC / Headphones Device (on TV sleep):",
+    "settings.audio_device_none": "— Not selected —",
+
+    // Crash Recovery & Diagnostics
+    "crash.banner_default": "The previous session ended abnormally. You can collect a diagnostic support bundle to report the issue.",
+    "crash.banner_panic": "An unexpected crash report was found from the previous run. Collecting a .zip support bundle is recommended.",
+    "crash.banner_dirty": "The previous session closed unexpectedly. You can save a diagnostic support bundle.",
+    "crash.create_report": "Create Report (.zip)",
+    "crash.dismiss": "Dismiss",
+    "diag.panel_title": "Diagnostics, Reports & Telemetry",
+    "diag.telemetry_title": "Anonymous Startup Telemetry",
+    "diag.telemetry_desc": "Disabled by default. Sends only a random install_id, app version, OS, controller model, EDID and session error counters to your configured HTTPS webhook. No personal names or paths.",
+    "diag.storage_mode_label": "Data storage mode:",
+    "diag.counters_label": "Session Errors / Warnings:",
+    "diag.endpoint_label": "HTTPS Webhook for reports / telemetry (optional):",
+    "diag.btn_bundle": "Create Bundle (.zip)",
+    "diag.btn_reports_folder": "Reports Folder",
+    "diag.btn_github_issue": "Report Issue",
+    "diag.status_enabled": "Anonymous telemetry enabled.",
+    "diag.status_disabled": "Telemetry disabled.",
+    "bug.modal_title": "Diagnostic Support Report",
+    "bug.modal_desc": "The archive includes configuration, system/EDID & controller summary, and logs sanitized from user paths and tokens.",
+    "bug.note_label": "Problem description (optional):",
+    "bug.note_ph": "Describe what happened and steps to reproduce...",
+    "bug.btn_create_zip": "Build .zip",
+    "bug.btn_send_webhook": "Send to Webhook",
+    "bug.btn_github_issue": "GitHub Issue",
+    "bug.btn_close": "Close"
   }
 };
 
@@ -567,6 +625,9 @@ async function switchLanguage(newLang) {
   }
   if (typeof renderPcOffModeSelect === "function") {
     renderPcOffModeSelect();
+  }
+  if (typeof renderAudioDeviceSelects === "function" && typeof cachedAudioEndpoints !== "undefined" && cachedAudioEndpoints !== null) {
+    renderAudioDeviceSelects();
   }
   if (typeof currentProfile !== "undefined" && currentProfile && typeof selectProfileById === "function") {
     selectProfileById(currentProfile.id);

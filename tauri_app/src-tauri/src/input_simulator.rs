@@ -1,10 +1,4 @@
 use crate::platform;
-use std::ffi::OsStr;
-use std::process::Command;
-
-pub fn create_hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
-    platform::create_hidden_command(program)
-}
 
 pub fn move_mouse_cursor(dx: i32, dy: i32) {
     platform::move_mouse_cursor(dx, dy);

@@ -172,24 +172,49 @@ function renderMapperTable(isPresetChange = false) {
       actionOptions = [...allActions, { value: curVal, label: `[${scriptPrefix}] ${curVal.substring(7)}` }];
     }
 
-    const badgeText = isAvail ? availBadgeText : unavailBadgeText;
-    const badge = `<span class="${isAvail ? 'badge-remote-avail' : 'badge-remote-unavail'}">${badgeText}</span>`;
+    const tdKey = document.createElement("td");
+    const rowDiv = document.createElement("div");
+    rowDiv.style.cssText = "display:flex; align-items:center; gap:8px;";
 
-    tr.innerHTML = `
-      <td>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span class="key-symbol-badge ${isAvail ? 'badge-active-key' : ''}">${def.sym}</span>
-          <span style="font-weight:${isAvail ? '600' : '400'}; color:${isAvail ? 'var(--text-primary)' : 'var(--text-secondary)'};">${def.name}</span>
-          ${badge}
-        </div>
-      </td>
-      <td><div id="${selId}" class="c-select mapper-csel" data-key="${code}"></div></td>
-      <td style="text-align:right;">
-        <button class="apple-btn" onclick="testMapperRow('${selId}')" style="padding:5px 11px; font-size:11.5px; border-radius:8px;">${testText}</button>
-      </td>
-    `;
+    const symSpan = document.createElement("span");
+    symSpan.className = "key-symbol-badge" + (isAvail ? " badge-active-key" : "");
+    symSpan.textContent = def.sym;
 
-    const selEl = tr.querySelector(".mapper-csel");
+    const nameSpan = document.createElement("span");
+    nameSpan.style.fontWeight = isAvail ? "600" : "400";
+    nameSpan.style.color = isAvail ? "var(--text-primary)" : "var(--text-secondary)";
+    nameSpan.textContent = def.name;
+
+    const badgeSpan = document.createElement("span");
+    badgeSpan.className = isAvail ? "badge-remote-avail" : "badge-remote-unavail";
+    badgeSpan.textContent = isAvail ? availBadgeText : unavailBadgeText;
+
+    rowDiv.appendChild(symSpan);
+    rowDiv.appendChild(nameSpan);
+    rowDiv.appendChild(badgeSpan);
+    tdKey.appendChild(rowDiv);
+
+    const tdSel = document.createElement("td");
+    const selEl = document.createElement("div");
+    selEl.id = selId;
+    selEl.className = "c-select mapper-csel";
+    selEl.setAttribute("data-key", code);
+    tdSel.appendChild(selEl);
+
+    const tdBtn = document.createElement("td");
+    tdBtn.style.textAlign = "right";
+    const testBtn = document.createElement("button");
+    testBtn.className = "apple-btn";
+    testBtn.type = "button";
+    testBtn.style.cssText = "padding:5px 11px; font-size:11.5px; border-radius:8px;";
+    testBtn.textContent = testText;
+    testBtn.addEventListener("click", () => testMapperRow(selId));
+    tdBtn.appendChild(testBtn);
+
+    tr.appendChild(tdKey);
+    tr.appendChild(tdSel);
+    tr.appendChild(tdBtn);
+
     createCustomSelect(selEl, actionOptions, curVal, () => checkMapperDirtyState());
     frag.appendChild(tr);
   });
@@ -210,14 +235,27 @@ let qolSaveDebounce = null;
 async function autoSaveQolSettings() {
   if (!invoke || !appConfig) return;
 
-  appConfig.auto_audio_switch = document.getElementById("chk-auto-audio") ? document.getElementById("chk-auto-audio").checked : true;
+  appConfig.auto_audio_switch = document.getElementById("chk-auto-audio") ? document.getElementById("chk-auto-audio").checked : false;
   appConfig.soundbar_passthrough = document.getElementById("chk-soundbar") ? document.getElementById("chk-soundbar").checked : false;
   appConfig.hold_seek_accelerate = document.getElementById("chk-hold-seek") ? document.getElementById("chk-hold-seek").checked : true;
-  appConfig.emergency_kill_enabled = document.getElementById("chk-emergency-kill") ? document.getElementById("chk-emergency-kill").checked : true;
+  appConfig.emergency_kill_enabled = document.getElementById("chk-emergency-kill") ? document.getElementById("chk-emergency-kill").checked : false;
   appConfig.non_intrusive_cec = document.getElementById("chk-non-intrusive") ? document.getElementById("chk-non-intrusive").checked : true;
   appConfig.auto_healing_usb = document.getElementById("chk-auto-heal") ? document.getElementById("chk-auto-heal").checked : true;
   appConfig.display_disable_on_sleep = document.getElementById("chk-disp-sleep") ? document.getElementById("chk-disp-sleep").checked : false;
   appConfig.hud_enabled = document.getElementById("chk-hud-overlay") ? document.getElementById("chk-hud-overlay").checked : true;
+
+  const tvAudioSel = document.getElementById("csel-tv-audio");
+  if (tvAudioSel && tvAudioSel.hasAttribute("data-value")) {
+    appConfig.tv_audio_device = tvAudioSel.getAttribute("data-value") || "";
+  }
+  const fbAudioSel = document.getElementById("csel-fallback-audio");
+  if (fbAudioSel && fbAudioSel.hasAttribute("data-value")) {
+    appConfig.fallback_audio_device = fbAudioSel.getAttribute("data-value") || "";
+  }
+  const chkTel = document.getElementById("chk-telemetry-opt-in");
+  if (chkTel) {
+    appConfig.telemetry_opt_in = chkTel.checked;
+  }
 
   appConfig.wake_pc_on_tv_on = document.getElementById("chk-wake-pc-on-tv") ? document.getElementById("chk-wake-pc-on-tv").checked : true;
   appConfig.auto_wake_tv_on_start = document.getElementById("chk-wake-tv-on-pc") ? document.getElementById("chk-wake-tv-on-pc").checked : false;
@@ -264,6 +302,18 @@ async function saveMapperConfig() {
   appConfig.display_disable_on_sleep = document.getElementById("chk-disp-sleep").checked;
   if (document.getElementById("chk-hud-overlay")) {
     appConfig.hud_enabled = document.getElementById("chk-hud-overlay").checked;
+  }
+  const tvAudioSel = document.getElementById("csel-tv-audio");
+  if (tvAudioSel && tvAudioSel.hasAttribute("data-value")) {
+    appConfig.tv_audio_device = tvAudioSel.getAttribute("data-value") || "";
+  }
+  const fbAudioSel = document.getElementById("csel-fallback-audio");
+  if (fbAudioSel && fbAudioSel.hasAttribute("data-value")) {
+    appConfig.fallback_audio_device = fbAudioSel.getAttribute("data-value") || "";
+  }
+  const chkTel = document.getElementById("chk-telemetry-opt-in");
+  if (chkTel) {
+    appConfig.telemetry_opt_in = chkTel.checked;
   }
 
   if (document.getElementById("chk-wake-pc-on-tv")) {

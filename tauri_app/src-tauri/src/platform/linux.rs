@@ -1,14 +1,19 @@
 use crate::edid::parse_edid_bytes;
+use crate::logger::log_warn;
 use crate::types::EdidInfoDto;
 use std::env;
 use std::ffi::OsStr;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use tauri::WebviewWindow;
 
 static STEAM_BP_ACTIVE: AtomicBool = AtomicBool::new(false);
+static INSTANCE_LOCK_FILE: OnceLock<Mutex<fs::File>> = OnceLock::new();
 
 pub fn create_hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
     Command::new(program)
@@ -94,33 +99,60 @@ pub fn open_folder(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-pub fn run_script(path: &Path, _ext: &str, dir: &Path) -> Result<(), String> {
-    let script_str = path.to_string_lossy().to_string();
-    Command::new("sh")
-        .arg("-c")
-        .arg(&script_str)
-        .current_dir(dir)
+pub fn run_script(path: &Path, ext: &str, dir: &Path) -> Result<(), String> {
+    let mut cmd = if ext.eq_ignore_ascii_case("sh") || ext.is_empty() {
+        let mut c = Command::new("sh");
+        c.arg(path.as_os_str());
+        c
+    } else {
+        Command::new(path.as_os_str())
+    };
+    cmd.current_dir(dir)
         .spawn()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log_warn("scripts", &format!("Failed launching script {:?}: {}", path.file_name(), e));
+            e.to_string()
+        })?;
     Ok(())
 }
 
 pub fn check_single_instance_or_focus(_window_title: &str) -> bool {
-    let pid_path = Path::new("/tmp/hdmi_cec_studio.pid");
-    if let Ok(old_pid_str) = fs::read_to_string(pid_path) {
-        if let Ok(old_pid) = old_pid_str.trim().parse::<u32>() {
-            let proc_comm = format!("/proc/{}/comm", old_pid);
-            if let Ok(comm) = fs::read_to_string(&proc_comm) {
-                if comm.contains("hdmi_cec") {
-                    let _ = Command::new("xdotool")
-                        .args(["search", "--name", "HDMI-CEC Studio", "windowactivate"])
-                        .spawn();
-                    return false;
-                }
+    let lock_path = if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+        PathBuf::from(runtime_dir).join("hdmi-cec-studio.lock")
+    } else if let Ok(home) = env::var("HOME") {
+        let dir = PathBuf::from(home)
+            .join(".local")
+            .join("share")
+            .join("hdmi-cec-studio");
+        let _ = fs::create_dir_all(&dir);
+        dir.join("app.lock")
+    } else {
+        let uid = unsafe { libc::geteuid() };
+        PathBuf::from(format!("/tmp/hdmi-cec-studio-{}.lock", uid))
+    };
+
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(&lock_path)
+    {
+        let rc = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+        if rc != 0 {
+            let err = std::io::Error::last_os_error();
+            if matches!(err.raw_os_error(), Some(libc::EWOULDBLOCK) | Some(libc::EAGAIN)) {
+                let _ = Command::new("xdotool")
+                    .args(["search", "--name", "HDMI-CEC Studio", "windowactivate"])
+                    .spawn();
+                return false;
             }
+            log_warn("instance", &format!("flock unexpected error: {}", err));
+            return true;
         }
+        let _ = file.set_len(0);
+        let _ = writeln!(file, "{}", std::process::id());
+        let _ = INSTANCE_LOCK_FILE.set(Mutex::new(file));
     }
-    let _ = fs::write(pid_path, std::process::id().to_string());
     true
 }
 
@@ -509,26 +541,25 @@ pub fn switch_display_mode(_extend: bool) {}
 pub fn set_gamescope_overlay_props(win: &WebviewWindow, is_hud_or_osk: bool) {
     let title = win.title().unwrap_or_else(|_| "HDMI-CEC Studio".to_string());
     let script = if is_hud_or_osk {
-        format!(
-            "WID=$(xdotool search --name \"{}\" 2>/dev/null | head -n 1); \
-             if [ -n \"$WID\" ]; then \
-               xprop -id \"$WID\" -f STEAM_NOTIFICATION 32c -set STEAM_NOTIFICATION 1 2>/dev/null; \
-               xprop -id \"$WID\" -f STEAM_OVERLAY 32c -set STEAM_OVERLAY 1 2>/dev/null; \
-             fi",
-            title
-        )
+        "WID=$(xdotool search --name \"$1\" 2>/dev/null | head -n 1); \
+         if [ -n \"$WID\" ]; then \
+           xprop -id \"$WID\" -f STEAM_NOTIFICATION 32c -set STEAM_NOTIFICATION 1 2>/dev/null; \
+           xprop -id \"$WID\" -f STEAM_OVERLAY 32c -set STEAM_OVERLAY 1 2>/dev/null; \
+         fi"
     } else {
-        format!(
-            "WID=$(xdotool search --name \"{}\" 2>/dev/null | head -n 1); \
-             if [ -n \"$WID\" ]; then \
-               xprop -id \"$WID\" -f STEAM_GAME 32c -set STEAM_GAME 769 2>/dev/null; \
-               xprop -id \"$WID\" -f STEAM_OVERLAY 32c -set STEAM_OVERLAY 1 2>/dev/null; \
-               xprop -id \"$WID\" -f STEAM_INPUT_FOCUS 32c -set STEAM_INPUT_FOCUS 1 2>/dev/null; \
-             fi",
-            title
-        )
+        "WID=$(xdotool search --name \"$1\" 2>/dev/null | head -n 1); \
+         if [ -n \"$WID\" ]; then \
+           xprop -id \"$WID\" -f STEAM_GAME 32c -set STEAM_GAME 769 2>/dev/null; \
+           xprop -id \"$WID\" -f STEAM_OVERLAY 32c -set STEAM_OVERLAY 1 2>/dev/null; \
+           xprop -id \"$WID\" -f STEAM_INPUT_FOCUS 32c -set STEAM_INPUT_FOCUS 1 2>/dev/null; \
+         fi"
     };
-    let _ = Command::new("sh").args(["-c", &script]).spawn();
+    if let Err(e) = Command::new("sh")
+        .args(["-c", script, "cec_xprop", &title])
+        .spawn()
+    {
+        log_warn("gamescope", &format!("Failed applying xprop atoms: {}", e));
+    }
 }
 
 pub fn try_native_osk() -> bool {

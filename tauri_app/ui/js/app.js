@@ -5,6 +5,41 @@
 const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null;
 const listen = window.__TAURI__ ? window.__TAURI__.event.listen : null;
 
+const _recentClientErrors = new Map();
+function reportWebviewError(message, stack = "") {
+  if (!invoke) return;
+  const msgStr = String(message || "Unknown UI error").slice(0, 800);
+  const key = msgStr.slice(0, 120);
+  const now = Date.now();
+  const prev = _recentClientErrors.get(key) || 0;
+  if (now - prev < 5000) return;
+  _recentClientErrors.set(key, now);
+  if (_recentClientErrors.size > 50) {
+    const firstKey = _recentClientErrors.keys().next().value;
+    if (firstKey !== undefined) _recentClientErrors.delete(firstKey);
+  }
+  const stackStr = stack ? String(stack).slice(0, 1500) : null;
+  invoke("report_client_error", {
+    source: "main_ui",
+    message: msgStr,
+    stack: stackStr
+  }).catch(() => {});
+}
+
+window.addEventListener("error", (ev) => {
+  const loc = ev.filename ? ` (${ev.filename}:${ev.lineno || 0}:${ev.colno || 0})` : "";
+  const msg = `${ev.message || "Script error"}${loc}`;
+  const st = ev.error && ev.error.stack ? ev.error.stack : "";
+  reportWebviewError(msg, st);
+});
+
+window.addEventListener("unhandledrejection", (ev) => {
+  const reason = ev.reason;
+  const msg = reason && reason.message ? reason.message : String(reason || "Unhandled rejection");
+  const st = reason && reason.stack ? reason.stack : "";
+  reportWebviewError(`Unhandled rejection: ${msg}`, st);
+});
+
 // Отключение контекстного меню в UI
 window.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -81,6 +116,9 @@ function switchViewIndex(idx, btn) {
   if (btn) btn.classList.add("active");
   if (idx === 1 && typeof window.ensureMapperRendered === "function") {
     window.ensureMapperRendered();
+  }
+  if (idx === 3 && typeof window.refreshDiagnosticsSummary === "function") {
+    window.refreshDiagnosticsSummary();
   }
   const viewport = document.querySelector(".viewport");
   const slider = document.getElementById("screens-slider");
@@ -313,10 +351,14 @@ function renderProfilesCatalog() {
       const div = document.createElement("div");
       div.className = "prof-card" + (currentProfile && currentProfile.id === p.id ? " selected" : "");
       div.onclick = () => selectProfileById(p.id);
-      div.innerHTML = `
-        <div style="font-size:11px; color:var(--apple-blue); font-weight:600;">${p.brand} • ${p.cec_system_name}</div>
-        <div style="font-size:13px; font-weight:600;">${profileShortName(p)}</div>
-      `;
+      const metaDiv = document.createElement("div");
+      metaDiv.style.cssText = "font-size:11px; color:var(--apple-blue); font-weight:600;";
+      metaDiv.textContent = `${p.brand} • ${p.cec_system_name}`;
+      const nameDiv = document.createElement("div");
+      nameDiv.style.cssText = "font-size:13px; font-weight:600;";
+      nameDiv.textContent = profileShortName(p);
+      div.appendChild(metaDiv);
+      div.appendChild(nameDiv);
       box.appendChild(div);
     });
 }
@@ -646,8 +688,9 @@ async function applyPaAndName() {
 async function wakeAndSelectTv() {
   setHumanStatus("online", "Готово", "Включение телевизора");
   await sendCmd("ACTIVE");
-  if (appConfig && appConfig.auto_audio_switch && invoke) {
-    await invoke("set_audio_device", { target: appConfig.tv_audio_device || "Philips" }).catch(()=>{});
+  const tvTarget = (appConfig && appConfig.tv_audio_device) ? appConfig.tv_audio_device.trim() : "";
+  if (appConfig && appConfig.auto_audio_switch && tvTarget && invoke) {
+    await invoke("set_audio_device", { target: tvTarget }).catch(() => {});
   }
 }
 
@@ -655,10 +698,82 @@ async function standbyTv() {
   setHumanStatus("standby", "Настройка", "Выключение экрана");
   const cmd = (currentProfile && currentProfile.standby_command) ? currentProfile.standby_command : "OFF";
   await sendCmd(cmd);
-  if (appConfig && appConfig.auto_audio_switch && invoke) {
-    await invoke("set_audio_device", { target: appConfig.fallback_audio_device || "Наушники" }).catch(()=>{});
+  const fbTarget = (appConfig && appConfig.fallback_audio_device) ? appConfig.fallback_audio_device.trim() : "";
+  if (appConfig && appConfig.auto_audio_switch && fbTarget && invoke) {
+    await invoke("set_audio_device", { target: fbTarget }).catch(() => {});
   }
 }
+
+let cachedAudioEndpoints = null;
+
+function updateAudioDevicesVisibility() {
+  const chk = document.getElementById("chk-auto-audio");
+  const wrap = document.getElementById("wrap-audio-devices");
+  if (!wrap) return;
+  const enabled = chk ? chk.checked : false;
+  wrap.style.display = enabled ? "flex" : "none";
+  if (enabled && cachedAudioEndpoints === null) {
+    loadAndRenderAudioDeviceSelects();
+  } else if (enabled) {
+    renderAudioDeviceSelects();
+  }
+}
+
+function renderAudioDeviceSelects() {
+  const list = Array.isArray(cachedAudioEndpoints) ? cachedAudioEndpoints : [];
+  const noneLabel = typeof t === "function" ? t("settings.audio_device_none", "— Не выбрано —") : "— Не выбрано —";
+  const opts = [{ value: "", label: noneLabel }];
+  const tvCur = (appConfig && appConfig.tv_audio_device) ? appConfig.tv_audio_device : "";
+  const fbCur = (appConfig && appConfig.fallback_audio_device) ? appConfig.fallback_audio_device : "";
+  const seen = new Set([""]);
+  list.forEach(name => {
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      opts.push({ value: name, label: name });
+    }
+  });
+  if (tvCur && !seen.has(tvCur)) {
+    opts.push({ value: tvCur, label: `${tvCur} (offline)` });
+  }
+  if (fbCur && fbCur !== tvCur && !seen.has(fbCur)) {
+    opts.push({ value: fbCur, label: `${fbCur} (offline)` });
+  }
+
+  createCustomSelect("csel-tv-audio", opts, tvCur, (val) => {
+    if (appConfig) {
+      appConfig.tv_audio_device = val;
+      if (typeof autoSaveQolSettings === "function") autoSaveQolSettings();
+    }
+  });
+  createCustomSelect("csel-fallback-audio", opts, fbCur, (val) => {
+    if (appConfig) {
+      appConfig.fallback_audio_device = val;
+      if (typeof autoSaveQolSettings === "function") autoSaveQolSettings();
+    }
+  });
+}
+
+async function loadAndRenderAudioDeviceSelects() {
+  if (!invoke) {
+    cachedAudioEndpoints = [];
+    renderAudioDeviceSelects();
+    return;
+  }
+  try {
+    const endpoints = await invoke("list_audio_endpoints");
+    cachedAudioEndpoints = Array.isArray(endpoints) ? endpoints : [];
+  } catch (_) {
+    cachedAudioEndpoints = [];
+  }
+  renderAudioDeviceSelects();
+}
+
+function onAutoAudioToggleChanged() {
+  updateAudioDevicesVisibility();
+  if (typeof autoSaveQolSettings === "function") autoSaveQolSettings();
+}
+window.onAutoAudioToggleChanged = onAutoAudioToggleChanged;
+window.renderAudioDeviceSelects = renderAudioDeviceSelects;
 
 async function switchHdmi(pa, chipEl) {
   selectedPa = pa;
@@ -704,7 +819,8 @@ function sendCustomRaw() {
   if (v) sendCmd(v);
 }
 
-let latestUpdateUrl = "https://github.com/garutt/HDMI_CEC_Emulator/releases";
+let latestUpdateUrl = "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases";
+const UPDATE_CHECK_THROTTLE_SECS = 43200; // 12 часов
 
 async function openReleasesPage() {
   if (invoke) {
@@ -720,6 +836,13 @@ async function openReleasesPage() {
 
 async function checkAppUpdatesUi(silent = false) {
   if (!invoke) return;
+  if (silent && appConfig && appConfig.last_update_check_ts) {
+    const nowSecs = Math.floor(Date.now() / 1000);
+    if (nowSecs - Number(appConfig.last_update_check_ts) < UPDATE_CHECK_THROTTLE_SECS) {
+      return;
+    }
+  }
+
   if (!silent) addLog("[OTA] Проверка обновлений приложения онлайн...", "log-ok");
   const btnSettings = document.getElementById("btn-check-update-settings");
   const lblStatus = document.getElementById("lbl-update-status");
@@ -730,6 +853,11 @@ async function checkAppUpdatesUi(silent = false) {
 
   try {
     const info = await invoke("check_app_updates");
+    if (appConfig) {
+      appConfig.last_update_check_ts = Math.floor(Date.now() / 1000);
+      invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
+    }
+
     const btn = document.getElementById("btn-check-update");
     if (info.download_url) {
       latestUpdateUrl = info.download_url;
@@ -744,10 +872,17 @@ async function checkAppUpdatesUi(silent = false) {
       }
       if (btnSettings) {
         const openText = typeof t === "function" ? t("settings.open_releases") : "Скачать";
-        btnSettings.innerHTML = `
-          <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          <span>${openText} v${info.latest_version}</span>
-        `;
+        btnSettings.innerHTML = "";
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("class", "ico");
+        svg.setAttribute("style", "width:13px;height:13px;");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.innerHTML = '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>';
+        const span = document.createElement("span");
+        span.textContent = `${openText} v${info.latest_version}`;
+        btnSettings.appendChild(svg);
+        btnSettings.appendChild(span);
         btnSettings.onclick = () => openReleasesPage();
       }
       if (lblStatus) {
@@ -1081,15 +1216,21 @@ window.addEventListener("DOMContentLoaded", async () => {
       const chkRem = document.getElementById("chk-remote-os");
       if (chkRem) chkRem.checked = appConfig.remote_to_os_enabled;
 
-      document.getElementById("chk-auto-audio").checked = appConfig.auto_audio_switch !== false;
+      document.getElementById("chk-auto-audio").checked = !!appConfig.auto_audio_switch;
       document.getElementById("chk-soundbar").checked = !!appConfig.soundbar_passthrough;
       document.getElementById("chk-hold-seek").checked = appConfig.hold_seek_accelerate !== false;
-      document.getElementById("chk-emergency-kill").checked = appConfig.emergency_kill_enabled !== false;
+      document.getElementById("chk-emergency-kill").checked = !!appConfig.emergency_kill_enabled;
       document.getElementById("chk-non-intrusive").checked = appConfig.non_intrusive_cec !== false;
       document.getElementById("chk-auto-heal").checked = appConfig.auto_healing_usb !== false;
       document.getElementById("chk-disp-sleep").checked = !!appConfig.display_disable_on_sleep;
       const chkHud = document.getElementById("chk-hud-overlay");
       if (chkHud) chkHud.checked = appConfig.hud_enabled !== false;
+
+      const chkTel = document.getElementById("chk-telemetry-opt-in");
+      if (chkTel) chkTel.checked = !!appConfig.telemetry_opt_in;
+      const inpTel = document.getElementById("inp-telemetry-endpoint");
+      if (inpTel) inpTel.value = appConfig.telemetry_endpoint || "";
+      updateAudioDevicesVisibility();
 
       const chkWakePc = document.getElementById("chk-wake-pc-on-tv");
       if (chkWakePc) chkWakePc.checked = appConfig.wake_pc_on_tv_on !== false;
@@ -1150,7 +1291,13 @@ window.addEventListener("DOMContentLoaded", async () => {
       window.ensureMapperRendered();
     }
   }, 300);
+  setTimeout(checkPendingCrashOnStartup, 650);
   setTimeout(() => checkAppUpdatesUi(true), 1800);
+  setTimeout(() => {
+    if (invoke && appConfig && appConfig.telemetry_opt_in && appConfig.telemetry_endpoint && appConfig.telemetry_endpoint.trim()) {
+      invoke("send_telemetry_heartbeat", { trigger: "startup" }).catch(() => {});
+    }
+  }, 3200);
 
   // Глобальные горячие клавиши: Ctrl+1..4 переключение вкладок, Ctrl+S сохранение маппера
   window.addEventListener("keydown", (e) => {
@@ -1175,8 +1322,21 @@ window.addEventListener("DOMContentLoaded", async () => {
         e.preventDefault();
         saveMapperConfig();
       }
+    } else if (e.key === "Escape") {
+      const bugModal = document.getElementById("bug-report-modal");
+      if (bugModal && bugModal.style.display === "flex") {
+        e.preventDefault();
+        closeBugReportModal();
+      }
     }
   });
+
+  const bugModal = document.getElementById("bug-report-modal");
+  if (bugModal) {
+    bugModal.addEventListener("click", (e) => {
+      if (e.target === bugModal) closeBugReportModal();
+    });
+  }
 });
 
 // ==================== ВСПЛЫВАЮЩИЕ ПОДСКАЗКИ (APPLE FLOATING TOOLTIPS) ====================
@@ -1263,6 +1423,226 @@ function positionTooltip(target, tip) {
   tip.style.left = `${Math.round(left)}px`;
 }
 
+// ==================== ДИАГНОСТИКА, ОТЧЕТЫ ОБ ОШИБКАХ И ТЕЛЕМЕТРИЯ ====================
+async function checkPendingCrashOnStartup() {
+  if (!invoke) return;
+  try {
+    const crash = await invoke("get_pending_crash_report");
+    if (crash && crash.has_issue) {
+      const banner = document.getElementById("crash-recovery-banner");
+      const lbl = document.getElementById("lbl-crash-banner-text");
+      if (lbl) {
+        if (crash.has_panic_file) {
+          lbl.textContent = typeof t === "function"
+            ? t("crash.banner_panic", "Обнаружен отчёт о прошлом аварийном завершении. Рекомендуется собрать .zip отчёт об ошибке.")
+            : "Обнаружен отчёт о прошлом аварийном завершении. Рекомендуется собрать .zip отчёт об ошибке.";
+        } else {
+          lbl.textContent = typeof t === "function"
+            ? t("crash.banner_dirty", "Прошлый запуск завершился некорректно (возможен сбой). Вы можете сохранить диагностический отчёт.")
+            : "Прошлый запуск завершился некорректно (возможен сбой). Вы можете сохранить диагностический отчёт.";
+        }
+      }
+      if (banner) banner.style.display = "flex";
+    }
+  } catch (_) {}
+  refreshDiagnosticsSummary();
+}
+
+async function refreshDiagnosticsSummary() {
+  if (!invoke) return;
+  try {
+    const snap = await invoke("get_diagnostics_snapshot");
+    if (!snap) return;
+    const lblStorage = document.getElementById("lbl-storage-mode");
+    if (lblStorage) lblStorage.textContent = snap.storage_mode || "—";
+    const lblCnt = document.getElementById("lbl-diag-counters");
+    if (lblCnt) {
+      lblCnt.textContent = `${snap.session_error_count || 0} / ${snap.session_warn_count || 0}`;
+    }
+  } catch (_) {}
+}
+window.refreshDiagnosticsSummary = refreshDiagnosticsSummary;
+
+async function dismissCrashBanner() {
+  const banner = document.getElementById("crash-recovery-banner");
+  if (banner) banner.style.display = "none";
+  if (invoke) {
+    await invoke("dismiss_crash_report").catch(() => {});
+  }
+}
+
+async function onTelemetryOptInChanged() {
+  if (!invoke || !appConfig) return;
+  const chk = document.getElementById("chk-telemetry-opt-in");
+  const statusEl = document.getElementById("lbl-telemetry-status");
+  appConfig.telemetry_opt_in = chk ? chk.checked : false;
+  try {
+    await invoke("save_app_config", { newCfg: appConfig });
+    if (statusEl) {
+      statusEl.textContent = appConfig.telemetry_opt_in
+        ? (typeof t === "function" ? t("diag.status_enabled", "Анонимная телеметрия включена.") : "Анонимная телеметрия включена.")
+        : (typeof t === "function" ? t("diag.status_disabled", "Телеметрия отключена.") : "Телеметрия отключена.");
+      statusEl.style.color = "var(--text-secondary)";
+    }
+  } catch (e) {
+    if (statusEl) {
+      statusEl.textContent = String(e);
+      statusEl.style.color = "var(--apple-red)";
+    }
+  }
+}
+
+async function saveTelemetrySettings() {
+  if (!invoke || !appConfig) return;
+  const inp = document.getElementById("inp-telemetry-endpoint");
+  const chk = document.getElementById("chk-telemetry-opt-in");
+  const statusEl = document.getElementById("lbl-telemetry-status");
+  const prevEndpoint = appConfig.telemetry_endpoint || "";
+  appConfig.telemetry_endpoint = inp ? inp.value.trim() : "";
+  if (chk) appConfig.telemetry_opt_in = chk.checked;
+  try {
+    await invoke("save_app_config", { newCfg: appConfig });
+    if (statusEl) {
+      statusEl.textContent = typeof t === "function" ? t("settings.saved_toast", "Настройки сохранены") : "Настройки сохранены";
+      statusEl.style.color = "var(--apple-green)";
+    }
+  } catch (e) {
+    appConfig.telemetry_endpoint = prevEndpoint;
+    if (statusEl) {
+      statusEl.textContent = String(e);
+      statusEl.style.color = "var(--apple-red)";
+    }
+  }
+}
+
+function showBugModalResult(msg, isError = false) {
+  const el = document.getElementById("bug-report-result");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "bug-result-banner " + (isError ? "is-error" : "is-success");
+  el.style.display = "block";
+}
+
+function formatDiagnosticsSummaryText(snap) {
+  if (!snap) return "";
+  const lines = [
+    `Version: ${snap.app_version} | OS: ${snap.os_platform} (${snap.os_arch}) | Session: ${snap.display_session}`,
+    `Storage: ${snap.storage_mode} | Controller: ${snap.controller_type} (${snap.active_port})`,
+    `TV EDID: ${snap.edid_pnp_id || "UNK"} (PA=${snap.edid_physical_address || "?"}) | Profile: ${snap.active_profile_id}`,
+    `Session errors: ${snap.session_error_count || 0} | Warnings: ${snap.session_warn_count || 0} | Abnormal prev exit: ${!!(snap.dirty_shutdown_detected || snap.has_pending_panic)}`
+  ];
+  if (Array.isArray(snap.recent_errors) && snap.recent_errors.length > 0) {
+    lines.push(`Last error: ${snap.recent_errors[snap.recent_errors.length - 1]}`);
+  }
+  return lines.join("\n");
+}
+
+async function openBugReportModal(fromCrash = false) {
+  const modal = document.getElementById("bug-report-modal");
+  const summaryBox = document.getElementById("bug-report-summary");
+  const resultBox = document.getElementById("bug-report-result");
+  const webhookBtn = document.getElementById("btn-modal-send-webhook");
+  if (resultBox) {
+    resultBox.style.display = "none";
+    resultBox.textContent = "";
+    resultBox.className = "bug-result-banner";
+  }
+  if (webhookBtn) {
+    const hasEndpoint = !!(appConfig && appConfig.telemetry_endpoint && appConfig.telemetry_endpoint.trim());
+    webhookBtn.style.display = hasEndpoint ? "inline-flex" : "none";
+  }
+  if (modal) modal.style.display = "flex";
+  if (summaryBox) summaryBox.textContent = "...";
+
+  if (invoke) {
+    try {
+      const snap = await invoke("get_diagnostics_snapshot");
+      if (summaryBox) summaryBox.textContent = formatDiagnosticsSummaryText(snap);
+      if (fromCrash) {
+        await dismissCrashBanner();
+      }
+    } catch (e) {
+      if (summaryBox) summaryBox.textContent = String(e);
+    }
+  }
+}
+
+function closeBugReportModal() {
+  const modal = document.getElementById("bug-report-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function createSupportBundleFromModal() {
+  if (!invoke) return;
+  const btn = document.getElementById("btn-modal-create-zip");
+  const noteEl = document.getElementById("inp-bug-note");
+  const note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
+  if (btn) btn.disabled = true;
+  try {
+    const res = await invoke("create_support_bundle", { userNote: note });
+    const sizeKb = Math.max(1, Math.round((res.size_bytes || 0) / 1024));
+    showBugModalResult(`${res.filename} (${sizeKb} KB): ${res.zip_path}`, false);
+    addLog(`[Support] Создан отчёт ${res.filename} (${res.zip_path})`, "log-ok");
+  } catch (e) {
+    showBugModalResult(String(e), true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openReportsFolderUi() {
+  if (invoke) {
+    await invoke("open_support_bundle_folder").catch(() => {});
+  }
+}
+
+async function sendBugReportWebhookFromModal() {
+  if (!invoke) return;
+  const btn = document.getElementById("btn-modal-send-webhook");
+  const noteEl = document.getElementById("inp-bug-note");
+  const note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
+  if (btn) btn.disabled = true;
+  try {
+    const res = await invoke("send_bug_report", { userNote: note });
+    showBugModalResult(res.message || "OK", !res.sent);
+  } catch (e) {
+    showBugModalResult(String(e), true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openGithubBugIssueFromModal() {
+  if (!invoke) return;
+  const noteEl = document.getElementById("inp-bug-note");
+  const note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
+  try {
+    const url = await invoke("build_github_issue_url", { userNote: note });
+    await invoke("open_browser_url", { url });
+  } catch (e) {
+    showBugModalResult(String(e), true);
+  }
+}
+
+async function openGithubIssueDirect() {
+  if (!invoke) return;
+  try {
+    const url = await invoke("build_github_issue_url", { userNote: null });
+    await invoke("open_browser_url", { url });
+  } catch (e) {
+    addLog(`[Support] Ошибка открытия GitHub Issue: ${e}`, "log-err");
+  }
+}
+
+function escapeXmlAttr(val) {
+  return String(val ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 // ==================== ЗАГОТОВКИ ПОДДЕРЖКИ XML ПРОФИЛЕЙ ====================
 function exportXmlProfileStub() {
   const profName = (currentProfile && currentProfile.name) || "Universal";
@@ -1270,10 +1650,10 @@ function exportXmlProfileStub() {
   const mappings = (appConfig && appConfig.key_mappings) || {};
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- HDMI-CEC Studio Profile XML (v1.0) -->\n`;
-  xml += `<CecProfile brand="${brand}" model="${profName}" version="1.0">\n`;
+  xml += `<CecProfile brand="${escapeXmlAttr(brand)}" model="${escapeXmlAttr(profName)}" version="1.0">\n`;
   for (const [code, act] of Object.entries(mappings)) {
     if (act && act !== "NONE") {
-      xml += `  <KeyMapping code="${code}" action="${act}" />\n`;
+      xml += `  <KeyMapping code="${escapeXmlAttr(code)}" action="${escapeXmlAttr(act)}" />\n`;
     }
   }
   xml += `</CecProfile>\n`;

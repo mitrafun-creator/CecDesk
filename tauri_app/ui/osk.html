@@ -227,6 +227,24 @@
     const invoke = tauri ? tauri.core.invoke : null;
     const listen = tauri ? tauri.event.listen : null;
 
+    let oskErrCount = 0;
+    function forwardOskError(msg, stack) {
+      if (!invoke || oskErrCount >= 10) return;
+      oskErrCount++;
+      invoke("report_client_error", {
+        source: "osk",
+        message: String(msg || "Unknown OSK error"),
+        stack: stack ? String(stack) : null
+      }).catch(() => {});
+    }
+    window.addEventListener("error", (ev) => {
+      forwardOskError(ev.message, ev.error && ev.error.stack ? ev.error.stack : `${ev.filename || ""}:${ev.lineno || 0}`);
+    });
+    window.addEventListener("unhandledrejection", (ev) => {
+      const r = ev.reason;
+      forwardOskError(r && r.message ? r.message : String(r), r && r.stack ? r.stack : null);
+    });
+
     // Раскладки клавиатуры
     let currentMode = "RU"; // "RU", "EN", "SYM"
     let isCaps = false;

@@ -94,7 +94,8 @@ function renderDynamicRemote() {
   if (unitEl) unitEl.textContent = getKeysPlural(activeKeys.length);
   const lblCount = document.getElementById("lbl-remote-count");
   if (lblCount) {
-    lblCount.title = `Распознано: ${activeKeys.length} ${getKeysPlural(activeKeys.length)}`;
+    lblCount.removeAttribute("title");
+    lblCount.dataset.tooltipSub = `Распознано: ${activeKeys.length} ${getKeysPlural(activeKeys.length)}`;
   }
 
   const keySet = new Set(activeKeys);

@@ -4,6 +4,7 @@ use crate::hardware::remote_dispatcher::{
     dispatch_deck_control, dispatch_user_control_pressed, dispatch_user_control_released,
 };
 use crate::hardware::state::{safe_lock, AppState};
+use crate::logger::log_warn;
 use serialport::SerialPort;
 use std::io::{BufRead, BufReader, Write};
 use std::sync::atomic::Ordering;
@@ -95,7 +96,9 @@ pub fn spawn_serial_reader_thread(
                                 if audio_dev.is_some() || disp {
                                     thread::spawn(move || {
                                         if let Some(dev) = audio_dev {
-                                            let _ = switch_audio_endpoint(&dev);
+                                            if let Err(e) = switch_audio_endpoint(&dev) {
+                                                log_warn("audio", &format!("TV-ON audio switch failed: {}", e));
+                                            }
                                         }
                                         if disp {
                                             switch_display_mode(true);
@@ -118,7 +121,9 @@ pub fn spawn_serial_reader_thread(
                                 if audio_dev.is_some() || disp {
                                     thread::spawn(move || {
                                         if let Some(dev) = audio_dev {
-                                            let _ = switch_audio_endpoint(&dev);
+                                            if let Err(e) = switch_audio_endpoint(&dev) {
+                                                log_warn("audio", &format!("TV-OFF audio switch failed: {}", e));
+                                            }
                                         }
                                         if disp {
                                             switch_display_mode(false);
@@ -222,7 +227,10 @@ pub fn spawn_serial_reader_thread(
                     }
                     continue;
                 }
-                Err(_) => break,
+                Err(e) => {
+                    log_warn("serial", &format!("Serial reader closed with error: {}", e));
+                    break;
+                }
             }
         }
         // Сбрасываем активное подключение ТОЛЬКО если этот поток всё ещё является текущим (не был заменен новым портом!)

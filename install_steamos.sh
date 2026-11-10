@@ -59,12 +59,12 @@ if [ -f "$APP_DIR/cec_studio_config.default.json" ] && [ ! -f "$INSTALL_DIR/cec_
     cp "$APP_DIR/cec_studio_config.default.json" "$INSTALL_DIR/cec_studio_config.json" 2>/dev/null || true
 fi
 
-echo "[1/4] Настройка правил udev (доступ к портам ESP32-S3 / RP2040-Zero и виртуальному вводу uinput без root)..."
+echo "[1/4] Настройка правил udev (доступ к портам ESP32-S3 / RP2040-Zero и виртуальному вводу uinput через uaccess без world-writable прав)..."
 UDEV_RULE_CONTENT='# HDMI-CEC Studio: ESP32-S3 (303a) и RP2040-Zero (2e8a) + uinput для Gamescope / Wayland
-SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", MODE="0666", ENV{ID_MM_DEVICE_IGNORE}="1"
-SUBSYSTEM=="tty", ATTRS{idVendor}=="2e8a", MODE="0666", ENV{ID_MM_DEVICE_IGNORE}="1"
-SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", MODE="0666"
-KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0666", OPTIONS+="static_node=uinput"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", MODE="0660", GROUP="uucp", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2e8a", MODE="0660", GROUP="uucp", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", MODE="0660", GROUP="uucp", TAG+="uaccess"
+KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess", OPTIONS+="static_node=uinput"
 '
 
 if command -v sudo >/dev/null 2>&1; then

@@ -383,6 +383,24 @@
   <script>
     const listen = window.__TAURI__ ? window.__TAURI__.event.listen : null;
     const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : null;
+
+    let hudErrCount = 0;
+    function forwardHudError(msg, stack) {
+      if (!invoke || hudErrCount >= 10) return;
+      hudErrCount++;
+      invoke("report_client_error", {
+        source: "hud",
+        message: String(msg || "Unknown HUD error"),
+        stack: stack ? String(stack) : null
+      }).catch(() => {});
+    }
+    window.addEventListener("error", (ev) => {
+      forwardHudError(ev.message, ev.error && ev.error.stack ? ev.error.stack : `${ev.filename || ""}:${ev.lineno || 0}`);
+    });
+    window.addEventListener("unhandledrejection", (ev) => {
+      const r = ev.reason;
+      forwardHudError(r && r.message ? r.message : String(r), r && r.stack ? r.stack : null);
+    });
     let hideTimer = null;
     let isMouseActive = false;
     let activeSector = 5;

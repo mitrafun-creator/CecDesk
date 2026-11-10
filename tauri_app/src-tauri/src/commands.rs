@@ -1,17 +1,27 @@
 use crate::audio::{list_audio_endpoints_internal, switch_audio_endpoint};
 use crate::config::{
-    find_config_path, find_logs_dir, find_profiles_dir, save_atomic, write_log_to_disk,
+    dismiss_crash_report_state, find_bundled_profiles_dir, find_config_path, find_logs_dir,
+    find_reports_dir, find_user_profiles_dir, generate_install_id, get_pending_crash_report_state,
+    save_atomic, write_log_to_disk, PendingCrashReport,
 };
 use crate::custom_scripts::{
     list_custom_scripts_internal, open_scripts_folder_internal,
 };
 use crate::edid::detect_edid_os;
 use crate::hardware::{safe_lock, spawn_serial_reader_thread, AppState};
-use crate::input_simulator::{create_hidden_command, trigger_os_key_internal};
+use crate::input_simulator::trigger_os_key_internal;
+use crate::logger::{log_error, log_frontend_error, log_info, log_warn};
 use crate::osk::{
     toggle_osk_helper, type_special_key_internal, type_unicode_char_internal,
 };
+use crate::telemetry::{
+    build_diagnostics_snapshot, build_github_issue_url_internal, create_support_bundle_internal,
+    sanitize_profile_id, send_bug_report_internal, send_telemetry_heartbeat_internal,
+    validate_external_browser_url, validate_https_webhook_url, BugReportResult,
+    DiagnosticsSnapshot, SupportBundleResult, TelemetryResult,
+};
 use crate::types::{AppConfig, CustomScriptInfo, EdidInfoDto, PortInfoDto, TvProfile};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::sync::atomic::Ordering;
@@ -200,22 +210,45 @@ pub async fn detect_tv_edid() -> EdidInfoDto {
         .unwrap_or_else(|_| detect_edid_os())
 }
 
-#[tauri::command]
-pub async fn load_tv_profiles() -> Vec<TvProfile> {
-    tauri::async_runtime::spawn_blocking(|| {
-        let dir = find_profiles_dir();
-        let mut list = Vec::new();
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                if entry.path().extension().and_then(|s| s.to_str()) == Some("json") {
-                    if let Ok(txt) = fs::read_to_string(entry.path()) {
-                        if let Ok(prof) = serde_json::from_str::<TvProfile>(&txt) {
-                            list.push(prof);
+fn read_profiles_from_dir(dir: &std::path::Path, map: &mut HashMap<String, TvProfile>) {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if path.file_name().and_then(|s| s.to_str()) == Some("catalog.json") {
+                    continue;
+                }
+                match fs::read_to_string(&path) {
+                    Ok(txt) => match serde_json::from_str::<TvProfile>(&txt) {
+                        Ok(prof) => {
+                            map.insert(prof.id.clone(), prof);
                         }
+                        Err(e) => {
+                            log_warn(
+                                "profiles",
+                                &format!("Skipped invalid TV profile JSON {:?}: {}", path.file_name(), e),
+                            );
+                        }
+                    },
+                    Err(e) => {
+                        log_warn(
+                            "profiles",
+                            &format!("Failed to read TV profile {:?}: {}", path.file_name(), e),
+                        );
                     }
                 }
             }
         }
+    }
+}
+
+#[tauri::command]
+pub async fn load_tv_profiles() -> Vec<TvProfile> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let mut merged: HashMap<String, TvProfile> = HashMap::new();
+        read_profiles_from_dir(&find_bundled_profiles_dir(), &mut merged);
+        read_profiles_from_dir(&find_user_profiles_dir(), &mut merged);
+        let mut list: Vec<TvProfile> = merged.into_values().collect();
         list.sort_by(|a, b| a.brand.cmp(&b.brand).then(a.name.cmp(&b.name)));
         list
     })
@@ -224,13 +257,15 @@ pub async fn load_tv_profiles() -> Vec<TvProfile> {
 }
 
 #[tauri::command]
-pub async fn save_tv_profile(profile: TvProfile) -> Result<String, String> {
+pub async fn save_tv_profile(mut profile: TvProfile) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let dir = find_profiles_dir();
-        let _ = fs::create_dir_all(&dir);
-        let path = dir.join(format!("{}.json", profile.id));
+        let safe_id = sanitize_profile_id(&profile.id)?;
+        profile.id = safe_id.clone();
+        let dir = find_user_profiles_dir();
+        let path = dir.join(format!("{}.json", safe_id));
         let json = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
         save_atomic(&path, &json)?;
+        log_info("profiles", &format!("Saved TV profile '{}'", safe_id));
         Ok(path.to_string_lossy().to_string())
     })
     .await
@@ -244,16 +279,30 @@ pub fn get_app_config(state: State<'_, AppState>) -> AppConfig {
 
 #[tauri::command]
 pub async fn save_app_config(
-    new_cfg: AppConfig,
+    mut new_cfg: AppConfig,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let st = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
+        if !new_cfg.telemetry_endpoint.trim().is_empty() {
+            new_cfg.telemetry_endpoint = validate_https_webhook_url(&new_cfg.telemetry_endpoint)?;
+        } else {
+            new_cfg.telemetry_endpoint.clear();
+        }
+
+        let prev_cfg = safe_lock(&st.config).clone();
+        if new_cfg.install_id.trim().is_empty() {
+            new_cfg.install_id = if !prev_cfg.install_id.trim().is_empty() {
+                prev_cfg.install_id.clone()
+            } else {
+                generate_install_id()
+            };
+        }
+
         let path = find_config_path();
         let json = serde_json::to_string_pretty(&new_cfg).map_err(|e| e.to_string())?;
         save_atomic(&path, &json)?;
 
-        let prev_cfg = safe_lock(&st.config).clone();
         let remote_changed = prev_cfg.remote_to_os_enabled != new_cfg.remote_to_os_enabled;
         let wake_changed = prev_cfg.wake_pc_on_tv_on != new_cfg.wake_pc_on_tv_on;
         let stby_changed = prev_cfg.auto_standby_tv_on_exit != new_cfg.auto_standby_tv_on_exit;
@@ -277,13 +326,18 @@ pub async fn save_app_config(
                         } else {
                             b"POLITE 0\n"
                         };
-                        let _ = port.write_all(polite_cmd);
+                        if let Err(e) = port.write_all(polite_cmd) {
+                            log_warn("serial", &format!("Failed writing POLITE setting: {}", e));
+                        }
                     }
                     if remote_changed {
-                        if is_remote_enabled {
-                            let _ = port.write_all(b"REMOTE_ON\n");
+                        let cmd = if is_remote_enabled {
+                            b"REMOTE_ON\n" as &[u8]
                         } else {
-                            let _ = port.write_all(b"REMOTE_OFF\n");
+                            b"REMOTE_OFF\n"
+                        };
+                        if let Err(e) = port.write_all(cmd) {
+                            log_warn("serial", &format!("Failed writing REMOTE toggle: {}", e));
                         }
                     }
                     if wake_changed {
@@ -292,7 +346,9 @@ pub async fn save_app_config(
                         } else {
                             b"PC_WAKE_ON_TV 0\n"
                         };
-                        let _ = port.write_all(wake_cmd);
+                        if let Err(e) = port.write_all(wake_cmd) {
+                            log_warn("serial", &format!("Failed writing PC_WAKE_ON_TV: {}", e));
+                        }
                     }
                     if stby_changed {
                         let stby_cmd = if tv_off_on_pc_off {
@@ -300,11 +356,15 @@ pub async fn save_app_config(
                         } else {
                             b"PC_OFF_TV_STANDBY 0\n"
                         };
-                        let _ = port.write_all(stby_cmd);
+                        if let Err(e) = port.write_all(stby_cmd) {
+                            log_warn("serial", &format!("Failed writing PC_OFF_TV_STANDBY: {}", e));
+                        }
                     }
                     if pin_changed {
                         let pin_cmd = format!("PC_PWR_PIN {}\n", opto_pin);
-                        let _ = port.write_all(pin_cmd.as_bytes());
+                        if let Err(e) = port.write_all(pin_cmd.as_bytes()) {
+                            log_warn("serial", &format!("Failed writing PC_PWR_PIN: {}", e));
+                        }
                     }
                 }
             }
@@ -340,21 +400,7 @@ pub async fn append_client_log(line: String, state: State<'_, AppState>) -> Resu
 pub async fn open_logs_folder() -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(|| {
         let dir = find_logs_dir();
-        #[cfg(target_os = "windows")]
-        {
-            create_hidden_command("explorer")
-                .arg(dir.as_os_str())
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            std::process::Command::new("xdg-open")
-                .arg(dir.as_os_str())
-                .spawn()
-                .map_err(|e| e.to_string())?;
-        }
-        Ok(())
+        crate::platform::open_folder(&dir)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -881,20 +927,110 @@ pub fn get_app_version() -> String {
 
 #[tauri::command]
 pub fn open_browser_url(url: String) -> Result<(), String> {
+    let valid_url = validate_external_browser_url(&url).map_err(|e| {
+        log_warn("security", &format!("Blocked unsafe browser URL: {}", e));
+        e
+    })?;
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("rundll32.exe")
             .arg("url.dll,FileProtocolHandler")
-            .arg(&url)
+            .arg(&valid_url)
             .spawn()
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                log_error("platform", &format!("Failed opening URL via rundll32: {}", e));
+                e.to_string()
+            })?;
     }
     #[cfg(not(target_os = "windows"))]
     {
         std::process::Command::new("xdg-open")
-            .arg(&url)
+            .arg(&valid_url)
             .spawn()
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                log_error("platform", &format!("Failed opening URL via xdg-open: {}", e));
+                e.to_string()
+            })?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn create_support_bundle(
+    user_note: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<SupportBundleResult, String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || create_support_bundle_internal(&st, user_note))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn open_support_bundle_folder() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let dir = find_reports_dir();
+        crate::platform::open_folder(&dir)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn send_bug_report(
+    user_note: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<BugReportResult, String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || send_bug_report_internal(&st, user_note))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn send_telemetry_heartbeat(
+    trigger: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<TelemetryResult, String> {
+    let st = state.inner().clone();
+    let trig = trigger.unwrap_or_else(|| "startup".to_string());
+    tauri::async_runtime::spawn_blocking(move || send_telemetry_heartbeat_internal(&st, &trig))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn get_diagnostics_snapshot(
+    state: State<'_, AppState>,
+) -> Result<DiagnosticsSnapshot, String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || build_diagnostics_snapshot(&st, None))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_pending_crash_report() -> PendingCrashReport {
+    get_pending_crash_report_state()
+}
+
+#[tauri::command]
+pub fn dismiss_crash_report() -> Result<(), String> {
+    dismiss_crash_report_state()
+}
+
+#[tauri::command]
+pub fn report_client_error(source: String, message: String, stack: Option<String>) {
+    log_frontend_error(&source, &message, stack.as_deref());
+}
+
+#[tauri::command]
+pub async fn build_github_issue_url(
+    user_note: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || build_github_issue_url_internal(&st, user_note))
+        .await
+        .map_err(|e| e.to_string())?
 }

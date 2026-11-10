@@ -56,6 +56,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_update_channel() -> String {
+    "beta".to_string()
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default)]
 pub struct AppConfig {
@@ -101,6 +105,18 @@ pub struct AppConfig {
     pub display_disable_on_sleep: bool,  // #9 Отключение дисплея ТВ в Windows при сне
     #[serde(default = "default_true")]
     pub hud_enabled: bool,               // Экранные уведомления (HUD)
+
+    // ==================== ПРЕДБЕТА: ТЕЛЕМЕТРИЯ И ОБНОВЛЕНИЯ ====================
+    #[serde(default)]
+    pub install_id: String,              // Анонимный случайный UUID установки (без PII)
+    #[serde(default)]
+    pub telemetry_opt_in: bool,          // Добровольная анонимная телеметрия (по умолчанию выключена)
+    #[serde(default)]
+    pub telemetry_endpoint: String,      // Пользовательский HTTPS endpoint для телеметрии и баг-репортов
+    #[serde(default = "default_update_channel")]
+    pub update_channel: String,          // Канал обновлений ("beta" / "stable")
+    #[serde(default)]
+    pub last_update_check_ts: u64,       // Unix timestamp последней автоматической проверки обновлений
 }
 
 impl Default for AppConfig {
@@ -144,7 +160,7 @@ impl Default for AppConfig {
         Self {
             active_profile_id: "philips_32pfl9705h".to_string(),
             osd_name: "GAMING PC".to_string(),
-            pa_override: "3000".to_string(),
+            pa_override: "1000".to_string(),
             remote_to_os_enabled: true,
             auto_wake_tv_on_start: false,
             auto_standby_tv_on_exit: false,
@@ -162,17 +178,23 @@ impl Default for AppConfig {
                 "0x41".to_string(), "0x42".to_string(), "0x43".to_string(),
             ],
 
-            auto_audio_switch: true,
-            tv_audio_device: "Philips".to_string(),
-            fallback_audio_device: "Maono".to_string(),
+            auto_audio_switch: false,
+            tv_audio_device: String::new(),
+            fallback_audio_device: String::new(),
             auto_revert_mouse: true,
             hold_seek_accelerate: true,
-            emergency_kill_enabled: true,
+            emergency_kill_enabled: false,
             non_intrusive_cec: true,
             soundbar_passthrough: false,
             auto_healing_usb: true,
             display_disable_on_sleep: false,
             hud_enabled: true,
+
+            install_id: String::new(),
+            telemetry_opt_in: false,
+            telemetry_endpoint: String::new(),
+            update_channel: "beta".to_string(),
+            last_update_check_ts: 0,
         }
     }
 }

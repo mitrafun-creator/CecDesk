@@ -8,67 +8,45 @@ mod custom_scripts;
 mod edid;
 mod hardware;
 mod input_simulator;
+mod logger;
 mod osk;
 mod platform;
+mod telemetry;
 mod types;
 mod updater;
 mod window_manager;
 
 use config::{
-    find_logs_dir, load_or_create_config, rotate_session_logs,
+    clear_session_active_marker, find_logs_dir, init_crash_recovery_on_startup,
+    load_or_create_config, migrate_legacy_data_if_needed, rotate_session_logs,
 };
 use hardware::{
     safe_lock, spawn_mouse_revert_watchdog, spawn_usb_watchdog, AppState, PendingHudState,
 };
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use logger::{
+    flush_logger, init_logger, log_debug, log_error, log_info, now_unix_secs,
+    write_crash_report_sync,
+};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager};
 
-static DEBUG_LOGGING: AtomicBool = AtomicBool::new(false);
-
-fn is_debug_enabled() -> bool {
-    DEBUG_LOGGING.load(Ordering::Relaxed)
-}
-
-fn log_step(s: &str) {
-    if !is_debug_enabled() {
-        return;
-    }
-    let log_file = find_logs_dir().join("trace.log");
-    if let Ok(mut f) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log_file)
-    {
-        let _ = writeln!(
-            f,
-            "[{}] {}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_millis(),
-            s
-        );
-    }
-}
-
 fn main() {
-    if std::env::args().any(|a| a == "--debug" || a == "-d") || std::env::var("CEC_DEBUG").is_ok() {
-        DEBUG_LOGGING.store(true, Ordering::Relaxed);
-    }
-    log_step("1. main() started");
+    let debug_enabled =
+        std::env::args().any(|a| a == "--debug" || a == "-d") || std::env::var("CEC_DEBUG").is_ok();
+
     if !platform::check_single_instance_or_focus("HDMI-CEC Studio") {
-        log_step("EXIT: check_single_instance_or_focus returned false (another instance is already running)");
         return;
     }
-    log_step("2. Single instance passed");
 
-    std::panic::set_hook(Box::new(|info| {
+    migrate_legacy_data_if_needed();
+    let logs_dir = find_logs_dir();
+    let panic_logs_dir = logs_dir.clone();
+
+    std::panic::set_hook(Box::new(move |info| {
         let payload = if let Some(s) = info.payload().downcast_ref::<&str>() {
             (*s).to_string()
         } else if let Some(s) = info.payload().downcast_ref::<String>() {
@@ -87,37 +65,29 @@ fn main() {
             std::backtrace::Backtrace::capture()
         );
         let panic_str = format!("PANIC OCCURRED: {} at {}", payload, location);
-        let log_file = find_logs_dir().join("trace.log");
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&log_file) {
-            let _ = writeln!(
-                f,
-                "[{}] {}",
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_millis(),
-                panic_str
-            );
-        }
-        let _ = fs::write(find_logs_dir().join("panic.txt"), &msg);
+        write_crash_report_sync(&panic_logs_dir, &panic_str, &msg);
     }));
 
-    let logs_dir = find_logs_dir();
-
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let ts = now_unix_secs();
     let session_log_path = logs_dir.join(format!("cec_session_{}.log", ts));
     let latest_log_path = logs_dir.join("cec_latest.log");
-    let _ = fs::write(
-        &latest_log_path,
-        format!("\u{FEFF}=== HDMI-CEC STUDIO LOG STARTED (ts: {}) ===\n", ts),
+    init_logger(
+        logs_dir.clone(),
+        session_log_path.clone(),
+        latest_log_path.clone(),
+        debug_enabled,
     );
-    let _ = fs::write(
-        &session_log_path,
-        format!("\u{FEFF}=== HDMI-CEC STUDIO LOG STARTED (ts: {}) ===\n", ts),
+    log_debug("app", "Verbose debug logging active");
+    log_info(
+        "app",
+        &format!(
+            "Starting HDMI-CEC Studio v{} (debug={}, storage={})",
+            updater::CURRENT_APP_VERSION,
+            debug_enabled,
+            config::data_storage_mode_label()
+        ),
     );
+    init_crash_recovery_on_startup();
 
     let logs_dir_rotate = logs_dir.clone();
     std::thread::spawn(move || {
@@ -183,7 +153,7 @@ fn main() {
             }
         })
         .setup(move |app| {
-            log_step("3. setup() callback entered");
+            log_info("app", "Tauri setup() entered");
             let app_handle = app.handle().clone();
 
             if is_minimized_arg {
@@ -208,7 +178,6 @@ fn main() {
             }
 
             // ==================== СИСТЕМНЫЙ ТРЕЙ (ФОНОВЫЙ РЕЖИМ + STEAM BIG PICTURE) ====================
-            log_step("3.1 building tray items");
             let show_i = MenuItem::with_id(app, "show", "Открыть Перехват пульта", true, None::<&str>)?;
             let hide_i = MenuItem::with_id(app, "hide", "Свернуть в трей", true, None::<&str>)?;
             let mouse_i = MenuItem::with_id(
@@ -256,7 +225,6 @@ fn main() {
             let osk_visible_tray = Arc::clone(&osk_visible_shared);
             let initial_show_tray = Arc::clone(&initial_show_setup);
             let initial_show_click = Arc::clone(&initial_show_setup);
-            log_step("3.2 building tray icon");
             let tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
                 .tooltip("Перехват пульта — Управление ПК и SteamOS пультом ТВ")
@@ -363,11 +331,10 @@ fn main() {
                 tauri::include_image!("icons/icon.png")
             });
             if let Err(e) = tray_builder.icon(icon).build(app) {
-                log_step(&format!("TRAY BUILD ERROR: {}", e));
+                log_error("tray", &format!("Tray icon build failed: {}", e));
             }
 
             // Фоновые сторожевые таймеры
-            log_step("3.3 spawning watchdogs");
             spawn_mouse_revert_watchdog(mouse_mode_bg, last_mouse_bg, config_bg, app_handle.clone());
             spawn_usb_watchdog(
                 writer_watchdog,
@@ -377,7 +344,7 @@ fn main() {
                 app_handle,
             );
 
-            log_step("4. setup() completed successfully");
+            log_info("app", "Setup completed successfully");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -421,21 +388,29 @@ fn main() {
             commands::app_win_hide_to_tray,
             commands::set_window_title,
             commands::get_app_version,
-            commands::open_browser_url
+            commands::open_browser_url,
+            commands::create_support_bundle,
+            commands::open_support_bundle_folder,
+            commands::send_bug_report,
+            commands::send_telemetry_heartbeat,
+            commands::get_diagnostics_snapshot,
+            commands::get_pending_crash_report,
+            commands::dismiss_crash_report,
+            commands::report_client_error,
+            commands::build_github_issue_url
         ]);
 
-    log_step("2.3 Before .build()");
     let app_built = builder
         .build(tauri::generate_context!())
         .map_err(|e| {
-            log_step(&format!("BUILD FAILED: {}", e));
+            log_error("app", &format!("Tauri builder failed: {}", e));
+            flush_logger();
             e
         })
         .expect("Ошибка сборки Tauri контекста");
-    log_step("2.4 After .build()");
 
     app_built.run(move |app_handle, event| match &event {
-        tauri::RunEvent::Ready => log_step("5. RunEvent::Ready"),
+        tauri::RunEvent::Ready => log_info("app", "Application Ready"),
         tauri::RunEvent::ExitRequested { api, code, .. } => {
             // Защита от самопроизвольного завершения фонового процесса при входе/выходе из Steam Big Picture,
             // перезапуске проводника или закрытии вспомогательных окон (OSK / HUD).
@@ -444,11 +419,12 @@ fn main() {
                 api.prevent_exit();
                 return;
             }
-            log_step("6. RunEvent::ExitRequested(explicit) - releasing CEC remote capture");
+            log_info("app", "Explicit exit requested - releasing CEC remote capture");
             if let Some(st) = app_handle.try_state::<AppState>() {
                 let stby_on_exit = safe_lock(&st.config).auto_standby_tv_on_exit;
                 let mut guard = safe_lock(&st.serial_writer);
                 if let Some(ref mut port) = *guard {
+                    use std::io::Write;
                     let _ = port.write_all(b"REMOTE_OFF\n");
                     if stby_on_exit {
                         let _ = port.write_all(b"OFF\n");
@@ -457,13 +433,16 @@ fn main() {
                 }
                 *guard = None;
             }
+            clear_session_active_marker();
+            flush_logger();
         }
         tauri::RunEvent::Exit => {
-            log_step("6. RunEvent::Exit - releasing CEC remote capture");
+            log_info("app", "RunEvent::Exit - finalizing session");
             if let Some(st) = app_handle.try_state::<AppState>() {
                 let stby_on_exit = safe_lock(&st.config).auto_standby_tv_on_exit;
                 let mut guard = safe_lock(&st.serial_writer);
                 if let Some(ref mut port) = *guard {
+                    use std::io::Write;
                     let _ = port.write_all(b"REMOTE_OFF\n");
                     if stby_on_exit {
                         let _ = port.write_all(b"OFF\n");
@@ -472,8 +451,9 @@ fn main() {
                 }
                 *guard = None;
             }
+            clear_session_active_marker();
+            flush_logger();
         }
         _ => {}
     });
-    log_step("8. main() completed");
 }
