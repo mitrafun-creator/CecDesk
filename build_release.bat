@@ -18,6 +18,7 @@ if %ERRORLEVEL% EQU 0 (
     copy /y "C:\rust_target\release\hdmi_cec_studio.exe" "%~dp0HDMI_CEC_Studio.exe" >nul
     if %ERRORLEVEL% EQU 0 (
         echo [OK] Successfully updated HDMI_CEC_Studio.exe!
+        powershell -NoProfile -Command "$h = (Get-FileHash -Algorithm SHA256 '%~dp0HDMI_CEC_Studio.exe').Hash.ToLower(); Write-Host '[SHA256]' $h"
     ) else (
         echo [ERROR] Failed to copy hdmi_cec_studio.exe. File may still be running or locked.
         exit /b 1

@@ -298,6 +298,10 @@ const I18N_DICTIONARY = {
     "settings.update_available": "Доступна новая версия",
     "settings.update_error": "Ошибка проверки",
     "settings.open_releases": "Скачать обновление",
+    "settings.install_update_btn": "Обновить до",
+    "settings.installing_update": "Загрузка и проверка обновления...",
+    "settings.open_releases_alt": "Страница релиза",
+    "settings.update_restarting": "Перезапуск в новую версию...",
 
     // Действия кнопок (Key Mapper)
     "action.steam_big_picture": "Steam Big Picture (Открыть / Закрыть)",
@@ -694,6 +698,10 @@ const I18N_DICTIONARY = {
     "settings.update_available": "New version available",
     "settings.update_error": "Check failed",
     "settings.open_releases": "Download Update",
+    "settings.install_update_btn": "Install",
+    "settings.installing_update": "Downloading and verifying update...",
+    "settings.open_releases_alt": "Release Page",
+    "settings.update_restarting": "Restarting into new version...",
 
     // Actions (Key Mapper)
     "action.steam_big_picture": "Steam Big Picture (Open / Close)",
@@ -910,6 +918,9 @@ async function switchLanguage(newLang) {
   }
   if (typeof renderAudioDeviceSelects === "function" && typeof cachedAudioEndpoints !== "undefined" && cachedAudioEndpoints !== null) {
     renderAudioDeviceSelects();
+  }
+  if (typeof renderAppUpdateUiState === "function") {
+    renderAppUpdateUiState();
   }
   if (typeof tvPowerState !== "undefined" && typeof updateTvPowerButtonUi === "function") {
     updateTvPowerButtonUi(tvPowerState);

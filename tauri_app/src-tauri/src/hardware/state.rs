@@ -30,6 +30,7 @@ pub struct AppState {
     pub osk_visible: Arc<AtomicBool>,
     pub calibration_mode: Arc<AtomicBool>,
     pub initial_show_pending: Arc<AtomicBool>,
+    pub skip_standby_on_exit: Arc<AtomicBool>,
     pub pending_hud: Arc<Mutex<PendingHudState>>,
 }
 

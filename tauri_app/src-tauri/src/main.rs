@@ -110,6 +110,7 @@ fn main() {
     let osk_visible_shared = Arc::new(AtomicBool::new(false));
     let calibration_mode_shared = Arc::new(AtomicBool::new(false));
     let initial_show_pending = Arc::new(AtomicBool::new(!is_minimized_arg));
+    let skip_standby_on_exit = Arc::new(AtomicBool::new(false));
     let pending_hud_shared = Arc::new(Mutex::new(PendingHudState::default()));
 
     let state = AppState {
@@ -128,6 +129,7 @@ fn main() {
         osk_visible: Arc::clone(&osk_visible_shared),
         calibration_mode: Arc::clone(&calibration_mode_shared),
         initial_show_pending: Arc::clone(&initial_show_pending),
+        skip_standby_on_exit: Arc::clone(&skip_standby_on_exit),
         pending_hud: Arc::clone(&pending_hud_shared),
     };
 
@@ -373,6 +375,7 @@ fn main() {
             commands::type_unicode_char,
             commands::type_special_key,
             commands::check_app_updates,
+            commands::install_app_update,
             commands::sync_online_tv_profiles,
             commands::check_firmware_updates,
             commands::flash_module_firmware,
@@ -438,7 +441,8 @@ fn release_device_on_exit(app_handle: &tauri::AppHandle, exit_released: &AtomicB
         if let Some(st) = app_handle.try_state::<AppState>() {
             st.manual_disconnect.store(true, Ordering::SeqCst);
             st.connection_id.fetch_add(1, Ordering::SeqCst);
-            let stby_on_exit = safe_lock(&st.config).auto_standby_tv_on_exit;
+            let skip_standby = st.skip_standby_on_exit.load(Ordering::SeqCst);
+            let stby_on_exit = !skip_standby && safe_lock(&st.config).auto_standby_tv_on_exit;
             let mut guard = safe_lock(&st.serial_writer);
             if let Some(ref mut port) = *guard {
                 use std::io::Write;

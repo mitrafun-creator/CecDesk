@@ -97,6 +97,10 @@ test("UI HTML/CSS avoids Tauri CSP nonce/hash invalidation and hides modals by d
   assert.match(css, /\.audio-routing-subbox\.is-visible\s*\{[^}]*display:\s*flex\s*;/s);
   assert.match(css, /\.fw-progress-wrap\s*\{[^}]*display:\s*none\s*;/s);
   assert.match(css, /\.fw-progress-wrap\.is-visible\s*\{[^}]*display:\s*block\s*;/s);
+  assert.match(css, /\.app-update-progress-wrap\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.app-update-progress-wrap\.is-visible\s*\{[^}]*display:\s*block\s*;/s);
+  assert.match(css, /\.update-releases-btn\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.update-releases-btn\.is-visible\s*\{[^}]*display:\s*inline-flex\s*;/s);
   assert.match(css, /\.bug-result-banner\s*\{[^}]*display:\s*none\s*;/s);
   assert.match(css, /\.bug-result-banner\.is-visible\s*\{[^}]*display:\s*block\s*;/s);
 });

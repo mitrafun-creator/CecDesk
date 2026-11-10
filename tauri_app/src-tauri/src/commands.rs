@@ -699,6 +699,17 @@ pub async fn check_app_updates() -> crate::updater::AppVersionInfo {
 }
 
 #[tauri::command]
+pub async fn install_app_update(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || crate::updater::install_app_update_internal(&app, &st))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn sync_online_tv_profiles() -> crate::updater::ProfileSyncResult {
     tauri::async_runtime::spawn_blocking(crate::updater::sync_tv_profiles_online)
         .await

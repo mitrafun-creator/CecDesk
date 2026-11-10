@@ -136,7 +136,10 @@ pub fn validate_https_webhook_url(raw: &str) -> Result<String, String> {
 /// Проверяет, что удаленный URL обновления/каталога ведет строго на официальный репозиторий.
 pub fn validate_trusted_repo_url(raw: &str) -> Result<String, String> {
     let safe = validate_external_browser_url(raw)?;
-    if safe.starts_with(GITHUB_REPO_PREFIX) || safe.starts_with(GITHUB_RAW_PREFIX) {
+    let repo_ok = safe == GITHUB_REPO_PREFIX
+        || safe.starts_with("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/")
+        || safe.starts_with("https://github.com/mitrafun-creator/HDMI_CEC_Emulator?");
+    if repo_ok || safe.starts_with(GITHUB_RAW_PREFIX) {
         Ok(safe)
     } else {
         Err("Недопустимый источник обновления: разрешен только официальный репозиторий GitHub".to_string())
@@ -841,6 +844,8 @@ mod tests {
         assert!(validate_https_webhook_url("https://example.com/;calc.exe").is_err());
 
         assert!(validate_trusted_repo_url("https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/version.json").is_ok());
+        assert!(validate_trusted_repo_url("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/download/v1.1.0/app.zip").is_ok());
+        assert!(validate_trusted_repo_url("https://github.com/mitrafun-creator/HDMI_CEC_Emulator.evil.com/app.exe").is_err());
         assert!(validate_trusted_repo_url("https://evil.example.com/version.json").is_err());
 
         assert_eq!(sanitize_profile_id("lg_simplink-2026").unwrap(), "lg_simplink-2026");
