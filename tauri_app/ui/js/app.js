@@ -711,8 +711,8 @@ async function checkAppUpdatesUi(silent = false) {
         btnSettings.onclick = () => openReleasesPage();
       }
       if (lblStatus) {
-        lblStatus.textContent = `${typeof t === "function" ? t("settings.update_available") : "Доступно обновление"}: v${info.latest_version}`;
-        lblStatus.style.color = "var(--apple-green)";
+        lblStatus.textContent = typeof t === "function" ? t("settings.update_available") : "Доступна новая версия";
+        lblStatus.style.color = "var(--apple-blue)";
       }
       addLog(`[OTA] Доступна новая версия: v${info.latest_version}! (${info.release_notes})`, "log-ok");
     } else {
@@ -851,6 +851,20 @@ function updateDynamicWindowTitle() {
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
 window.addEventListener("DOMContentLoaded", async () => {
   initTitlebarDragging();
+
+  const osLabel = document.getElementById("lbl-os-platform");
+  if (osLabel) {
+    const ua = (navigator.userAgent || "").toLowerCase();
+    const plat = (navigator.platform || "").toLowerCase();
+    if (ua.includes("linux") || plat.includes("linux")) {
+      osLabel.textContent = "Linux / SteamOS x64";
+    } else if (ua.includes("mac") || plat.includes("mac")) {
+      osLabel.textContent = "macOS";
+    } else {
+      osLabel.textContent = "Windows 11 / 10 x64";
+    }
+  }
+
   updateHardwareStatusUi({ connected: false, error: "Поиск адаптера..." }, { checked: false });
 
   if (invoke) {

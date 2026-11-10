@@ -593,65 +593,30 @@
                   <div class="panel-title" data-i18n="settings.about_title">О программе</div>
                 </div>
                 <div class="app-about-card" style="margin-top:6px;">
-                  <div class="app-about-header" style="margin-bottom:8px;">
+                  <div class="app-about-header" style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                     <div style="font-size:12.5px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
                       <span style="color:var(--apple-blue); font-size:10.5px; padding:2px 7px; border-radius:6px; background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.25);">ОС</span>
-                      <span data-i18n="settings.os_version_title">Windows 11 / 10 x64</span>
+                      <span id="lbl-os-platform">Windows 11 / 10 x64</span>
                       <span style="font-size:11.5px; color:var(--text-secondary); font-weight:400;">• <span data-i18n="settings.version">Версия</span> <span id="lbl-app-version-val">1.0.0</span></span>
                     </div>
                   </div>
 
-                  <!-- Заготовки под XML в поддержке профилей -->
-                  <div class="xml-support-box" style="margin-top:10px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
-                        <svg class="ico" style="width:14px;height:14px;stroke:var(--apple-blue);" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                        <span data-i18n="settings.xml_title">Поддержка XML-профилей (Спецификация)</span>
-                      </div>
-                      <span style="font-size:10px; color:var(--apple-green); background:rgba(52,199,89,0.12); border:1px solid rgba(52,199,89,0.25); border-radius:6px; padding:2px 6px;">Schema v1.0</span>
-                    </div>
-                    <div style="font-size:11.5px; color:var(--text-secondary); line-height:1.4; margin-bottom:10px;" data-i18n="settings.xml_desc">
-                      Формат обмена конфигурациями кнопок пульта и кодов CEC с внешними медиацентрами и драйверами ТВ.
-                    </div>
-                    <div class="row" style="gap:8px; margin-bottom:8px;">
-                      <button id="btn-export-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" onclick="exportXmlProfileStub()" title="Экспорт профиля в XML">
-                        <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        <span data-i18n="settings.xml_export">Экспорт в XML</span>
-                      </button>
-                      <button id="btn-import-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" onclick="importXmlProfileStub()" title="Импорт профиля из XML">
-                        <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        <span data-i18n="settings.xml_import">Импорт из XML</span>
-                      </button>
-                    </div>
-                    <div class="xml-preview-stub" style="background:rgba(0,0,0,0.35); border-radius:8px; padding:8px 10px; font-family:Consolas, monospace; font-size:10px; color:rgba(235,235,245,0.7); border:1px solid rgba(255,255,255,0.06); overflow-x:auto;">
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;CecProfile brand="LG" model="OLED-C2" version="1.0"&gt;
-  &lt;KeyMapping code="0x00" action="ENTER" /&gt;
-  &lt;KeyMapping code="0x01" action="UP" /&gt;
-  &lt;KeyMapping code="0x71" action="MOUSE_TOGGLE" /&gt;
-&lt;/CecProfile&gt;
-                    </div>
-                  </div>
-
-                  <div class="row" style="margin-top:10px; gap:8px;">
-                    <button id="btn-check-update-settings" class="apple-btn accent-blue" style="padding:7px 16px; font-size:12px;" onclick="checkAppUpdatesUi()">
+                  <div class="row" style="margin-bottom:12px; gap:8px;">
+                    <button id="btn-check-update-settings" class="apple-btn accent-blue" style="padding:7px 14px; font-size:12px;" onclick="checkAppUpdatesUi()">
                       <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                       <span data-i18n="settings.check_update_btn">Проверить обновления</span>
                     </button>
                     <span id="lbl-update-status" style="font-size:11.5px; color:var(--text-tertiary);"></span>
                   </div>
 
-                  <!-- Встроенный программатор прошивки модулей (Без стороннего ПО) -->
-                  <div class="xml-support-box" style="margin-top:12px; padding:12px; border-radius:12px; background:rgba(10,132,255,0.04); border:1px solid rgba(10,132,255,0.18);">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
-                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+                  <!-- Прошивка контроллера -->
+                  <div class="xml-support-box" style="margin-bottom:10px; padding:11px 12px; border-radius:12px; background:rgba(10,132,255,0.04); border:1px solid rgba(10,132,255,0.18);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px;">
+                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;" data-tooltip="Автономное обновление микроконтроллера напрямую (UF2 / Serial OTA)">
                         <svg class="ico" style="width:14px;height:14px;stroke:var(--apple-blue);" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                        <span data-i18n="settings.fw_box_title">Прошивка модуля (Без стороннего ПО)</span>
+                        <span data-i18n="settings.fw_box_title">Прошивка контроллера</span>
                       </div>
                       <span id="lbl-fw-chip-badge" style="font-size:10px; color:var(--apple-blue); background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.28); border-radius:6px; padding:2px 7px;">FW v1.1.0</span>
-                    </div>
-                    <div style="font-size:11px; color:var(--text-secondary); line-height:1.4; margin-bottom:10px;" data-i18n="settings.fw_box_desc">
-                      Автономное обновление микроконтроллера напрямую из программы (UF2 для RP2040-Zero / Serial OTA для ESP32-S3) без драйверов Zadig и внешних утилит.
                     </div>
                     <div id="fw-progress-wrap" style="display:none; margin-bottom:10px;">
                       <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-bottom:5px;">
@@ -662,11 +627,31 @@
                     <div class="row" style="gap:8px;">
                       <button id="btn-flash-bundled-fw" class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;" onclick="flashModuleFirmwareUi(false)">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-                        <span data-i18n="settings.fw_flash_bundled_btn">Прошить встроенную (v1.1.0)</span>
+                        <span data-i18n="settings.fw_flash_bundled_btn">Прошить (v1.1.0)</span>
                       </button>
-                      <button id="btn-flash-custom-fw" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" onclick="flashModuleFirmwareUi(true)">
+                      <button id="btn-flash-custom-fw" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" onclick="flashModuleFirmwareUi(true)" data-tooltip="Выбрать файл прошивки (.uf2 / .bin)">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                         <span data-i18n="settings.fw_flash_custom_btn">Из файла (.uf2 / .bin)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Профили XML -->
+                  <div class="xml-support-box" style="padding:11px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;" data-tooltip="Обмен конфигурациями кнопок пульта в формате XML">
+                        <svg class="ico" style="width:14px;height:14px;stroke:var(--apple-blue);" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        <span data-i18n="settings.xml_title">Профили XML</span>
+                      </div>
+                    </div>
+                    <div class="row" style="gap:8px;">
+                      <button id="btn-export-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" onclick="exportXmlProfileStub()" data-tooltip="Сохранить текущий профиль в файл .xml">
+                        <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span data-i18n="settings.xml_export">Экспорт в XML</span>
+                      </button>
+                      <button id="btn-import-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" onclick="importXmlProfileStub()" data-tooltip="Загрузить назначения кнопок из файла .xml">
+                        <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <span data-i18n="settings.xml_import">Импорт из XML</span>
                       </button>
                     </div>
                   </div>
