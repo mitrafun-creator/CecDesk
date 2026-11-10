@@ -188,13 +188,14 @@ pub fn dispatch_user_control_pressed(
                 let res = emergency_kill_foreground_task();
                 write_log_to_disk(sess_log, lat_log, &format!("EMERGENCY_KILL: {}", res));
                 let _ = app.emit("cec-toast", format!("Аварийное закрытие: {}", res));
-                let _ = app.emit(
-                    "show-hud",
-                    serde_json::json!({
+                crate::window_manager::emit_and_show_hud(
+                    app,
+                    Some(serde_json::json!({
                         "icon": "warning",
                         "title": "Аварийное закрытие",
                         "desc": format!("Завершено: {}", res)
-                    }),
+                    })),
+                    None,
                 );
                 return;
             }
@@ -230,23 +231,17 @@ pub fn dispatch_user_control_pressed(
             "Режим мыши ВЫКЛ"
         };
         let _ = app.emit("mouse-mode-changed", is_mouse_mode);
-        let _ = app.emit(
-            "show-hud",
-            serde_json::json!({
-                "icon": "mouse",
-                "title": if is_mouse_mode { "Режим мыши активен" } else { "Режим мыши выключен" },
-                "desc": if is_mouse_mode { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
-                "mouse_active": is_mouse_mode
-            }),
-        );
-        if let Some(hud) = app.get_webview_window("hud") {
-            if is_mouse_mode {
-                let _ = hud.show();
-                let _ = hud.unminimize();
-                crate::platform::setup_hud_window(&hud);
-            } else {
-                crate::platform::hide_hud_window_os(&hud);
-            }
+        let hud_payload = serde_json::json!({
+            "icon": "mouse",
+            "title": if is_mouse_mode { "Режим мыши активен" } else { "Режим мыши выключен" },
+            "desc": if is_mouse_mode { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
+            "mouse_active": is_mouse_mode
+        });
+        if is_mouse_mode {
+            crate::window_manager::emit_and_show_hud(app, Some(hud_payload), None);
+        } else {
+            let _ = app.emit("show-hud", &hud_payload);
+            crate::window_manager::hide_hud_if_exists(app);
         }
         write_log_to_disk(sess_log, lat_log, &format!("MOUSE_MODE_TOGGLE: {}", mode_str));
         let _ = app.emit(
@@ -320,16 +315,15 @@ pub fn dispatch_user_control_pressed(
             0x20..=0x29 => {
                 let sector = if key_code == 0x20 { 0 } else { key_code - 0x20 };
                 let (x, y) = jump_cursor_to_sector(sector);
-                let _ = app.emit("mouse-sector-jump", serde_json::json!({
-                    "sector": sector,
-                    "x": x,
-                    "y": y
-                }));
-                if let Some(hud) = app.get_webview_window("hud") {
-                    let _ = hud.show();
-                    let _ = hud.unminimize();
-                    crate::platform::setup_hud_window(&hud);
-                }
+                crate::window_manager::emit_and_show_hud(
+                    app,
+                    None,
+                    Some(serde_json::json!({
+                        "sector": sector,
+                        "x": x,
+                        "y": y
+                    })),
+                );
                 if sector == 0 || sector == 5 {
                     format!("Прыжок в центр (Сектор {})", sector)
                 } else {
@@ -405,19 +399,15 @@ pub fn dispatch_user_control_pressed(
                 "MEDIA_PREV" => ("prev", "Пред. трек"),
                 _ => ("command", os_desc.as_str()),
             };
-            let _ = app.emit(
-                "show-hud",
-                serde_json::json!({
+            crate::window_manager::emit_and_show_hud(
+                app,
+                Some(serde_json::json!({
                     "icon": icon,
                     "title": title,
                     "desc": btn_name
-                }),
+                })),
+                None,
             );
-            if let Some(hud) = app.get_webview_window("hud") {
-                let _ = hud.show();
-                let _ = hud.unminimize();
-                crate::platform::setup_hud_window(&hud);
-            }
         }
         write_log_to_disk(
             sess_log,

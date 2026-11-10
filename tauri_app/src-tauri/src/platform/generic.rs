@@ -84,6 +84,12 @@ pub fn list_audio_endpoints() -> Vec<String> {
 
 pub fn switch_display_mode(_extend: bool) {}
 
+pub fn try_native_osk() -> bool {
+    false
+}
+
+pub fn try_hide_native_osk() {}
+
 pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
     let _ = osk_win.show();
     true

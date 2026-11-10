@@ -181,8 +181,8 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   align-items: center;
   justify-content: space-between;
   background: rgba(14, 14, 18, 0.78);
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border-bottom: 1px solid var(--border-hairline);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 90;
@@ -242,20 +242,6 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
 .win-btn svg {
   width: 12px;
   height: 12px;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  fill: none;
-}
-
-.win-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-.win-btn.btn-close:hover {
-  background: #E81123;
-  color: #ffffff;
-}
   stroke: currentColor;
   stroke-width: 1.5;
   fill: none;
@@ -399,6 +385,7 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   display: flex;
   flex-direction: column;
   scrollbar-gutter: stable;
+  contain: layout style;
 }
 
 /* Красивая анимация исчезновения/появления скроллбара при горизонтальном перелистывании */
@@ -486,8 +473,8 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   max-width: 400px;
   width: 100%;
   background: rgba(24, 24, 32, 0.94);
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 24px;
   padding: 28px 26px;
@@ -575,8 +562,8 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
 
 .glass-panel {
   background: rgba(22, 23, 28, 0.65);
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-top: 1px solid rgba(255, 255, 255, 0.20);
   border-left: 1px solid rgba(255, 255, 255, 0.12);
@@ -784,6 +771,7 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  min-height: 36px;
 }
 
 .hdmi-chip {
@@ -1345,8 +1333,6 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   height: 100vh;
   z-index: -1 !important;
   pointer-events: none !important;
-  filter: blur(40px);
-  -webkit-filter: blur(40px);
   opacity: 0.65;
 }
 

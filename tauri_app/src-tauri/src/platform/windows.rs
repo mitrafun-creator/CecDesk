@@ -58,12 +58,15 @@ pub fn run_script(path: &Path, ext: &str, dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-static mut INSTANCE_MUTEX: *mut core::ffi::c_void = std::ptr::null_mut();
+static INSTANCE_MUTEX: AtomicIsize = AtomicIsize::new(0);
 
 pub fn check_single_instance_or_focus(window_title_prefix: &str) -> bool {
-    use windows_sys::Win32::Foundation::{GetLastError, BOOL, ERROR_ALREADY_EXISTS, HWND, LPARAM};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, GetLastError, BOOL, ERROR_ALREADY_EXISTS, HWND, LPARAM,
+    };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GetWindowTextW, SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW,
+        EnumWindows, GetWindowTextW, GetWindowThreadProcessId, IsWindow, SendMessageTimeoutW,
+        SetForegroundWindow, ShowWindow, SMTO_ABORTIFHUNG, SW_RESTORE, SW_SHOW, WM_NULL,
     };
 
     extern "system" {
@@ -74,60 +77,97 @@ pub fn check_single_instance_or_focus(window_title_prefix: &str) -> bool {
         ) -> *mut core::ffi::c_void;
     }
 
-    // Если пользователь запускает программу вручную (без флага --minimized),
-    // принудительно завершаем любой зависший или свернутый старый процесс HDMI_CEC_Studio.exe,
-    // чтобы освободить COM-порт и гарантированно открыть окно без диспетчера задач.
+    let mutex_name: Vec<u16> = "Local\\HDMI_CEC_Studio_SingleInstance_Mutex\0"
+        .encode_utf16()
+        .collect();
     let is_minimized = std::env::args().any(|a| a == "--minimized" || a == "-m");
-    if !is_minimized {
+
+    unsafe {
+        let mut handle = CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr());
+        if handle.is_null() {
+            return true;
+        }
+
+        if GetLastError() != ERROR_ALREADY_EXISTS {
+            // Первый запуск: не тратим время на taskkill и sleep
+            INSTANCE_MUTEX.store(handle as isize, Ordering::SeqCst);
+            return true;
+        }
+
+        if is_minimized {
+            CloseHandle(handle);
+            return false;
+        }
+
         let my_pid = std::process::id();
+        struct EnumData {
+            my_pid: u32,
+            prefix: String,
+            found_hwnd: HWND,
+        }
+
+        unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+            let data = &mut *(lparam as *mut EnumData);
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, &mut pid);
+            if pid == 0 || pid == data.my_pid {
+                return 1;
+            }
+            let mut buffer = [0u16; 512];
+            let len = GetWindowTextW(hwnd, buffer.as_mut_ptr(), buffer.len() as i32);
+            if len > 0 {
+                let title = String::from_utf16_lossy(&buffer[..len as usize]);
+                if title.starts_with(&data.prefix)
+                    || title.contains("HDMI-CEC Studio")
+                    || title.contains("Перехват пульта")
+                {
+                    data.found_hwnd = hwnd;
+                    return 0; // stop enumeration
+                }
+            }
+            1 // continue
+        }
+
+        let mut data = EnumData {
+            my_pid,
+            prefix: window_title_prefix.to_string(),
+            found_hwnd: std::ptr::null_mut(),
+        };
+
+        EnumWindows(Some(enum_proc), &mut data as *mut EnumData as LPARAM);
+
+        // Если окно существующего экземпляра живо и отвечает на сообщения — сразу выводим его на передний план
+        if !data.found_hwnd.is_null() && IsWindow(data.found_hwnd) != 0 {
+            let mut res: usize = 0;
+            let alive = SendMessageTimeoutW(
+                data.found_hwnd,
+                WM_NULL,
+                0,
+                0,
+                SMTO_ABORTIFHUNG,
+                250,
+                &mut res,
+            );
+            if alive != 0 {
+                ShowWindow(data.found_hwnd, SW_SHOW);
+                ShowWindow(data.found_hwnd, SW_RESTORE);
+                SetForegroundWindow(data.found_hwnd);
+                CloseHandle(handle);
+                return false;
+            }
+        }
+
+        // Только если процесс завис или остался зомби без окна — принудительно завершаем старую копию
+        CloseHandle(handle);
         let filter = format!("PID ne {}", my_pid);
         let _ = create_hidden_command("taskkill")
             .args(["/F", "/IM", "HDMI_CEC_Studio.exe", "/FI", &filter])
             .output();
         std::thread::sleep(Duration::from_millis(120));
-    }
 
-    let mutex_name: Vec<u16> = "Local\\HDMI_CEC_Studio_SingleInstance_Mutex\0"
-        .encode_utf16()
-        .collect();
-    unsafe {
-        let handle = CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr());
+        handle = CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr());
         if !handle.is_null() {
-            if GetLastError() == ERROR_ALREADY_EXISTS {
-                struct EnumData {
-                    prefix: String,
-                    found_hwnd: HWND,
-                }
-
-                unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
-                    let data = &mut *(lparam as *mut EnumData);
-                    let mut buffer = [0u16; 512];
-                    let len = GetWindowTextW(hwnd, buffer.as_mut_ptr(), buffer.len() as i32);
-                    if len > 0 {
-                        let title = String::from_utf16_lossy(&buffer[..len as usize]);
-                        if title.starts_with(&data.prefix) || title.contains("HDMI-CEC Studio") || title.contains("Перехват пульта") {
-                            data.found_hwnd = hwnd;
-                            return 0; // stop enumeration
-                        }
-                    }
-                    1 // continue
-                }
-
-                let mut data = EnumData {
-                    prefix: window_title_prefix.to_string(),
-                    found_hwnd: std::ptr::null_mut(),
-                };
-
-                EnumWindows(Some(enum_proc), &mut data as *mut EnumData as LPARAM);
-
-                if !data.found_hwnd.is_null() {
-                    ShowWindow(data.found_hwnd, SW_SHOW);
-                    ShowWindow(data.found_hwnd, SW_RESTORE);
-                    SetForegroundWindow(data.found_hwnd);
-                }
-                return false;
-            }
-            INSTANCE_MUTEX = handle;
+            INSTANCE_MUTEX.store(handle as isize, Ordering::SeqCst);
         }
     }
     true
@@ -625,6 +665,12 @@ pub fn ensure_target_focus() {
         }
     }
 }
+
+pub fn try_native_osk() -> bool {
+    false
+}
+
+pub fn try_hide_native_osk() {}
 
 pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
     use windows_sys::Win32::Foundation::HWND;

@@ -4,6 +4,19 @@
 
 let customScripts = [];
 let savedMappingsSnapshot = null;
+let mapperNeedsRender = true;
+
+function invalidateMapperTable() {
+  mapperNeedsRender = true;
+}
+
+function ensureMapperRendered() {
+  if (mapperNeedsRender) {
+    renderMapperTable();
+  }
+}
+window.invalidateMapperTable = invalidateMapperTable;
+window.ensureMapperRendered = ensureMapperRendered;
 
 function getCurrentMapperState() {
   const current = {};
@@ -15,6 +28,7 @@ function getCurrentMapperState() {
 }
 
 function captureSavedState() {
+  if (document.querySelectorAll(".mapper-csel").length === 0) return;
   savedMappingsSnapshot = JSON.stringify(getCurrentMapperState());
   markMapperClean();
 }
@@ -116,6 +130,7 @@ async function refreshCustomScripts() {
 function renderMapperTable(isPresetChange = false) {
   const tbody = document.getElementById("mapper-tbody");
   if (!tbody) return;
+  mapperNeedsRender = false;
   tbody.innerHTML = "";
   const mappings = (appConfig && appConfig.key_mappings) ? appConfig.key_mappings : {};
   const allActions = getFullActionList();
@@ -136,6 +151,11 @@ function renderMapperTable(isPresetChange = false) {
   const unavailableKeys = Object.keys(KEY_DEFINITIONS).filter(k => !activeSet.has(k));
 
   const allDisplayKeys = [...sortedActive, ...unavailableKeys];
+  const frag = document.createDocumentFragment();
+  const scriptPrefix = typeof t === "function" ? t("action.script_prefix", "Сценарий") : "Сценарий";
+  const availBadgeText = typeof t === "function" ? t("keys.badge_on_remote") : "На пульте";
+  const unavailBadgeText = typeof t === "function" ? t("keys.badge_not_detected") : "Не обнаружена";
+  const testText = typeof t === "function" ? t("keys.test") : "Тест";
 
   allDisplayKeys.forEach((code, idx) => {
     const isAvail = activeSet.has(code);
@@ -147,17 +167,12 @@ function renderMapperTable(isPresetChange = false) {
     const curVal = mappings[code] || "NONE";
     const selId = `csel-map-${idx}`;
 
-    const actionOptions = [...allActions];
-    if (!actionOptions.some(a => a.value === curVal) && curVal.startsWith("SCRIPT:")) {
-      const scriptPrefix = typeof t === "function" ? t("action.script_prefix", "Сценарий") : "Сценарий";
-      actionOptions.push({ value: curVal, label: `[${scriptPrefix}] ${curVal.substring(7)}` });
+    let actionOptions = allActions;
+    if (!allActions.some(a => a.value === curVal) && curVal.startsWith("SCRIPT:")) {
+      actionOptions = [...allActions, { value: curVal, label: `[${scriptPrefix}] ${curVal.substring(7)}` }];
     }
 
-    const badgeText = isAvail
-      ? (typeof t === "function" ? t("keys.badge_on_remote") : "На пульте")
-      : (typeof t === "function" ? t("keys.badge_not_detected") : "Не обнаружена");
-    const testText = typeof t === "function" ? t("keys.test") : "Тест";
-
+    const badgeText = isAvail ? availBadgeText : unavailBadgeText;
     const badge = `<span class="${isAvail ? 'badge-remote-avail' : 'badge-remote-unavail'}">${badgeText}</span>`;
 
     tr.innerHTML = `
@@ -173,10 +188,13 @@ function renderMapperTable(isPresetChange = false) {
         <button class="apple-btn" onclick="testMapperRow('${selId}')" style="padding:5px 11px; font-size:11.5px; border-radius:8px;">${testText}</button>
       </td>
     `;
-    tbody.appendChild(tr);
 
-    createCustomSelect(selId, actionOptions, curVal, () => checkMapperDirtyState());
+    const selEl = tr.querySelector(".mapper-csel");
+    createCustomSelect(selEl, actionOptions, curVal, () => checkMapperDirtyState());
+    frag.appendChild(tr);
   });
+
+  tbody.appendChild(frag);
 
   if (!isPresetChange) {
     captureSavedState();
@@ -223,10 +241,13 @@ async function autoSaveQolSettings() {
 
 async function saveMapperConfig() {
   if (!invoke || !appConfig) return;
-  document.querySelectorAll(".mapper-csel").forEach(el => {
-    const k = el.getAttribute("data-key");
-    appConfig.key_mappings[k] = el.getAttribute("data-value");
-  });
+  const mapperSelects = document.querySelectorAll(".mapper-csel");
+  if (!mapperNeedsRender && mapperSelects.length > 0) {
+    mapperSelects.forEach(el => {
+      const k = el.getAttribute("data-key");
+      appConfig.key_mappings[k] = el.getAttribute("data-value");
+    });
+  }
   appConfig.osd_name = document.getElementById("inp-osd").value.trim();
   appConfig.pa_override = selectedPa;
   if (currentProfile) appConfig.active_profile_id = currentProfile.id;

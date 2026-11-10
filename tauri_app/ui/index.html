@@ -3,11 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CEC Studio</title>
+  <title>HDMI-CEC Studio</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <style>
+    html, body { background: #070709; color: #F5F5F7; }
+    body.app-initializing * {
+      transition: none !important;
+      animation: none !important;
+    }
+  </style>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="app-initializing">
 
   <!-- ==================== КАСТОМНАЯ ШАПКА ОКНА (TITLEBAR) ==================== -->
   <header class="app-titlebar" data-tauri-drag-region>
@@ -53,7 +60,7 @@
 
       <!-- ==================== ЭКРАН 0: ПУЛЬТ ==================== -->
       <section class="view-section" id="view-remote" style="position:relative;">
-        <div class="minimal-stage is-blurred" id="remote-stage">
+        <div class="minimal-stage" id="remote-stage">
 
           <!-- Левая колонка -->
           <div class="minimal-info-col">
@@ -63,9 +70,9 @@
                 <div style="min-width:0; flex:1;">
                   <div class="tv-badge">
                     <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-                    <span id="min-system-badge">Philips EasyLink</span>
+                    <span id="min-system-badge">HDMI-CEC</span>
                   </div>
-                  <div class="tv-model-title" id="min-tv-title">Philips 32PFL9705H</div>
+                  <div class="tv-model-title" id="min-tv-title">HDMI-CEC Studio</div>
                   <div class="tv-status-human" id="min-status-desc" data-i18n="remote.syncing">Синхронизация...</div>
                 </div>
               </div>
@@ -80,12 +87,7 @@
               </div>
 
               <!-- Входы: чистая линейка кнопок без лишних надписей -->
-              <div class="hdmi-strip" id="min-hdmi-strip">
-                <div class="hdmi-chip" onclick="switchHdmi('1000', this)">HDMI 1</div>
-                <div class="hdmi-chip" onclick="switchHdmi('2000', this)">HDMI 2</div>
-                <div class="hdmi-chip active-input" onclick="switchHdmi('3000', this)">HDMI 3</div>
-                <div class="hdmi-chip" onclick="switchHdmi('4000', this)">Side</div>
-              </div>
+              <div class="hdmi-strip" id="min-hdmi-strip"></div>
             </div>
 
             <!-- Единственный переключатель пульта: включен / выключен -->
@@ -179,7 +181,7 @@
         </div>
 
         <!-- Модальное перекрытие раздела «Пульт» при отсутствии связи с телевизором или модулем -->
-        <div class="remote-offline-overlay visible" id="remote-offline-overlay">
+        <div class="remote-offline-overlay" id="remote-offline-overlay">
           <div class="remote-offline-modal">
             <div class="remote-offline-icon-wrap">
               <svg class="ico" style="width:28px;height:28px;" viewBox="0 0 24 24">

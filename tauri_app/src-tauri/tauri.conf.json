@@ -16,35 +16,9 @@
         "height": 800,
         "resizable": true,
         "fullscreen": false,
-        "decorations": false
-      },
-      {
-        "label": "osk",
-        "title": "Smart On-Screen Keyboard",
-        "url": "osk.html",
-        "width": 1040,
-        "height": 380,
         "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
         "visible": false,
-        "resizable": false,
-        "shadow": false
-      },
-      {
-        "label": "hud",
-        "title": "CEC HUD Overlay",
-        "url": "hud.html",
-        "width": 480,
-        "height": 170,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": false,
-        "resizable": false,
-        "shadow": false
+        "backgroundColor": "#070709"
       }
     ],
     "security": {

@@ -405,57 +405,69 @@
     };
 
     async function initHud() {
+      if (listen) {
+        await Promise.all([
+          listen("mouse-mode-changed", (ev) => {
+            isMouseActive = !!ev.payload;
+            if (isMouseActive) {
+              showMouseCockpit();
+            } else {
+              hideMouseCockpit();
+            }
+          }),
+          listen("mouse-sector-jump", (ev) => {
+            const s = (ev.payload && typeof ev.payload.sector === "number") ? ev.payload.sector : 5;
+            highlightSector(s);
+          }),
+          listen("show-hud", (ev) => {
+            handleShowHudPayload(ev.payload);
+          })
+        ]);
+      }
+
       if (invoke) {
         try {
-          const active = await invoke("get_mouse_mode");
-          if (active) {
-            isMouseActive = true;
-            showMouseCockpit();
+          const st = await invoke("get_initial_hud_state");
+          if (st) {
+            if (st.mouse_active) {
+              isMouseActive = true;
+              if (st.last_sector && typeof st.last_sector.sector === "number") {
+                highlightSector(st.last_sector.sector);
+              } else {
+                showMouseCockpit();
+              }
+            } else if (st.last_show) {
+              handleShowHudPayload(st.last_show);
+            }
           }
         } catch (_) {}
       }
-      if (listen) {
-        await listen("mouse-mode-changed", (ev) => {
-          isMouseActive = !!ev.payload;
-          if (isMouseActive) {
-            showMouseCockpit();
-          } else {
-            hideMouseCockpit();
-          }
-        });
+    }
 
-        await listen("mouse-sector-jump", (ev) => {
-          const s = (ev.payload && typeof ev.payload.sector === "number") ? ev.payload.sector : 5;
-          highlightSector(s);
-        });
-
-        await listen("show-hud", (ev) => {
-          const p = ev.payload;
-          if (!p) return;
-          if (p.mouse_active === true) {
-            isMouseActive = true;
-            showMouseCockpit();
-            return;
-          }
-          if (p.mouse_active === false) {
-            isMouseActive = false;
-            hideMouseCockpit();
-            return;
-          }
-          if (!isMouseActive) {
-            showOverlay(p.icon || "command", p.title || "HDMI-CEC", p.desc || "", p.progress);
-          } else {
-            const lbl = document.getElementById("cockpit-sector-label");
-            if (lbl && p.title) {
-              lbl.textContent = p.title;
-              setTimeout(() => {
-                if (isMouseActive) {
-                  lbl.textContent = (activeSector === 5 || activeSector === 0) ? "Сектор 5 (Центр)" : `Сектор ${activeSector}`;
-                }
-              }, 1400);
+    function handleShowHudPayload(p) {
+      if (!p) return;
+      if (p.mouse_active === true) {
+        isMouseActive = true;
+        showMouseCockpit();
+        return;
+      }
+      if (p.mouse_active === false) {
+        isMouseActive = false;
+        hideMouseCockpit();
+        return;
+      }
+      if (!isMouseActive) {
+        showOverlay(p.icon || "command", p.title || "HDMI-CEC", p.desc || "", p.progress);
+      } else {
+        const lbl = document.getElementById("cockpit-sector-label");
+        if (lbl && p.title) {
+          lbl.textContent = p.title;
+          setTimeout(() => {
+            if (isMouseActive) {
+              lbl.textContent = (activeSector === 5 || activeSector === 0) ? "Сектор 5 (Центр)" : `Сектор ${activeSector}`;
             }
-          }
-        });
+          }, 1400);
+        }
       }
     }
 

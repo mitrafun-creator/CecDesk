@@ -56,9 +56,13 @@
     { xRatio: 0.90, yRatio: 0.62, radiusRatio: 0.38, speedX: -0.0003, speedY: 0.0005, phase: 4.9, alpha: 0.09 }
   ];
 
+  const CANVAS_SCALE = 0.25;
+  const FRAME_INTERVAL_MS = 33;
+
   // Мягкие импульсы (риплы тумана при клике по вкладкам/кнопкам)
   const ripples = [];
   let time = 0;
+  let lastFrameTime = 0;
 
   function initAmbientMist() {
     canvas = document.getElementById("ambient-canvas");
@@ -71,7 +75,12 @@
     ctx = canvas.getContext("2d", { alpha: true });
 
     onResize();
+    drawFrame(0);
     window.addEventListener("resize", onResize, { passive: true });
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", () => {
+      if (!document.hidden) startAnimation();
+    });
 
     // Мягкий рассеивающийся импульс тумана при переключении разделов и кликах
     document.addEventListener("click", (e) => {
@@ -82,20 +91,21 @@
       }
     }, { passive: true });
 
-    startAnimation();
+    if (!document.hidden) {
+      startAnimation();
+    }
   }
 
   function onResize() {
     if (!canvas) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
+    width = Math.max(1, window.innerWidth);
+    height = Math.max(1, window.innerHeight);
+    canvas.width = Math.max(1, Math.floor(width * CANVAS_SCALE));
+    canvas.height = Math.max(1, Math.floor(height * CANVAS_SCALE));
     canvas.style.width = width + "px";
     canvas.style.height = height + "px";
     if (ctx) {
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(CANVAS_SCALE, 0, 0, CANVAS_SCALE, 0, 0);
     }
   }
 
@@ -115,9 +125,9 @@
     return a + (b - a) * t;
   }
 
-  function updateColors() {
+  function updateColors(dtScale = 1) {
     const target = COLOR_PALETTES[currentMood] || COLOR_PALETTES.blue;
-    const speed = 0.05; // Плавный переход оттенков
+    const speed = Math.min(1, 0.095 * dtScale); // Плавный переход оттенков
     for (let i = 0; i < 3; i++) {
       curColors.primary[i] = lerp(curColors.primary[i], target.primary[i], speed);
       curColors.secondary[i] = lerp(curColors.secondary[i], target.secondary[i], speed);
@@ -143,14 +153,18 @@
     ctx.fill();
   }
 
-  function render() {
-    if (!ctx || width === 0 || height === 0) {
-      animFrameId = requestAnimationFrame(render);
-      return;
-    }
+  function drawFrame(dtScale = 1) {
+    if (!ctx || width === 0 || height === 0) return;
 
-    time += 0.010;
-    updateColors();
+    if (dtScale > 0) {
+      time += 0.020 * dtScale;
+      updateColors(dtScale);
+    } else {
+      const target = COLOR_PALETTES[currentMood] || COLOR_PALETTES.blue;
+      curColors.primary = [...target.primary];
+      curColors.secondary = [...target.secondary];
+      curColors.glow = [...target.glow];
+    }
 
     ctx.clearRect(0, 0, width, height);
 
@@ -171,8 +185,10 @@
     // Мягкие расходящиеся импульсы тумана (растворяются в фоне)
     for (let i = ripples.length - 1; i >= 0; i--) {
       const rip = ripples[i];
-      rip.radius += rip.growth;
-      rip.alpha *= 0.96;
+      if (dtScale > 0) {
+        rip.radius += rip.growth * 2 * dtScale;
+        rip.alpha *= Math.pow(0.96, 2 * dtScale);
+      }
 
       if (rip.alpha > 0.003 && rip.radius < rip.maxRadius) {
         drawSoftMistSpot(rip.x, rip.y, rip.radius, curColors.glow, rip.alpha);
@@ -180,12 +196,43 @@
         ripples.splice(i, 1);
       }
     }
+  }
+
+  function render(ts) {
+    if (document.hidden) {
+      animFrameId = null;
+      return;
+    }
+
+    if (!lastFrameTime || ts - lastFrameTime >= FRAME_INTERVAL_MS) {
+      const elapsed = lastFrameTime ? Math.min(100, ts - lastFrameTime) : FRAME_INTERVAL_MS;
+      const dtScale = elapsed / FRAME_INTERVAL_MS;
+      lastFrameTime = ts;
+      drawFrame(dtScale);
+    }
 
     animFrameId = requestAnimationFrame(render);
   }
 
+  function onVisibilityChange() {
+    if (document.hidden) {
+      stopAnimation();
+    } else {
+      lastFrameTime = 0;
+      startAnimation();
+    }
+  }
+
+  function stopAnimation() {
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+  }
+
   function startAnimation() {
-    if (!animFrameId) {
+    if (!animFrameId && !document.hidden) {
+      lastFrameTime = 0;
       animFrameId = requestAnimationFrame(render);
     }
   }

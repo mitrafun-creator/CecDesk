@@ -79,6 +79,9 @@ let slideTimeout = null;
 function switchViewIndex(idx, btn) {
   document.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
+  if (idx === 1 && typeof window.ensureMapperRendered === "function") {
+    window.ensureMapperRendered();
+  }
   const viewport = document.querySelector(".viewport");
   const slider = document.getElementById("screens-slider");
   if (viewport) {
@@ -104,8 +107,8 @@ function switchViewIndex(idx, btn) {
 /**
  * Кастомный компонент выпадающего списка в стиле Apple macOS
  */
-function createCustomSelect(containerId, options, currentValue, onChange) {
-  const root = document.getElementById(containerId);
+function createCustomSelect(containerOrId, options, currentValue, onChange) {
+  const root = typeof containerOrId === "string" ? document.getElementById(containerOrId) : containerOrId;
   if (!root) return;
   root.innerHTML = "";
   root.setAttribute("data-value", currentValue || "");
@@ -115,31 +118,46 @@ function createCustomSelect(containerId, options, currentValue, onChange) {
 
   const trigger = document.createElement("div");
   trigger.className = "c-select-trigger";
-  trigger.innerHTML = `
-    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${curOpt.label}</span>
-    <svg class="ico" style="width:14px;height:14px;opacity:0.65;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-  `;
+  const labelSpan = document.createElement("span");
+  labelSpan.style.cssText = "overflow:hidden; text-overflow:ellipsis; white-space:nowrap;";
+  labelSpan.textContent = curOpt.label;
+  trigger.appendChild(labelSpan);
+  trigger.insertAdjacentHTML(
+    "beforeend",
+    '<svg class="ico" style="width:14px;height:14px;opacity:0.65;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+  );
 
   const menu = document.createElement("div");
   menu.className = "c-select-menu";
 
-  options.forEach(opt => {
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
     const item = document.createElement("div");
     item.className = "c-select-option" + (opt.value === curOpt.value ? " selected" : "");
+    item.dataset.value = opt.value;
+    item.dataset.label = opt.label;
     item.textContent = opt.label;
-    item.onclick = (e) => {
-      e.stopPropagation();
-      root.setAttribute("data-value", opt.value);
-      trigger.querySelector("span").textContent = opt.label;
-      menu.querySelectorAll(".c-select-option").forEach(x => x.classList.remove("selected"));
-      item.classList.add("selected");
-      root.classList.remove("open");
-      const parentPanel = root.closest(".glass-panel");
-      if (parentPanel) parentPanel.style.zIndex = "";
-      if (onChange) onChange(opt.value);
-    };
-    menu.appendChild(item);
-  });
+    frag.appendChild(item);
+  }
+  menu.appendChild(frag);
+
+  menu.onclick = (e) => {
+    const item = e.target.closest(".c-select-option");
+    if (!item) return;
+    e.stopPropagation();
+    const val = item.dataset.value;
+    const lbl = item.dataset.label;
+    root.setAttribute("data-value", val);
+    labelSpan.textContent = lbl;
+    const prevSel = menu.querySelector(".c-select-option.selected");
+    if (prevSel) prevSel.classList.remove("selected");
+    item.classList.add("selected");
+    root.classList.remove("open");
+    const parentPanel = root.closest(".glass-panel");
+    if (parentPanel) parentPanel.style.zIndex = "";
+    if (onChange) onChange(val);
+  };
 
   trigger.onclick = (e) => {
     e.stopPropagation();
@@ -170,6 +188,9 @@ function addLog(text, cls = "", writeDisk = false) {
   div.className = "log-line " + cls;
   div.textContent = fullLine;
   box.appendChild(div);
+  while (box.childElementCount > 400) {
+    box.removeChild(box.firstElementChild);
+  }
   box.scrollTop = box.scrollHeight;
 
   if (writeDisk && invoke) {
@@ -225,17 +246,15 @@ function getAdapterModelDisplay() {
   return detectedHardwareModel || "ESP32-S3";
 }
 
-async function refreshPorts() {
-  if (!invoke) return null;
-  const ports = await invoke("list_serial_ports");
+function populatePortsSelect(ports) {
   availablePortsList = ports || [];
   let preferred = null;
-  const opts = ports.map(p => {
+  const opts = availablePortsList.map(p => {
     if (p.is_preferred && !preferred) preferred = p.name;
     return { value: p.name, label: p.desc || `${p.name} • CEC-EMU` };
   });
-  const fallback = ports.length > 0 ? ports[0].name : "";
-  const stillExists = selectedPort && ports.some(p => p.name === selectedPort);
+  const fallback = availablePortsList.length > 0 ? availablePortsList[0].name : "";
+  const stillExists = selectedPort && availablePortsList.some(p => p.name === selectedPort);
   if (!stillExists) {
     selectedPort = preferred || fallback;
   }
@@ -254,21 +273,33 @@ async function refreshPorts() {
   return selectedPort;
 }
 
-async function loadProfiles() {
-  if (!invoke) return;
-  tvProfiles = await invoke("load_tv_profiles");
+async function refreshPorts() {
+  if (!invoke) return null;
+  const ports = await invoke("list_serial_ports");
+  return populatePortsSelect(ports);
+}
+
+function populateProfiles(profiles, options = {}) {
+  tvProfiles = profiles || [];
   const profCount = document.getElementById("prof-count");
   if (profCount) profCount.textContent = tvProfiles.length;
 
   const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "philips_32pfl9705h";
-  const opts = tvProfiles.map(p => ({ value: p.id, label: `${p.brand} — ${profileShortName(p)}` }));
-  createCustomSelect("csel-profile", opts, targetId, (val) => selectProfileById(val));
-
-  renderProfilesCatalog();
   if (tvProfiles.length > 0 && !currentProfile) {
     const def = tvProfiles.find(p => p.id === targetId) || tvProfiles[0];
-    selectProfileById(def.id);
+    selectProfileById(def.id, options);
+  } else {
+    const opts = tvProfiles.map(p => ({ value: p.id, label: `${p.brand} — ${profileShortName(p)}` }));
+    createCustomSelect("csel-profile", opts, targetId, (val) => selectProfileById(val));
+    createCustomSelect("csel-profile-sys", opts, targetId, (val) => selectProfileById(val));
+    renderProfilesCatalog();
   }
+}
+
+async function loadProfiles(options = {}) {
+  if (!invoke) return;
+  const profiles = await invoke("load_tv_profiles");
+  populateProfiles(profiles, options);
 }
 
 function renderProfilesCatalog() {
@@ -290,7 +321,7 @@ function renderProfilesCatalog() {
     });
 }
 
-function selectProfileById(id) {
+function selectProfileById(id, options = {}) {
   const prof = tvProfiles.find(p => p.id === id);
   if (!prof) return;
   currentProfile = prof;
@@ -344,7 +375,11 @@ function selectProfileById(id) {
   renderProfilesCatalog();
 
   renderDynamicRemote();
-  renderMapperTable();
+  if (options && options.skipMapper) {
+    if (typeof window.invalidateMapperTable === "function") window.invalidateMapperTable();
+  } else {
+    renderMapperTable();
+  }
   updateDynamicWindowTitle();
 }
 
@@ -388,19 +423,20 @@ async function saveCurrentProfileJson() {
   }
 }
 
-async function autoSetupTv() {
+async function autoSetupTv(options = {}) {
   if (!invoke) return;
-  const edid = await invoke("detect_tv_edid");
+  const edid = await invoke("detect_tv_edid").catch(() => null);
+  const skipMapper = typeof mapperNeedsRender !== "undefined" ? mapperNeedsRender : false;
   if (edid && edid.pnp_id && edid.pnp_id !== "UNK") {
     if (edid.physical_address) {
       selectedPa = edid.physical_address;
     }
     const matched = tvProfiles.find(p => p.edid_pnp_ids.includes(edid.pnp_id));
-    if (matched) selectProfileById(matched.id);
+    if (matched) selectProfileById(matched.id, { skipMapper });
   } else if (!currentProfile && tvProfiles.length > 0) {
     const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "philips_32pfl9705h";
     const fallbackProf = tvProfiles.find(p => p.id === targetId) || tvProfiles[0];
-    if (fallbackProf) selectProfileById(fallbackProf.id);
+    if (fallbackProf) selectProfileById(fallbackProf.id, { skipMapper });
   }
 
   if (!isConnected) {
@@ -408,11 +444,13 @@ async function autoSetupTv() {
     return;
   }
 
-  await sendCmd("STATE");
-  setTimeout(() => sendCmd("RAW 00 8F"), 500);
-  if (appConfig && appConfig.remote_to_os_enabled === false) {
-    setTimeout(() => sendCmd("REMOTE_OFF"), 700);
+  if (!options.skipState) {
+    await sendCmd("STATE");
+    if (appConfig && appConfig.remote_to_os_enabled === false) {
+      setTimeout(() => sendCmd("REMOTE_OFF"), 300);
+    }
   }
+  setTimeout(() => sendCmd("RAW 00 8F"), 420);
 }
 
 function updateConnectionButtonsState(connected) {
@@ -447,6 +485,7 @@ async function connectDeviceNow(forceSwitch = false) {
   if (!invoke) return;
   if (isConnected && !forceSwitch && selectedPort === connectedPort) return;
   if (!selectedPort) {
+    if (typeof window.finishStartupGrace === "function") window.finishStartupGrace();
     updateHardwareStatusUi({ connected: false, error: "Подключите адаптер к USB" }, { checked: false });
     updateDynamicWindowTitle();
     return;
@@ -461,13 +500,13 @@ async function connectDeviceNow(forceSwitch = false) {
     updateHardwareStatusUi({ connected: true, port: selectedPort }, { checked: false });
     updateDynamicWindowTitle();
     addLog(`[USB] Контроллер подключен: ${selectedPort}`, "log-ok");
-    setTimeout(() => sendCmd("INFO"), 120);
-    setTimeout(() => autoSetupTv(), 280);
+    autoSetupTv({ skipState: true });
     if (appConfig && appConfig.auto_wake_tv_on_start && !hasAutoWokenTvOnce) {
       hasAutoWokenTvOnce = true;
-      setTimeout(() => wakeAndSelectTv(), 550);
+      setTimeout(() => wakeAndSelectTv(), 500);
     }
   } catch (e) {
+    if (typeof window.finishStartupGrace === "function") window.finishStartupGrace();
     updateConnectionButtonsState(false);
     updateHardwareStatusUi({ connected: false, error: `Порт ${selectedPort} недоступен` }, { checked: false });
     updateDynamicWindowTitle();
@@ -477,6 +516,7 @@ async function connectDeviceNow(forceSwitch = false) {
 
 async function disconnectDeviceNow() {
   if (!invoke) return;
+  if (typeof window.finishStartupGrace === "function") window.finishStartupGrace();
   await invoke("disconnect_esp32");
   connectedPort = "";
   lastHwStatus.tvConnected = false;
@@ -820,6 +860,8 @@ async function flashModuleFirmwareUi(useCustomFile = false) {
 /**
  * Динамический заголовок окна ОС (Модель ТВ • Модель USB адаптера)
  */
+let lastSentWindowTitle = "";
+
 function updateDynamicWindowTitle() {
   let tvModel = typeof t === "function" ? t("window.title_tv", "ТВ") : "ТВ";
   if (currentProfile && currentProfile.name) {
@@ -841,9 +883,12 @@ function updateDynamicWindowTitle() {
     : `${model} (${selectedPort ? statusConnecting : statusDisc})`;
 
   const dynamicTitle = `HDMI-CEC Studio — ${tvModel} • ${adapterStatus}`;
-  document.title = dynamicTitle;
+  if (document.title !== dynamicTitle) {
+    document.title = dynamicTitle;
+  }
 
-  if (invoke) {
+  if (invoke && dynamicTitle !== lastSentWindowTitle) {
+    lastSentWindowTitle = dynamicTitle;
     invoke("set_window_title", { title: dynamicTitle }).catch(() => {});
   }
 }
@@ -865,18 +910,164 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  updateHardwareStatusUi({ connected: false, error: "Поиск адаптера..." }, { checked: false });
+  updateTvPowerButtonUi("syncing");
+  initFloatingTooltips();
+
+  const listenPromise = listen ? Promise.all([
+    listen("cec-rx-line", (ev) => {
+      const line = ev.payload;
+      const summary = decodeCecLine(line);
+      if (line.startsWith("OK:INFO_HW_")) {
+        const parts = line.split("_");
+        if (parts.length >= 3) {
+          detectedHardwareModel = parts[2];
+          if (parts.length >= 5) {
+            detectedFirmwareVersion = parts[4].trim();
+          }
+          updateDynamicWindowTitle();
+        }
+      }
+
+      let cls = "log-ok";
+      if (line.startsWith("RX ")) cls = "log-rx";
+      else if (line.startsWith("TX ")) cls = "log-tx";
+      else if (line.includes("ERR") || line.includes("Transmit: 0")) cls = "log-err";
+
+      if (summary) {
+        addLog(`${line.padEnd(26, ' ')} │ ${summary}`, cls);
+      } else {
+        addLog(line, cls);
+      }
+    }),
+
+    listen("cec-hardware-status", (ev) => {
+      const p = ev.payload;
+      lastHwStatus.tvConnected = p.tv_connected;
+      lastHwStatus.lineHigh = p.line_high;
+      updateHardwareStatusUi(
+        { connected: isConnected, port: selectedPort },
+        { checked: true, tvConnected: p.tv_connected, lineHigh: p.line_high },
+        document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
+      );
+    }),
+
+    listen("cec-remote-key", (ev) => {
+      const p = ev.payload;
+      pulseVirtualRemoteButton(p.code);
+
+      if (isCalibratingRemote) {
+        handleCalibrationKeyCapture(p.code);
+      }
+
+      const msg = `${p.button} : ${p.os_action}`;
+      addLog(`[Пульт] ${msg}`, "log-rem");
+    }),
+
+    listen("cec-remote-release", () => {
+      document.querySelectorAll(".rem-active").forEach(el => el.classList.remove("rem-active"));
+    }),
+
+    listen("mouse-mode-changed", (ev) => {
+      const isMouse = ev.payload;
+      if (isMouse) {
+        setHumanStatus("online", "Мышь ВКЛ", "Управление курсором (Стрелки / ЛКМ / ПКМ)");
+      } else {
+        setHumanStatus("online", "Готово", "Обычный режим пульта");
+      }
+    }),
+
+    listen("cec-disconnected", () => {
+      connectedPort = "";
+      updateConnectionButtonsState(false);
+      updateHardwareStatusUi(
+        { connected: false, error: "Потеряна связь с USB-портом" },
+        { checked: false },
+        document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
+      );
+      updateDynamicWindowTitle();
+      addLog("[USB] Устройство отключено или порт закрыт!", "log-err");
+    }),
+
+    listen("cec-auto-reconnecting", async (ev) => {
+      const port = ev.payload;
+      if (!isConnected) {
+        selectedPort = port;
+        await refreshPorts();
+        updateHardwareStatusUi(
+          { connected: false, reconnecting: true, port },
+          { checked: false },
+          document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
+        );
+        updateDynamicWindowTitle();
+        addLog(`[Watchdog] Авто-восстановление USB (${port})...`, "log-ok");
+        await connectDeviceNow(true);
+      }
+    }),
+
+    listen("cec-toast", (ev) => {
+      const msg = ev.payload;
+      addLog(`[Система] ${msg}`, "log-ok");
+    }),
+
+    listen("fw-flash-progress", (ev) => {
+      const p = ev.payload;
+      if (!p) return;
+      const wrap = document.getElementById("fw-progress-wrap");
+      const bar = document.getElementById("fw-progress-bar");
+      const txt = document.getElementById("lbl-fw-progress-text");
+      if (wrap) wrap.style.display = "block";
+      if (bar) {
+        bar.style.width = `${p.percent || 0}%`;
+        bar.style.background = p.percent >= 100 ? "var(--apple-green)" : "var(--apple-blue)";
+      }
+      if (txt) {
+        txt.textContent = p.message || "";
+        txt.style.color = p.percent >= 100 ? "var(--apple-green)" : "var(--text-secondary)";
+      }
+    })
+  ]) : Promise.resolve();
 
   if (invoke) {
-    invoke("get_app_version").then(ver => {
+    const [
+      ver,
+      cfg,
+      profiles,
+      ports,
+      scripts,
+      logPaths,
+      autostartEnabled
+    ] = await Promise.all([
+      invoke("get_app_version").catch(() => null),
+      invoke("get_app_config").catch(() => null),
+      invoke("load_tv_profiles").catch(() => []),
+      invoke("list_serial_ports").catch(() => []),
+      invoke("list_custom_scripts").catch(() => []),
+      invoke("get_log_paths").catch(() => null),
+      invoke("get_autostart").catch(() => false),
+      listenPromise
+    ]);
+
+    if (Array.isArray(scripts)) {
+      customScripts = scripts;
+    }
+
+    if (ver) {
       const lblVer = document.getElementById("lbl-app-version-val");
       if (lblVer) lblVer.textContent = ver;
       const btnVer = document.getElementById("btn-check-update");
       if (btnVer) btnVer.textContent = `v${ver}`;
-    }).catch(() => {});
+    }
 
-    appConfig = await invoke("get_app_config");
-    if (appConfig) {
+    const chkAuto = document.getElementById("chk-autostart");
+    if (chkAuto) chkAuto.checked = !!autostartEnabled;
+
+    if (logPaths && logPaths.latest_log) {
+      const lbl = document.getElementById("lbl-log-file");
+      if (lbl) lbl.textContent = logPaths.latest_log;
+    }
+
+    if (cfg) {
+      appConfig = cfg;
       if (typeof applyLocalization === "function") {
         applyLocalization(appConfig.language || "ru");
       }
@@ -911,150 +1102,51 @@ window.addEventListener("DOMContentLoaded", async () => {
       renderPcOffModeSelect();
     }
 
-    invoke("get_autostart").then(enabled => {
-      const chk = document.getElementById("chk-autostart");
-      if (chk) chk.checked = !!enabled;
-    }).catch(() => {});
+    populateProfiles(profiles, { skipMapper: true });
+    const prefPort = populatePortsSelect(ports);
 
-    await loadCustomScripts();
-    renderDynamicRemote();
-    renderMapperTable();
-
-    const logPaths = await invoke("get_log_paths");
-    if (logPaths && logPaths.latest_log) {
-      const lbl = document.getElementById("lbl-log-file");
-      if (lbl) lbl.textContent = logPaths.latest_log;
-    }
-  }
-
-  if (listen) {
-    await listen("cec-rx-line", (ev) => {
-      const line = ev.payload;
-      const summary = decodeCecLine(line);
-      if (line.startsWith("OK:INFO_HW_")) {
-        const parts = line.split("_");
-        if (parts.length >= 3) {
-          detectedHardwareModel = parts[2];
-          if (parts.length >= 5) {
-            detectedFirmwareVersion = parts[4].trim();
-          }
-          updateDynamicWindowTitle();
-        }
-      }
-
-      let cls = "log-ok";
-      if (line.startsWith("RX ")) cls = "log-rx";
-      else if (line.startsWith("TX ")) cls = "log-tx";
-      else if (line.includes("ERR") || line.includes("Transmit: 0")) cls = "log-err";
-
-      if (summary) {
-        addLog(`${line.padEnd(26, ' ')} │ ${summary}`, cls);
-      } else {
-        addLog(line, cls);
-      }
-    });
-
-    await listen("cec-hardware-status", (ev) => {
-      const p = ev.payload;
-      lastHwStatus.tvConnected = p.tv_connected;
-      lastHwStatus.lineHigh = p.line_high;
+    if (prefPort) {
+      if (typeof window.startStartupGrace === "function") window.startStartupGrace(900);
       updateHardwareStatusUi(
-        { connected: isConnected, port: selectedPort },
-        { checked: true, tvConnected: p.tv_connected, lineHigh: p.line_high },
-        document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
-      );
-    });
-
-    await listen("cec-remote-key", (ev) => {
-      const p = ev.payload;
-      pulseVirtualRemoteButton(p.code);
-
-      if (isCalibratingRemote) {
-        handleCalibrationKeyCapture(p.code);
-      }
-
-      const msg = `${p.button} : ${p.os_action}`;
-      addLog(`[Пульт] ${msg}`, "log-rem");
-    });
-
-    await listen("cec-remote-release", () => {
-      document.querySelectorAll(".rem-active").forEach(el => el.classList.remove("rem-active"));
-    });
-
-    await listen("mouse-mode-changed", (ev) => {
-      const isMouse = ev.payload;
-      if (isMouse) {
-        setHumanStatus("online", "Мышь ВКЛ", "Управление курсором (Стрелки / ЛКМ / ПКМ)");
-      } else {
-        setHumanStatus("online", "Готово", "Обычный режим пульта");
-      }
-    });
-
-    await listen("cec-disconnected", () => {
-      connectedPort = "";
-      updateConnectionButtonsState(false);
-      updateHardwareStatusUi(
-        { connected: false, error: "Потеряна связь с USB-портом" },
+        { connected: false, reconnecting: true, port: prefPort },
         { checked: false },
         document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
       );
       updateDynamicWindowTitle();
-      addLog("[USB] Устройство отключено или порт закрыт!", "log-err");
-    });
-
-    await listen("cec-auto-reconnecting", async (ev) => {
-      const port = ev.payload;
-      if (!isConnected) {
-        selectedPort = port;
-        await refreshPorts();
-        updateHardwareStatusUi(
-          { connected: false, reconnecting: true, port },
-          { checked: false },
-          document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
-        );
-        updateDynamicWindowTitle();
-        addLog(`[Watchdog] Авто-восстановление USB (${port})...`, "log-ok");
-        await connectDeviceNow(true);
-      }
-    });
-
-    await listen("cec-toast", (ev) => {
-      const msg = ev.payload;
-      addLog(`[Система] ${msg}`, "log-ok");
-    });
-
-    await listen("fw-flash-progress", (ev) => {
-      const p = ev.payload;
-      if (!p) return;
-      const wrap = document.getElementById("fw-progress-wrap");
-      const bar = document.getElementById("fw-progress-bar");
-      const txt = document.getElementById("lbl-fw-progress-text");
-      if (wrap) wrap.style.display = "block";
-      if (bar) {
-        bar.style.width = `${p.percent || 0}%`;
-        bar.style.background = p.percent >= 100 ? "var(--apple-green)" : "var(--apple-blue)";
-      }
-      if (txt) {
-        txt.textContent = p.message || "";
-        txt.style.color = p.percent >= 100 ? "var(--apple-green)" : "var(--text-secondary)";
-      }
-    });
+      // Начинаем подключение сразу без блокировки первого кадра окна
+      connectDeviceNow(true);
+    } else {
+      if (typeof window.finishStartupGrace === "function") window.finishStartupGrace();
+      updateHardwareStatusUi(
+        { connected: false, error: "Подключите адаптер к USB" },
+        { checked: false },
+        document.getElementById("chk-remote-os") ? document.getElementById("chk-remote-os").checked : true
+      );
+      updateDynamicWindowTitle();
+    }
+  } else {
+    await listenPromise;
+    if (typeof window.finishStartupGrace === "function") window.finishStartupGrace();
   }
 
-  await loadProfiles();
-  updateDynamicWindowTitle();
-  const prefPort = await refreshPorts();
-  if (prefPort) {
-    setTimeout(() => toggleConnect(), 250);
-  }
+  // Первый кадр полностью подготовлен: снимаем блокировку анимаций и открываем окно без морганий
+  document.body.classList.remove("app-initializing");
+  void document.body.offsetHeight;
+  setTimeout(() => {
+    if (invoke) {
+      invoke("show_main_window").catch(() => {});
+    }
+  }, 0);
 
-  // Инициализация мгновенных всплывающих подсказок (Apple Floating Tooltips)
-  initFloatingTooltips();
+  // Отложенная отрисовка таблицы кнопок и проверка обновлений после показа главного окна
+  setTimeout(() => {
+    if (typeof window.ensureMapperRendered === "function") {
+      window.ensureMapperRendered();
+    }
+  }, 300);
+  setTimeout(() => checkAppUpdatesUi(true), 1800);
 
-  // Тихая проверка обновлений при старте (с задержкой 1.5 сек, не блокируя UI)
-  setTimeout(() => checkAppUpdatesUi(true), 1500);
-
-  // Глобальные горячие клавиши: Ctrl+1..3 переключение вкладок, Ctrl+S сохранение маппера
+  // Глобальные горячие клавиши: Ctrl+1..4 переключение вкладок, Ctrl+S сохранение маппера
   window.addEventListener("keydown", (e) => {
     if (e.ctrlKey && !e.shiftKey && !e.altKey) {
       if (e.key === "1") {

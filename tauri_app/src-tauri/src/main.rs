@@ -12,18 +12,19 @@ mod osk;
 mod platform;
 mod types;
 mod updater;
+mod window_manager;
 
 use config::{
     find_logs_dir, load_or_create_config, rotate_session_logs,
 };
 use hardware::{
-    safe_lock, spawn_mouse_revert_watchdog, spawn_usb_watchdog, AppState,
+    safe_lock, spawn_mouse_revert_watchdog, spawn_usb_watchdog, AppState, PendingHudState,
 };
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager};
@@ -102,7 +103,6 @@ fn main() {
     }));
 
     let logs_dir = find_logs_dir();
-    rotate_session_logs(&logs_dir, 15);
 
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -119,6 +119,13 @@ fn main() {
         format!("\u{FEFF}=== HDMI-CEC STUDIO LOG STARTED (ts: {}) ===\n", ts),
     );
 
+    let logs_dir_rotate = logs_dir.clone();
+    std::thread::spawn(move || {
+        rotate_session_logs(&logs_dir_rotate, 15);
+    });
+
+    let is_minimized_arg = std::env::args().any(|a| a == "--minimized" || a == "-m");
+
     let initial_cfg = load_or_create_config();
     let writer_shared = Arc::new(Mutex::new(None));
     let config_shared = Arc::new(Mutex::new(initial_cfg));
@@ -132,6 +139,8 @@ fn main() {
     let last_seek_shared = Arc::new(Mutex::new(None));
     let osk_visible_shared = Arc::new(AtomicBool::new(false));
     let calibration_mode_shared = Arc::new(AtomicBool::new(false));
+    let initial_show_pending = Arc::new(AtomicBool::new(!is_minimized_arg));
+    let pending_hud_shared = Arc::new(Mutex::new(PendingHudState::default()));
 
     let state = AppState {
         serial_writer: Arc::clone(&writer_shared),
@@ -148,6 +157,8 @@ fn main() {
         last_seek_press: Arc::clone(&last_seek_shared),
         osk_visible: Arc::clone(&osk_visible_shared),
         calibration_mode: Arc::clone(&calibration_mode_shared),
+        initial_show_pending: Arc::clone(&initial_show_pending),
+        pending_hud: Arc::clone(&pending_hud_shared),
     };
 
     let mouse_mode_tray = Arc::clone(&mouse_mode_shared);
@@ -159,6 +170,7 @@ fn main() {
     let config_watchdog = Arc::clone(&config_shared);
     let port_watchdog = Arc::clone(&port_name_shared);
     let manual_disc_watchdog = Arc::clone(&manual_disc_shared);
+    let initial_show_setup = Arc::clone(&initial_show_pending);
 
     let builder = tauri::Builder::default()
         .manage(state)
@@ -174,19 +186,25 @@ fn main() {
             log_step("3. setup() callback entered");
             let app_handle = app.handle().clone();
 
-            let is_minimized_arg = std::env::args().any(|a| a == "--minimized" || a == "-m");
-            if let Some(win) = app.get_webview_window("main") {
-                if !is_minimized_arg {
-                    let _ = win.show();
-                    let _ = win.unminimize();
-                    let _ = win.set_focus();
-                } else {
+            if is_minimized_arg {
+                if let Some(win) = app.get_webview_window("main") {
                     let _ = win.hide();
                 }
-            }
-
-            if let Some(hud) = app.get_webview_window("hud") {
-                let _ = hud.hide();
+            } else {
+                // Страховочный показ окна, если WebView задержит вызов show_main_window
+                let app_fallback = app.handle().clone();
+                let show_flag = Arc::clone(&initial_show_setup);
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(1400));
+                    if show_flag.swap(false, Ordering::SeqCst) {
+                        if let Some(win) = app_fallback.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.unminimize();
+                            let _ = win.set_focus();
+                            crate::platform::set_gamescope_overlay_props(&win, false);
+                        }
+                    }
+                });
             }
 
             // ==================== СИСТЕМНЫЙ ТРЕЙ (ФОНОВЫЙ РЕЖИМ + STEAM BIG PICTURE) ====================
@@ -236,6 +254,8 @@ fn main() {
             )?;
 
             let osk_visible_tray = Arc::clone(&osk_visible_shared);
+            let initial_show_tray = Arc::clone(&initial_show_setup);
+            let initial_show_click = Arc::clone(&initial_show_setup);
             log_step("3.2 building tray icon");
             let tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
@@ -244,6 +264,7 @@ fn main() {
                 .on_menu_event(move |app, event| {
                     match event.id.as_ref() {
                         "show" => {
+                            initial_show_tray.store(false, Ordering::SeqCst);
                             if let Some(win) = app.get_webview_window("main") {
                                 let _ = win.show();
                                 let _ = win.unminimize();
@@ -257,21 +278,40 @@ fn main() {
                             }
                         }
                         "steam_bp" => {
-                            let res = crate::platform::toggle_steam_big_picture();
-                            let _ = app.emit("cec-toast", res);
+                            let app_clone = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                let res = tauri::async_runtime::spawn_blocking(crate::platform::toggle_steam_big_picture)
+                                    .await
+                                    .unwrap_or_default();
+                                let _ = app_clone.emit("cec-toast", res);
+                            });
                         }
                         "steam_exit_desktop" => {
-                            let res = crate::platform::exit_steam_big_picture_to_desktop();
-                            let _ = app.emit("cec-toast", res);
+                            let app_clone = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                let res = tauri::async_runtime::spawn_blocking(crate::platform::exit_steam_big_picture_to_desktop)
+                                    .await
+                                    .unwrap_or_default();
+                                let _ = app_clone.emit("cec-toast", res);
+                            });
                         }
                         "steam_osk" => {
-                            crate::osk::toggle_osk_helper(app, &osk_visible_tray, None);
+                            let app_clone = app.clone();
+                            let osk_vis = Arc::clone(&osk_visible_tray);
+                            tauri::async_runtime::spawn(async move {
+                                let _ = tauri::async_runtime::spawn_blocking(move || {
+                                    crate::osk::toggle_osk_helper(&app_clone, &osk_vis, None);
+                                })
+                                .await;
+                            });
                         }
                         "toggle_mouse" => {
-                            let mut is_m = safe_lock(&mouse_mode_tray);
-                            *is_m = !*is_m;
-                            *safe_lock(&last_mouse_act_tray) = Instant::now();
-                            let state_now = *is_m;
+                            let state_now = {
+                                let mut is_m = safe_lock(&mouse_mode_tray);
+                                *is_m = !*is_m;
+                                *safe_lock(&last_mouse_act_tray) = Instant::now();
+                                *is_m
+                            };
                             let _ = app.emit("mouse-mode-changed", state_now);
                             let msg = if state_now {
                                 "Режим мыши ВКЛ"
@@ -279,23 +319,17 @@ fn main() {
                                 "Режим мыши ВЫКЛ"
                             };
                             let _ = app.emit("cec-toast", msg);
-                            let _ = app.emit(
-                                "show-hud",
-                                serde_json::json!({
-                                    "icon": "mouse",
-                                    "title": if state_now { "Режим мыши активен" } else { "Режим мыши выключен" },
-                                    "desc": if state_now { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
-                                    "mouse_active": state_now
-                                }),
-                            );
-                            if let Some(hud) = app.get_webview_window("hud") {
-                                if state_now {
-                                    let _ = hud.show();
-                                    let _ = hud.unminimize();
-                                    crate::platform::setup_hud_window(&hud);
-                                } else {
-                                    crate::platform::hide_hud_window_os(&hud);
-                                }
+                            let payload = serde_json::json!({
+                                "icon": "mouse",
+                                "title": if state_now { "Режим мыши активен" } else { "Режим мыши выключен" },
+                                "desc": if state_now { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
+                                "mouse_active": state_now
+                            });
+                            if state_now {
+                                crate::window_manager::emit_and_show_hud(app, Some(payload), None);
+                            } else {
+                                let _ = app.emit("show-hud", &payload);
+                                crate::window_manager::hide_hud_if_exists(app);
                             }
                         }
                         "quit" => {
@@ -304,7 +338,7 @@ fn main() {
                         _ => {}
                     }
                 })
-                .on_tray_icon_event(|tray, event| {
+                .on_tray_icon_event(move |tray, event| {
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
@@ -316,6 +350,7 @@ fn main() {
                             if win.is_visible().unwrap_or(false) {
                                 let _ = win.hide();
                             } else {
+                                initial_show_click.store(false, Ordering::SeqCst);
                                 let _ = win.show();
                                 let _ = win.unminimize();
                                 let _ = win.set_focus();
@@ -346,6 +381,8 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::show_main_window,
+            commands::get_initial_hud_state,
             commands::list_serial_ports,
             commands::list_audio_endpoints,
             commands::set_audio_device,

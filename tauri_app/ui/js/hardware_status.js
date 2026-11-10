@@ -8,6 +8,49 @@ let lineLowDebounceTimer = null;
 let confirmedLineLow = false;
 let tvPowerPingWatchdog = null;
 let lastTvPowerVerifiedTime = 0;
+let isStartupGrace = true;
+let startupGraceTimer = null;
+
+function startStartupGrace(durationMs = 900) {
+  isStartupGrace = true;
+  if (startupGraceTimer) clearTimeout(startupGraceTimer);
+  startupGraceTimer = setTimeout(() => {
+    finishStartupGrace();
+  }, durationMs);
+}
+
+function finishStartupGrace() {
+  if (startupGraceTimer) {
+    clearTimeout(startupGraceTimer);
+    startupGraceTimer = null;
+  }
+  if (!isStartupGrace) return;
+  isStartupGrace = false;
+  const isTvOnline = lastHwStatus.usbConnected && lastHwStatus.lineHigh && lastHwStatus.tvConnected;
+  const curPort = lastHwStatus.port || (typeof selectedPort !== "undefined" ? selectedPort : "") || "COM10";
+  updateRemoteOfflineOverlay(isTvOnline, false, curPort);
+}
+
+function setHumanStatus(mode, shortText, desc) {
+  const descEl = document.getElementById("min-status-desc");
+  const text = desc || shortText;
+  if (descEl && text) {
+    descEl.textContent = text;
+  }
+  if (typeof window.setAmbientMood === "function") {
+    if (mode === "offline" || mode === "error") {
+      window.setAmbientMood("red");
+    } else if (mode === "standby" || mode === "warning") {
+      window.setAmbientMood("amber", 1800);
+    } else if (mode === "online") {
+      window.setAmbientMood("green", 1400);
+    }
+  }
+}
+
+window.startStartupGrace = startStartupGrace;
+window.finishStartupGrace = finishStartupGrace;
+window.setHumanStatus = setHumanStatus;
 
 /**
  * Единая умная кнопка питания ТВ: Включить / Выключить / Определение состояния
@@ -167,8 +210,20 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
   // 2. Связь с ТВ (CEC) (лампочка #lamp-cec)
   const lampCec = document.getElementById("lamp-cec");
   const cecBadge = document.getElementById("hw-cec-badge");
+  const isReconnecting = !!(usbState && usbState.reconnecting);
 
-  if (!lastHwStatus.usbConnected) {
+  if (!lastHwStatus.usbConnected && isReconnecting) {
+    const tipText = "Опрос шины...";
+    if (lampCec) {
+      lampCec.className = "status-lamp lamp-yellow";
+      lampCec.setAttribute("data-tooltip", tipText);
+      lampCec.removeAttribute("title");
+    }
+    if (cecBadge) {
+      cecBadge.className = "hw-badge badge-warning";
+      cecBadge.textContent = "Опрос...";
+    }
+  } else if (!lastHwStatus.usbConnected) {
     const tipText = "Нет питания USB";
     if (lampCec) {
       lampCec.className = "status-lamp lamp-gray";
@@ -262,8 +317,10 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
 
   // Обновление состояния Ambient Fluid
   if (typeof window.setAmbientMood === "function") {
-    if (!lastHwStatus.usbConnected || confirmedLineLow) {
+    if ((!lastHwStatus.usbConnected && !isReconnecting) || confirmedLineLow) {
       window.setAmbientMood("red");
+    } else if (isReconnecting || isStartupGrace) {
+      window.setAmbientMood("blue");
     } else if (lastHwStatus.lineHigh && lastHwStatus.tvConnected) {
       window.setAmbientMood("blue");
     }
@@ -408,6 +465,14 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
   if (!stage || !overlay) return;
 
   if (isTvOnline) {
+    if (startupGraceTimer) {
+      clearTimeout(startupGraceTimer);
+      startupGraceTimer = null;
+    }
+    isStartupGrace = false;
+    stage.classList.remove("is-blurred");
+    overlay.classList.remove("visible");
+  } else if (isStartupGrace) {
     stage.classList.remove("is-blurred");
     overlay.classList.remove("visible");
   } else {
@@ -606,9 +671,3 @@ function decodeCecLine(line) {
 
   return name;
 }
-
-// Первоначальная инициализация в безопасном состоянии
-window.addEventListener("DOMContentLoaded", () => {
-  updateTvPowerButtonUi("syncing");
-  updateHardwareStatusUi({ connected: false }, { checked: false }, true);
-});

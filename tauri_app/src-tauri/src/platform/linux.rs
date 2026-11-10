@@ -531,6 +531,19 @@ pub fn set_gamescope_overlay_props(win: &WebviewWindow, is_hud_or_osk: bool) {
     let _ = Command::new("sh").args(["-c", &script]).spawn();
 }
 
+pub fn try_native_osk() -> bool {
+    if is_gamescope_session() || is_steam_running() {
+        return run_steam_uri("steam://open/keyboard");
+    }
+    false
+}
+
+pub fn try_hide_native_osk() {
+    if is_gamescope_session() || is_steam_running() {
+        let _ = run_steam_uri("steam://close/keyboard");
+    }
+}
+
 pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
     // В SteamOS / Steam Big Picture есть собственная нативная экранная клавиатура с полной поддержкой пульта/геймпада.
     // Если запущен Steam или активна сессия Gamescope — вызываем нативную клавиатуру Steam (`steam://open/keyboard`)

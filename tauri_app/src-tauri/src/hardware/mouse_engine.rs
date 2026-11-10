@@ -4,7 +4,7 @@ use crate::types::AppConfig;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 /// Расчет нелинейного ускорения курсора мыши для 4K/FullHD экранов
 pub fn handle_mouse_movement(
@@ -71,9 +71,7 @@ pub fn spawn_mouse_revert_watchdog(
                         "cec-toast",
                         "Режим мыши автоматически отключен (тайм-аут 40 сек)",
                     );
-                    if let Some(hud) = app_handle.get_webview_window("hud") {
-                        crate::platform::hide_hud_window_os(&hud);
-                    }
+                    crate::window_manager::hide_hud_if_exists(&app_handle);
                 }
             }
         }

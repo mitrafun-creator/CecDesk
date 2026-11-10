@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for HDMI-CEC Studio",
-  "windows": ["main", "osk"],
+  "windows": ["main", "osk", "hud"],
   "permissions": [
     "core:default",
     "core:event:default",

@@ -5,7 +5,15 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+/// Буфер последних HUD-уведомлений для лениво создаваемого окна HUD
+#[derive(Clone, Default)]
+pub struct PendingHudState {
+    pub last_show: Option<(Instant, serde_json::Value)>,
+    pub last_sector: Option<(Instant, serde_json::Value)>,
+}
+
 /// Глобальное состояние приложения и аппаратных интерфейсов
+#[derive(Clone)]
 pub struct AppState {
     pub serial_writer: Arc<Mutex<Option<Box<dyn SerialPort>>>>,
     pub config: Arc<Mutex<AppConfig>>,
@@ -21,6 +29,8 @@ pub struct AppState {
     pub last_seek_press: Arc<Mutex<Option<(u8, Instant, u32)>>>,
     pub osk_visible: Arc<AtomicBool>,
     pub calibration_mode: Arc<AtomicBool>,
+    pub initial_show_pending: Arc<AtomicBool>,
+    pub pending_hud: Arc<Mutex<PendingHudState>>,
 }
 
 /// Безопасный захват Mutex с автоматическим восстановлением после отравления (poison resilience)

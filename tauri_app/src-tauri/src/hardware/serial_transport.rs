@@ -86,11 +86,21 @@ pub fn spawn_serial_reader_thread(
                             if is_power_rep && trimmed.contains(": 90 00") {
                                 // ТВ ВКЛЮЧЕН
                                 was_tv_on = true;
-                                if cfg.auto_audio_switch && !cfg.tv_audio_device.is_empty() {
-                                    let _ = switch_audio_endpoint(&cfg.tv_audio_device);
-                                }
-                                if cfg.display_disable_on_sleep {
-                                    switch_display_mode(true);
+                                let audio_dev = if cfg.auto_audio_switch && !cfg.tv_audio_device.is_empty() {
+                                    Some(cfg.tv_audio_device.clone())
+                                } else {
+                                    None
+                                };
+                                let disp = cfg.display_disable_on_sleep;
+                                if audio_dev.is_some() || disp {
+                                    thread::spawn(move || {
+                                        if let Some(dev) = audio_dev {
+                                            let _ = switch_audio_endpoint(&dev);
+                                        }
+                                        if disp {
+                                            switch_display_mode(true);
+                                        }
+                                    });
                                 }
                             } else if (is_power_rep
                                 && (trimmed.contains(": 90 01") || trimmed.contains(": 90 03")))
@@ -99,11 +109,21 @@ pub fn spawn_serial_reader_thread(
                                 let transitioned_to_off = is_standby_cmd || was_tv_on;
                                 was_tv_on = false;
                                 // ТВ В СПЯЩЕМ РЕЖИМЕ (по команде Standby или статусу 0x90 01/03)
-                                if cfg.auto_audio_switch && !cfg.fallback_audio_device.is_empty() {
-                                    let _ = switch_audio_endpoint(&cfg.fallback_audio_device);
-                                }
-                                if cfg.display_disable_on_sleep {
-                                    switch_display_mode(false);
+                                let audio_dev = if cfg.auto_audio_switch && !cfg.fallback_audio_device.is_empty() {
+                                    Some(cfg.fallback_audio_device.clone())
+                                } else {
+                                    None
+                                };
+                                let disp = cfg.display_disable_on_sleep;
+                                if audio_dev.is_some() || disp {
+                                    thread::spawn(move || {
+                                        if let Some(dev) = audio_dev {
+                                            let _ = switch_audio_endpoint(&dev);
+                                        }
+                                        if disp {
+                                            switch_display_mode(false);
+                                        }
+                                    });
                                 }
                                 // Сценарий усыпления или выключения ПК при выключении ТВ
                                 if cfg.power_off_pc_on_tv_off && transitioned_to_off {
