@@ -146,11 +146,16 @@
   background: rgba(255, 255, 255, 0.30);
 }
 
-body {
+html {
   background-color: var(--bg-base);
   background-image:
     radial-gradient(ellipse 80% 55% at 50% -15%, rgba(10, 132, 255, 0.12), transparent 70%),
     radial-gradient(ellipse 60% 50% at 85% 110%, rgba(48, 209, 88, 0.05), transparent 70%);
+  min-height: 100%;
+}
+
+body {
+  background: transparent;
   color: var(--text-primary);
   font-family: "Segoe UI Variable Display", "Segoe UI Variable Text", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -1333,7 +1338,7 @@ svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
   height: 100vh;
   z-index: -1 !important;
   pointer-events: none !important;
-  opacity: 0.65;
+  opacity: 0.78;
 }
 
 /* ==================== КАСТОМНЫЕ ВЫПАДАЮЩИЕ СПИСКИ ==================== */

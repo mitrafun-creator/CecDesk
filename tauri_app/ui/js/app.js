@@ -1134,7 +1134,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   void document.body.offsetHeight;
   setTimeout(() => {
     if (invoke) {
-      invoke("show_main_window").catch(() => {});
+      invoke("show_main_window")
+        .then(() => {
+          if (typeof window.resumeAmbientMist === "function") {
+            window.resumeAmbientMist();
+          }
+        })
+        .catch(() => {});
     }
   }, 0);
 

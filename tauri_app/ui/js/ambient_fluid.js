@@ -56,13 +56,14 @@
     { xRatio: 0.90, yRatio: 0.62, radiusRatio: 0.38, speedX: -0.0003, speedY: 0.0005, phase: 4.9, alpha: 0.09 }
   ];
 
-  const CANVAS_SCALE = 0.25;
+  const CANVAS_SCALE = 0.35;
   const FRAME_INTERVAL_MS = 33;
 
   // Мягкие импульсы (риплы тумана при клике по вкладкам/кнопкам)
   const ripples = [];
   let time = 0;
   let lastFrameTime = 0;
+  let forceTicksRemaining = 0;
 
   function initAmbientMist() {
     canvas = document.getElementById("ambient-canvas");
@@ -76,11 +77,13 @@
 
     onResize();
     drawFrame(0);
-    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("resize", () => {
+      onResize();
+      drawFrame(0);
+    }, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("focus", () => {
-      if (!document.hidden) startAnimation();
-    });
+    window.addEventListener("pageshow", () => startAnimation(true));
+    window.addEventListener("focus", () => startAnimation(true));
 
     // Мягкий рассеивающийся импульс тумана при переключении разделов и кликах
     document.addEventListener("click", (e) => {
@@ -199,9 +202,12 @@
   }
 
   function render(ts) {
-    if (document.hidden) {
+    if (document.hidden && forceTicksRemaining <= 0) {
       animFrameId = null;
       return;
+    }
+    if (forceTicksRemaining > 0) {
+      forceTicksRemaining--;
     }
 
     if (!lastFrameTime || ts - lastFrameTime >= FRAME_INTERVAL_MS) {
@@ -230,12 +236,27 @@
     }
   }
 
-  function startAnimation() {
-    if (!animFrameId && !document.hidden) {
+  function startAnimation(force = false) {
+    if (force) {
+      forceTicksRemaining = Math.max(forceTicksRemaining, 6);
+    }
+    if (!animFrameId && (force || !document.hidden)) {
       lastFrameTime = 0;
       animFrameId = requestAnimationFrame(render);
     }
   }
+
+  window.resumeAmbientMist = function () {
+    onResize();
+    drawFrame(0.01);
+    startAnimation(true);
+    setTimeout(() => {
+      if (!document.hidden && !animFrameId) {
+        onResize();
+        startAnimation(false);
+      }
+    }, 220);
+  };
 
   window.setAmbientMood = function (mood, durationMs = 0) {
     if (!COLOR_PALETTES[mood]) return;
