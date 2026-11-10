@@ -1082,6 +1082,7 @@ async function toggleRemotePass() {
   if (!invoke) return;
   const chk = document.getElementById("chk-remote-os");
   const enabled = chk ? chk.checked : true;
+  if (appConfig) appConfig.remote_to_os_enabled = enabled;
   await invoke("set_remote_passthrough", { enabled });
   updateHardwareStatusUi(
     { connected: isConnected, port: selectedPort },

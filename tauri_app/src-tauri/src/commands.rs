@@ -366,6 +366,7 @@ pub async fn save_app_config(
                             log_warn("serial", &format!("Failed writing PC_PWR_PIN: {}", e));
                         }
                     }
+                    let _ = port.flush();
                 }
             }
         }
@@ -496,6 +497,7 @@ pub async fn connect_esp32(
                 }
                 let _ = p.write_all(b"INFO\n");
                 let _ = p.write_all(b"STATE\n");
+                let _ = p.flush();
             }
         }
 
@@ -523,6 +525,7 @@ pub async fn disconnect_esp32(state: State<'_, AppState>) -> Result<String, Stri
         if let Some(ref mut port) = *guard {
             let _ = port.write_all(b"REMOTE_OFF\n");
             let _ = port.flush();
+            std::thread::sleep(Duration::from_millis(180));
         }
         *guard = None;
         "Отключено".to_string()
@@ -553,6 +556,7 @@ pub async fn send_cec_command(
                 let _ = app.emit("cec-disconnected", ());
                 return Err(format!("Порт закрыт или отключен: {}", e));
             }
+            let _ = port.flush();
             Ok(())
         } else {
             Err("Порт ESP32-S3 не открыт!".to_string())
@@ -580,6 +584,7 @@ pub async fn set_remote_passthrough(enabled: bool, state: State<'_, AppState>) -
                 } else {
                     let _ = port.write_all(b"REMOTE_OFF\n");
                 }
+                let _ = port.flush();
             }
         }
     })

@@ -119,10 +119,12 @@ public:
   bool txSuccessFlag = false;
   bool txDoneFlag = false;
 
-  QueuedTx txQueue[12];
+  static const int TX_QUEUE_CAP = 24;
+  QueuedTx txQueue[TX_QUEUE_CAP];
   int qHead = 0;
   int qTail = 0;
   unsigned long lastRxOrTxEndMs = 0;
+  unsigned long lastParkAnnounceMs = 0;
 
   MyCEC(int pin) : CEC_Device(0x3000, pin, pin) {}
 
@@ -130,9 +132,11 @@ public:
     return remoteCaptureEnabled && isPcHostActive();
   }
 
-  // Физический адрес HDMI-порта ПК (по умолчанию HDMI 3 - 0x3000)
+  // Двухпрофильная адресация CEC для телевизора:
+  // Профиль 1 (Перехват пульта ВКЛ): реальный физический адрес HDMI-порта ПК (например, 3000)
+  // Профиль 2 (Перехват пульта ВЫКЛ): парковочный адрес F000 вне HDMI 1..4, полностью освобождающий пульт ТВ
   uint16_t getReportedPhysicalAddr() const {
-    return myPhysicalAddr;
+    return isCaptureActive() ? myPhysicalAddr : 0xF000;
   }
 
   virtual bool LineState() override {
@@ -180,9 +184,36 @@ public:
     lastRxOrTxEndMs = millis();
   }
 
+  // Удаление устаревших кадров переключения профиля из очереди без потери системных ответов
+  void cancelPendingOpcodes(const uint8_t* opcodes, uint8_t opCount) {
+    QueuedTx kept[TX_QUEUE_CAP];
+    int keptCount = 0;
+    while (qHead != qTail) {
+      QueuedTx item = txQueue[qHead];
+      qHead = (qHead + 1) % TX_QUEUE_CAP;
+      bool remove = false;
+      if (item.len > 0) {
+        for (uint8_t i = 0; i < opCount; i++) {
+          if (item.data[0] == opcodes[i]) {
+            remove = true;
+            break;
+          }
+        }
+      }
+      if (!remove && keptCount < TX_QUEUE_CAP - 1) {
+        kept[keptCount++] = item;
+      }
+    }
+    qHead = 0;
+    qTail = keptCount;
+    for (int i = 0; i < keptCount; i++) {
+      txQueue[i] = kept[i];
+    }
+  }
+
   // Безопасная постановка пакета в очередь (БЕЗ вложенного вызова Run() внутри OnReceive!)
   void enqueueTx(uint8_t target, const uint8_t* data, uint8_t len) {
-    int nextTail = (qTail + 1) % 12;
+    int nextTail = (qTail + 1) % TX_QUEUE_CAP;
     if (nextTail == qHead) return; // Очередь полна
     txQueue[qTail].target = target;
     txQueue[qTail].len = min((uint8_t)15, len);
@@ -198,7 +229,7 @@ public:
     if (millis() - lastRxOrTxEndMs < 60) return;
 
     QueuedTx item = txQueue[qHead];
-    qHead = (qHead + 1) % 12;
+    qHead = (qHead + 1) % TX_QUEUE_CAP;
 
     char logBuf[96];
     int pos = snprintf(logBuf, sizeof(logBuf), "TX %01X->%01X:", _logicalAddress & 0x0F, item.target & 0x0F);
@@ -324,12 +355,15 @@ public:
     }
     else if (opcode == 0x44 && dest == _logicalAddress) {
       if (!isCaptureActive()) {
-        // Полный отказ от перехвата пульта без сброса физического адреса:
-        // Отвечаем Feature Abort (Refused), освобождая пульт для собственных функций ТВ
+        // Полный отказ от перехвата пульта: отвечаем Feature Abort (Refused)
+        // и при необходимости повторно подтверждаем парковочный профиль F000
         uint8_t abortFrame[3] = {0x00, 0x44, 0x04};
         enqueueTx(source, abortFrame, 3);
-        uint8_t menuFrame[2] = {0x8E, 0x01};
-        enqueueTx(source, menuFrame, 2);
+        if (lastParkAnnounceMs == 0 || (millis() - lastParkAnnounceMs > 2000)) {
+          lastParkAnnounceMs = millis();
+          uint8_t parkedPa[4] = {0x84, 0xF0, 0x00, 0x04};
+          enqueueTx(0x0F, parkedPa, 4);
+        }
       }
     }
     else if (opcode == 0x45 && dest == _logicalAddress) {
@@ -362,14 +396,20 @@ public:
     powerOnTV();
     uint16_t repPa = getReportedPhysicalAddr();
     uint8_t reportPa[4] = {0x84, (uint8_t)(repPa >> 8), (uint8_t)(repPa & 0xFF), 0x04};
-    enqueueTx(0x0F, reportPa, 4);
     uint8_t activeSrc[3] = {0x82, (uint8_t)(myPhysicalAddr >> 8), (uint8_t)(myPhysicalAddr & 0xFF)};
-    enqueueTx(0x0F, activeSrc, 3);
     if (isCaptureActive()) {
+      enqueueTx(0x0F, reportPa, 4);
+      enqueueTx(0x0F, activeSrc, 3);
       uint8_t pwrOn[2] = {0x90, 0x00};
       enqueueTx(0x00, pwrOn, 2);
       uint8_t menuFrame[2] = {0x8E, 0x00};
       enqueueTx(0x00, menuFrame, 2);
+    } else {
+      // Переключаем вход ТВ на порт ПК, сразу возвращая LA 4 на парковочный адрес F000
+      enqueueTx(0x0F, activeSrc, 3);
+      enqueueTx(0x0F, reportPa, 4);
+      uint8_t pwrOn[2] = {0x90, 0x00};
+      enqueueTx(0x00, pwrOn, 2);
     }
   }
 
@@ -380,7 +420,8 @@ public:
     uint8_t vendor[4] = {0x87, 0x00, 0x0C, 0x03};
     enqueueTx(0x0F, vendor, 4);
     enqueueOsdName(0x00);
-    uint8_t pwrFrame[2] = {0x90, (uint8_t)(isCaptureActive() ? 0x00 : 0x01)};
+    // Всегда сообщаем Power ON (0x00), чтобы ТВ не отключал звук на активном HDMI-входе
+    uint8_t pwrFrame[2] = {0x90, 0x00};
     enqueueTx(0x00, pwrFrame, 2);
     if (isCaptureActive() && !nonIntrusiveMode) {
       uint8_t activeSrc[3] = {0x82, (uint8_t)(myPhysicalAddr >> 8), (uint8_t)(myPhysicalAddr & 0xFF)};
@@ -392,6 +433,8 @@ public:
     remoteCaptureEnabled = true;
     MonitorMode = false;
     SetAddress(_logicalAddress);
+    const uint8_t ops[6] = {0x84, 0x82, 0x90, 0x8E, 0x1B, 0x47};
+    cancelPendingOpcodes(ops, 6);
     // Активируем Профиль 1 (С перехватом пульта): привязываем LA 4 к реальному HDMI-порту ПК (myPhysicalAddr)
     uint8_t reportPa[4] = {0x84, (uint8_t)(myPhysicalAddr >> 8), (uint8_t)(myPhysicalAddr & 0xFF), 0x04};
     enqueueTx(0x0F, reportPa, 4);
@@ -411,15 +454,16 @@ public:
     remoteCaptureEnabled = false;
     MonitorMode = false;
     SetAddress(_logicalAddress);
-    // При выключении перехвата пульта сохраняем реальный физический адрес HDMI (3000) и статус питания ON (0x90 0x00),
-    // но переводим статус меню в неактивное (0x8E 0x01) и останавливаем деку (0x1B 0x20).
-    // Телевизор полностью освобождает пульт для собственных функций, НЕ отключая звук и видеосигнал HDMI!
-    uint8_t reportPa[4] = {0x84, (uint8_t)(myPhysicalAddr >> 8), (uint8_t)(myPhysicalAddr & 0xFF), 0x04};
-    enqueueTx(0x0F, reportPa, 4);
+    lastParkAnnounceMs = millis();
+    const uint8_t ops[5] = {0x84, 0x82, 0x90, 0x8E, 0x1B};
+    cancelPendingOpcodes(ops, 5);
+    // Активируем Профиль 2 (Без перехвата пульта):
+    // Переносим физический адрес на парковочный F.0.0.0 (0x84 F0 00 04),
+    // сохраняя статус питания ON (0x90 0x00), чтобы ТВ освободил пульт БЕЗ обрыва звука и видео HDMI!
+    uint8_t parkedPa[4] = {0x84, 0xF0, 0x00, 0x04};
+    enqueueTx(0x0F, parkedPa, 4);
     uint8_t pwrOn[2] = {0x90, 0x00};
     enqueueTx(0x00, pwrOn, 2);
-    uint8_t deckStop[2] = {0x1B, 0x20};
-    enqueueTx(0x00, deckStop, 2);
     uint8_t menuFrame[2] = {0x8E, 0x01};
     enqueueTx(0x00, menuFrame, 2);
   }

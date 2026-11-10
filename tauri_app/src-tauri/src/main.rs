@@ -409,6 +409,9 @@ fn main() {
         })
         .expect("Ошибка сборки Tauri контекста");
 
+    let exit_released = Arc::new(AtomicBool::new(false));
+    let exit_released_loop = Arc::clone(&exit_released);
+
     app_built.run(move |app_handle, event| match &event {
         tauri::RunEvent::Ready => log_info("app", "Application Ready"),
         tauri::RunEvent::ExitRequested { api, code, .. } => {
@@ -420,40 +423,35 @@ fn main() {
                 return;
             }
             log_info("app", "Explicit exit requested - releasing CEC remote capture");
-            if let Some(st) = app_handle.try_state::<AppState>() {
-                let stby_on_exit = safe_lock(&st.config).auto_standby_tv_on_exit;
-                let mut guard = safe_lock(&st.serial_writer);
-                if let Some(ref mut port) = *guard {
-                    use std::io::Write;
-                    let _ = port.write_all(b"REMOTE_OFF\n");
-                    if stby_on_exit {
-                        let _ = port.write_all(b"OFF\n");
-                    }
-                    let _ = port.flush();
-                }
-                *guard = None;
-            }
-            clear_session_active_marker();
-            flush_logger();
+            release_device_on_exit(app_handle, &exit_released_loop);
         }
         tauri::RunEvent::Exit => {
             log_info("app", "RunEvent::Exit - finalizing session");
-            if let Some(st) = app_handle.try_state::<AppState>() {
-                let stby_on_exit = safe_lock(&st.config).auto_standby_tv_on_exit;
-                let mut guard = safe_lock(&st.serial_writer);
-                if let Some(ref mut port) = *guard {
-                    use std::io::Write;
-                    let _ = port.write_all(b"REMOTE_OFF\n");
-                    if stby_on_exit {
-                        let _ = port.write_all(b"OFF\n");
-                    }
-                    let _ = port.flush();
-                }
-                *guard = None;
-            }
-            clear_session_active_marker();
-            flush_logger();
+            release_device_on_exit(app_handle, &exit_released_loop);
         }
         _ => {}
     });
+}
+
+fn release_device_on_exit(app_handle: &tauri::AppHandle, exit_released: &AtomicBool) {
+    if !exit_released.swap(true, Ordering::SeqCst) {
+        if let Some(st) = app_handle.try_state::<AppState>() {
+            st.manual_disconnect.store(true, Ordering::SeqCst);
+            st.connection_id.fetch_add(1, Ordering::SeqCst);
+            let stby_on_exit = safe_lock(&st.config).auto_standby_tv_on_exit;
+            let mut guard = safe_lock(&st.serial_writer);
+            if let Some(ref mut port) = *guard {
+                use std::io::Write;
+                let _ = port.write_all(b"REMOTE_OFF\n");
+                if stby_on_exit {
+                    let _ = port.write_all(b"OFF\n");
+                }
+                let _ = port.flush();
+                std::thread::sleep(Duration::from_millis(180));
+            }
+            *guard = None;
+        }
+        clear_session_active_marker();
+        flush_logger();
+    }
 }
