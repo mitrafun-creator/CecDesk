@@ -63,3 +63,32 @@ test("i18n dictionary parity and completeness between ru and en", () => {
     assert.ok(I18N_DICTIONARY.en[k].trim().length > 0, `EN key "${k}" is empty`);
   }
 });
+
+test("UI HTML/CSS avoids Tauri CSP nonce/hash invalidation and hides modals by default", () => {
+  const uiDir = path.join(__dirname, "..");
+  const htmlFiles = ["index.html", "hud.html", "osk.html"];
+  for (const file of htmlFiles) {
+    const html = fs.readFileSync(path.join(uiDir, file), "utf8");
+    assert.ok(!/<style\b/i.test(html), `${file} must not contain inline <style> (triggers Tauri style-src nonce)`);
+    assert.ok(
+      !/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i.test(html),
+      `${file} must not contain inline <script> (triggers Tauri script-src hash)`
+    );
+    assert.ok(
+      !/\bstyle\s*=\s*["'][^"']*display\s*:\s*none/i.test(html),
+      `${file} must not rely on inline style="display:none"`
+    );
+  }
+
+  const css = fs.readFileSync(path.join(uiDir, "style.css"), "utf8");
+  assert.match(css, /\.calib-modal-backdrop\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.calib-modal-backdrop\.is-open\s*\{[^}]*display:\s*flex\s*;/s);
+  assert.match(css, /\.crash-recovery-banner\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.crash-recovery-banner\.is-visible\s*\{[^}]*display:\s*flex\s*;/s);
+  assert.match(css, /\.audio-routing-subbox\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.audio-routing-subbox\.is-visible\s*\{[^}]*display:\s*flex\s*;/s);
+  assert.match(css, /\.fw-progress-wrap\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.fw-progress-wrap\.is-visible\s*\{[^}]*display:\s*block\s*;/s);
+  assert.match(css, /\.bug-result-banner\s*\{[^}]*display:\s*none\s*;/s);
+  assert.match(css, /\.bug-result-banner\.is-visible\s*\{[^}]*display:\s*block\s*;/s);
+});

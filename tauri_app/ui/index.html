@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HDMI-CEC Studio</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <style>
-    html { background: #070709; color: #F5F5F7; }
-    body { background: transparent; color: #F5F5F7; }
-    body.app-initializing * {
-      transition: none !important;
-      animation: none !important;
-    }
-  </style>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="app-initializing">
@@ -56,9 +48,9 @@
   </header>
 
   <!-- ==================== БАННЕР ВОССТАНОВЛЕНИЯ ПОСЛЕ СБОЯ ==================== -->
-  <div id="crash-recovery-banner" class="crash-recovery-banner" style="display:none;">
+  <div id="crash-recovery-banner" class="crash-recovery-banner">
     <div class="crash-banner-info">
-      <svg class="ico text-amber" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <svg class="ico ico-18 text-amber" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
       <span id="lbl-crash-banner-text" data-i18n="crash.banner_default">Предыдущий запуск завершился некорректно. Вы можете собрать диагностический отчёт для отправки разработчику.</span>
     </div>
     <div class="crash-banner-actions">
@@ -94,7 +86,7 @@
               <div class="power-single-row">
                 <button class="apple-btn power-toggle-btn is-syncing" id="btn-tv-power" onclick="toggleTvPower()" disabled>
                   <svg class="ico ico-lg ico-spin" id="spin-tv-power" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"></circle></svg>
-                  <svg class="ico ico-lg" id="ico-tv-power" viewBox="0 0 24 24" style="display:none;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                  <svg class="ico ico-lg ico-power" id="ico-tv-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
                   <span id="lbl-tv-power" data-i18n="remote.syncing_tv_state">Определение состояния...</span>
                 </button>
               </div>
@@ -633,7 +625,7 @@
                       </div>
                       <span id="lbl-fw-chip-badge" style="font-size:10px; color:var(--apple-blue); background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.28); border-radius:6px; padding:2px 7px;">FW v1.1.0</span>
                     </div>
-                    <div id="fw-progress-wrap" style="display:none; margin-bottom:10px;">
+                    <div id="fw-progress-wrap" class="fw-progress-wrap">
                       <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-bottom:5px;">
                         <div id="fw-progress-bar" style="width:0%; height:100%; background:var(--apple-blue); border-radius:999px; transition:width 0.2s ease;"></div>
                       </div>
@@ -738,7 +730,7 @@
                 </label>
               </div>
 
-              <div id="wrap-audio-devices" class="audio-routing-subbox" style="display:none;">
+              <div id="wrap-audio-devices" class="audio-routing-subbox">
                 <div style="font-size:11.5px; color:var(--text-secondary);" data-i18n="settings.audio_tv_device_label">Устройство вывода ТВ (при включении):</div>
                 <div id="csel-tv-audio" class="c-select"></div>
                 <div style="font-size:11.5px; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.audio_fallback_device_label">Устройство ПК / Наушники (при сне ТВ):</div>
@@ -925,14 +917,14 @@
   </main>
 
   <!-- ==================== МОДАЛЬНОЕ ОКНО: КАЛИБРОВКА ПУЛЬТА ==================== -->
-  <div id="calibration-modal" class="calib-modal-backdrop" style="display:none;">
+  <div id="calibration-modal" class="calib-modal-backdrop">
     <div class="calib-modal-card">
       <div class="calib-modal-header">
         <div class="calib-modal-title">
           <svg class="ico" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           <span data-i18n="calib.title">Калибровка пульта ТВ</span>
         </div>
-        <button class="apple-btn" style="padding:4px 8px; border-radius:8px;" onclick="cancelCalibration()">
+        <button class="apple-btn calib-close-btn" type="button" onclick="cancelCalibration()">
           <svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -960,14 +952,14 @@
   </div>
 
   <!-- ==================== МОДАЛЬНОЕ ОКНО: СБОР ОТЧЁТА ОБ ОШИБКЕ ==================== -->
-  <div id="bug-report-modal" class="calib-modal-backdrop" style="display:none;">
-    <div class="calib-modal-card" style="width:560px;">
+  <div id="bug-report-modal" class="calib-modal-backdrop">
+    <div class="calib-modal-card bug-modal-card">
       <div class="calib-modal-header">
         <div class="calib-modal-title">
-          <svg class="ico" style="stroke:var(--apple-blue);" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          <svg class="ico bug-modal-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
           <span data-i18n="bug.modal_title">Диагностический отчёт</span>
         </div>
-        <button class="apple-btn" style="padding:4px 8px; border-radius:8px;" onclick="closeBugReportModal()">
+        <button class="apple-btn calib-close-btn" type="button" onclick="closeBugReportModal()">
           <svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -979,16 +971,16 @@
       <div id="bug-report-summary" class="bug-summary-box">Загрузка сводки...</div>
 
       <div>
-        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;" data-i18n="bug.note_label">Описание проблемы (необязательно):</div>
+        <div class="bug-note-label" data-i18n="bug.note_label">Описание проблемы (необязательно):</div>
         <textarea id="inp-bug-note" class="bug-note-textarea" placeholder="Опишите, что произошло и как воспроизвести проблему..." data-i18n-placeholder="bug.note_ph"></textarea>
       </div>
 
-      <div id="bug-report-result" class="bug-result-banner" style="display:none;"></div>
+      <div id="bug-report-result" class="bug-result-banner"></div>
 
-      <div class="calib-actions" style="flex-wrap:wrap;">
+      <div class="calib-actions bug-modal-actions">
         <button id="btn-modal-create-zip" class="apple-btn accent-blue" type="button" onclick="createSupportBundleFromModal()" data-i18n="bug.btn_create_zip">Собрать .zip</button>
         <button id="btn-modal-open-reports" class="apple-btn" type="button" onclick="openReportsFolderUi()" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
-        <button id="btn-modal-send-webhook" class="apple-btn" type="button" onclick="sendBugReportWebhookFromModal()" data-i18n="bug.btn_send_webhook">Отправить на Webhook</button>
+        <button id="btn-modal-send-webhook" class="apple-btn is-hidden" type="button" onclick="sendBugReportWebhookFromModal()" data-i18n="bug.btn_send_webhook">Отправить на Webhook</button>
         <button id="btn-modal-github-issue" class="apple-btn" type="button" onclick="openGithubBugIssueFromModal()" data-i18n="bug.btn_github_issue">GitHub Issue</button>
         <button class="apple-btn" type="button" onclick="closeBugReportModal()" data-i18n="bug.btn_close">Закрыть</button>
       </div>

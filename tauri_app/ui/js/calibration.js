@@ -5,14 +5,43 @@
 let isCalibratingRemote = false;
 let calibratedKeySet = new Set();
 
+function showCalibrationModalUi() {
+  const modal = document.getElementById("calibration-modal");
+  if (modal) {
+    modal.style.display = "";
+    modal.classList.add("is-open");
+  }
+}
+
+function hideCalibrationModalUi() {
+  const modal = document.getElementById("calibration-modal");
+  if (modal) {
+    modal.classList.remove("is-open");
+    modal.style.display = "";
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const calibModal = document.getElementById("calibration-modal");
+  if (calibModal) {
+    calibModal.addEventListener("click", (e) => {
+      if (e.target === calibModal) cancelCalibration();
+    });
+  }
+});
+
 // Защита от случайных срабатываний интерфейса от клавиш Enter/Space/Tab во время калибровки
 window.addEventListener("keydown", (e) => {
-  if (isCalibratingRemote) {
+  const modal = document.getElementById("calibration-modal");
+  const isModalOpen = !!(modal && (modal.classList.contains("is-open") || modal.style.display === "flex"));
+  if (isCalibratingRemote || isModalOpen) {
     if (e.key === "Escape") {
       e.preventDefault();
       cancelCalibration();
       return;
     }
+  }
+  if (isCalibratingRemote) {
     if (e.key === "Enter" || e.key === " " || e.key === "Tab") {
       e.preventDefault();
       e.stopPropagation();
@@ -27,21 +56,23 @@ async function startCalibration() {
   isCalibratingRemote = true;
   calibratedKeySet.clear();
 
-  // Отключаем действия кнопок на уровне ядра Windows
-  if (invoke) {
-    await invoke("set_calibration_mode", { enabled: true });
-  }
-
   // Снимаем фокус с любых кнопок интерфейса
   if (document.activeElement && document.activeElement.blur) {
     document.activeElement.blur();
   }
 
-  const modal = document.getElementById("calibration-modal");
-  if (modal) modal.style.display = "flex";
+  showCalibrationModalUi();
   document.getElementById("calib-count").textContent = "0";
   document.getElementById("calib-keys-list").innerHTML = "";
   document.getElementById("calib-last-detected").textContent = "Ожидание нажатия...";
+
+  // Отключаем действия кнопок на уровне ядра ОС
+  if (invoke) {
+    try {
+      await invoke("set_calibration_mode", { enabled: true });
+    } catch (_) {}
+  }
+
   addLog("[Калибровка] Нажимайте кнопки на пульте ТВ (действия на ПК заблокированы)...", "log-ok");
 }
 
@@ -51,13 +82,13 @@ async function startCalibration() {
 async function cancelCalibration() {
   isCalibratingRemote = false;
   calibratedKeySet.clear();
+  hideCalibrationModalUi();
 
   if (invoke) {
-    await invoke("set_calibration_mode", { enabled: false });
+    try {
+      await invoke("set_calibration_mode", { enabled: false });
+    } catch (_) {}
   }
-
-  const modal = document.getElementById("calibration-modal");
-  if (modal) modal.style.display = "none";
 }
 
 /**
@@ -147,14 +178,16 @@ async function finishCalibration() {
     }
   });
 
-  if (invoke) {
-    await invoke("save_app_config", { newCfg: appConfig });
-    await invoke("set_calibration_mode", { enabled: false });
-  }
-
   isCalibratingRemote = false;
-  const modal = document.getElementById("calibration-modal");
-  if (modal) modal.style.display = "none";
+  hideCalibrationModalUi();
+  if (invoke) {
+    try {
+      await invoke("save_app_config", { newCfg: appConfig });
+    } catch (_) {}
+    try {
+      await invoke("set_calibration_mode", { enabled: false });
+    } catch (_) {}
+  }
 
   renderDynamicRemote();
   renderMapperTable();
@@ -167,14 +200,16 @@ async function finishCalibration() {
 async function resetToDefaultKeys() {
   if (!appConfig) appConfig = {};
   appConfig.calibrated_keys = [];
-  if (invoke) {
-    await invoke("save_app_config", { newCfg: appConfig });
-    await invoke("set_calibration_mode", { enabled: false });
-  }
-
   isCalibratingRemote = false;
-  const modal = document.getElementById("calibration-modal");
-  if (modal) modal.style.display = "none";
+  hideCalibrationModalUi();
+  if (invoke) {
+    try {
+      await invoke("save_app_config", { newCfg: appConfig });
+    } catch (_) {}
+    try {
+      await invoke("set_calibration_mode", { enabled: false });
+    } catch (_) {}
+  }
 
   renderDynamicRemote();
   renderMapperTable();

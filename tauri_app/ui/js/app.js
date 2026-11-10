@@ -40,6 +40,14 @@ window.addEventListener("unhandledrejection", (ev) => {
   reportWebviewError(`Unhandled rejection: ${msg}`, st);
 });
 
+window.addEventListener("securitypolicyviolation", (ev) => {
+  const directive = ev.violatedDirective || ev.effectiveDirective || "unknown";
+  const blocked = ev.blockedURI || "inline";
+  const msg = `CSP violation: ${directive} blocked ${blocked}`;
+  const loc = ev.sourceFile ? `${ev.sourceFile}:${ev.lineNumber || 0}:${ev.columnNumber || 0}` : "";
+  reportWebviewError(msg, loc);
+});
+
 // Отключение контекстного меню в UI
 window.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -157,12 +165,12 @@ function createCustomSelect(containerOrId, options, currentValue, onChange) {
   const trigger = document.createElement("div");
   trigger.className = "c-select-trigger";
   const labelSpan = document.createElement("span");
-  labelSpan.style.cssText = "overflow:hidden; text-overflow:ellipsis; white-space:nowrap;";
+  labelSpan.className = "c-select-label";
   labelSpan.textContent = curOpt.label;
   trigger.appendChild(labelSpan);
   trigger.insertAdjacentHTML(
     "beforeend",
-    '<svg class="ico" style="width:14px;height:14px;opacity:0.65;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+    '<svg class="ico c-select-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>'
   );
 
   const menu = document.createElement("div");
@@ -711,7 +719,8 @@ function updateAudioDevicesVisibility() {
   const wrap = document.getElementById("wrap-audio-devices");
   if (!wrap) return;
   const enabled = chk ? chk.checked : false;
-  wrap.style.display = enabled ? "flex" : "none";
+  wrap.style.display = "";
+  wrap.classList.toggle("is-visible", enabled);
   if (enabled && cachedAudioEndpoints === null) {
     loadAndRenderAudioDeviceSelects();
   } else if (enabled) {
@@ -875,8 +884,7 @@ async function checkAppUpdatesUi(silent = false) {
         btnSettings.innerHTML = "";
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
-        svg.setAttribute("class", "ico");
-        svg.setAttribute("style", "width:13px;height:13px;");
+        svg.setAttribute("class", "ico ico-13");
         svg.setAttribute("viewBox", "0 0 24 24");
         svg.innerHTML = '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>';
         const span = document.createElement("span");
@@ -944,7 +952,10 @@ async function flashModuleFirmwareUi(useCustomFile = false) {
 
   if (btnBundled) btnBundled.disabled = true;
   if (btnCustom) btnCustom.disabled = true;
-  if (wrap) wrap.style.display = "block";
+  if (wrap) {
+    wrap.style.display = "";
+    wrap.classList.add("is-visible");
+  }
   if (bar) {
     bar.style.width = "8%";
     bar.style.background = "var(--apple-blue)";
@@ -1150,7 +1161,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       const wrap = document.getElementById("fw-progress-wrap");
       const bar = document.getElementById("fw-progress-bar");
       const txt = document.getElementById("lbl-fw-progress-text");
-      if (wrap) wrap.style.display = "block";
+      if (wrap) {
+        wrap.style.display = "";
+        wrap.classList.add("is-visible");
+      }
       if (bar) {
         bar.style.width = `${p.percent || 0}%`;
         bar.style.background = p.percent >= 100 ? "var(--apple-green)" : "var(--apple-blue)";
@@ -1324,7 +1338,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     } else if (e.key === "Escape") {
       const bugModal = document.getElementById("bug-report-modal");
-      if (bugModal && bugModal.style.display === "flex") {
+      if (bugModal && (bugModal.classList.contains("is-open") || bugModal.style.display === "flex")) {
         e.preventDefault();
         closeBugReportModal();
       }
@@ -1442,7 +1456,10 @@ async function checkPendingCrashOnStartup() {
             : "Прошлый запуск завершился некорректно (возможен сбой). Вы можете сохранить диагностический отчёт.";
         }
       }
-      if (banner) banner.style.display = "flex";
+      if (banner) {
+        banner.style.display = "";
+        banner.classList.add("is-visible");
+      }
     }
   } catch (_) {}
   refreshDiagnosticsSummary();
@@ -1465,7 +1482,10 @@ window.refreshDiagnosticsSummary = refreshDiagnosticsSummary;
 
 async function dismissCrashBanner() {
   const banner = document.getElementById("crash-recovery-banner");
-  if (banner) banner.style.display = "none";
+  if (banner) {
+    banner.classList.remove("is-visible");
+    banner.style.display = "";
+  }
   if (invoke) {
     await invoke("dismiss_crash_report").catch(() => {});
   }
@@ -1519,8 +1539,8 @@ function showBugModalResult(msg, isError = false) {
   const el = document.getElementById("bug-report-result");
   if (!el) return;
   el.textContent = msg;
-  el.className = "bug-result-banner " + (isError ? "is-error" : "is-success");
-  el.style.display = "block";
+  el.style.display = "";
+  el.className = "bug-result-banner is-visible " + (isError ? "is-error" : "is-success");
 }
 
 function formatDiagnosticsSummaryText(snap) {
@@ -1543,15 +1563,19 @@ async function openBugReportModal(fromCrash = false) {
   const resultBox = document.getElementById("bug-report-result");
   const webhookBtn = document.getElementById("btn-modal-send-webhook");
   if (resultBox) {
-    resultBox.style.display = "none";
+    resultBox.style.display = "";
     resultBox.textContent = "";
     resultBox.className = "bug-result-banner";
   }
   if (webhookBtn) {
     const hasEndpoint = !!(appConfig && appConfig.telemetry_endpoint && appConfig.telemetry_endpoint.trim());
-    webhookBtn.style.display = hasEndpoint ? "inline-flex" : "none";
+    webhookBtn.style.display = "";
+    webhookBtn.classList.toggle("is-hidden", !hasEndpoint);
   }
-  if (modal) modal.style.display = "flex";
+  if (modal) {
+    modal.style.display = "";
+    modal.classList.add("is-open");
+  }
   if (summaryBox) summaryBox.textContent = "...";
 
   if (invoke) {
@@ -1569,7 +1593,10 @@ async function openBugReportModal(fromCrash = false) {
 
 function closeBugReportModal() {
   const modal = document.getElementById("bug-report-modal");
-  if (modal) modal.style.display = "none";
+  if (modal) {
+    modal.classList.remove("is-open");
+    modal.style.display = "";
+  }
 }
 
 async function createSupportBundleFromModal() {

@@ -72,8 +72,11 @@ function updateTvPowerButtonUi(state) {
     if (lbl) {
       lbl.textContent = typeof t === "function" ? t("remote.syncing_tv_state", "Определение состояния...") : "Определение состояния...";
     }
-    if (spinIco) spinIco.style.display = "inline-block";
-    if (pwrIco) pwrIco.style.display = "none";
+    if (spinIco) spinIco.style.display = "";
+    if (pwrIco) {
+      pwrIco.style.display = "";
+      pwrIco.setAttribute("class", "ico ico-lg ico-power");
+    }
     if (desc) {
       desc.textContent = typeof t === "function" ? t("remote.syncing", "Синхронизация...") : "Синхронизация...";
     }
@@ -89,10 +92,10 @@ function updateTvPowerButtonUi(state) {
     btn.disabled = false;
     btn.className = isOn ? "apple-btn power-toggle-btn is-on" : "apple-btn power-toggle-btn is-off";
   }
-  if (spinIco) spinIco.style.display = "none";
+  if (spinIco) spinIco.style.display = "";
   if (pwrIco) {
-    pwrIco.style.display = "inline-block";
-    pwrIco.setAttribute("class", "ico ico-lg");
+    pwrIco.style.display = "";
+    pwrIco.setAttribute("class", "ico ico-lg ico-power");
   }
 
   if (isOn) {
