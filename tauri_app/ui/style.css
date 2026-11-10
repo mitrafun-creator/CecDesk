@@ -183,9 +183,25 @@ svg.ico {
 svg.ico-lg { width: 20px; height: 20px; stroke-width: 1.8; }
 svg.ico-13 { width: 13px; height: 13px; }
 svg.ico-18 { width: 18px; height: 18px; }
-.c-select-chevron { width: 14px; height: 14px; opacity: 0.65; }
+.c-select-chevron { width: 14px; height: 14px; opacity: 0.65; flex-shrink: 0; }
 .c-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .is-hidden { display: none !important; }
+
+.seg-btn > *,
+.win-btn > *,
+.preset-btn > *,
+.apple-btn > *,
+.hdmi-chip > *,
+.lang-choice-btn > *,
+.remote-count-chip > *,
+.c-select-trigger > *,
+.rem-round-btn > *,
+.dpad-dir > *,
+.rem-num-btn > *,
+.rem-color-btn > *,
+.clickpad-center > * {
+  pointer-events: none;
+}
 
 /* ==================== КАСТОМНАЯ ШАПКА ОКНА (TITLEBAR) ==================== */
 .app-titlebar {
@@ -210,7 +226,8 @@ svg.ico-18 { width: 18px; height: 18px; }
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 140px;
+  flex: 0 1 140px;
+  min-width: 96px;
   height: 100%;
   -webkit-app-region: drag;
 }
@@ -220,18 +237,21 @@ svg.ico-18 { width: 18px; height: 18px; }
   align-items: center;
   justify-content: center;
   flex: 1;
-  -webkit-app-region: no-drag;
+  height: 100%;
+  -webkit-app-region: drag;
 }
 
 .titlebar-controls {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 140px;
+  flex: 0 1 140px;
+  min-width: 96px;
   justify-content: flex-end;
   -webkit-app-region: no-drag;
 }
 
+.titlebar-controls,
 .win-btn,
 .segmented-nav,
 .seg-btn {
@@ -317,6 +337,7 @@ svg.ico-18 { width: 18px; height: 18px; }
 /* Segmented Control */
 .segmented-nav {
   display: flex;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.055);
   padding: 3px;
   border-radius: 10px;
@@ -336,6 +357,8 @@ svg.ico-18 { width: 18px; height: 18px; }
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.22s var(--spring-ease);
 }
 .seg-btn:hover { color: var(--text-primary); }
@@ -825,6 +848,11 @@ svg.ico-18 { width: 18px; height: 18px; }
   gap: 12px;
   padding: 4px 0;
 }
+.toggle-row:has(.info-tip-anchor:hover),
+.toggle-row:has(.info-tip-anchor:focus-within) {
+  position: relative;
+  z-index: 300;
+}
 .toggle-meta {
   display: flex;
   flex-direction: column;
@@ -856,10 +884,12 @@ svg.ico-18 { width: 18px; height: 18px; }
   flex-shrink: 0;
 }
 .info-tip-anchor:hover,
-.info-tip-anchor:focus-visible {
+.info-tip-anchor:focus-visible,
+.info-tip-anchor:focus-within {
   color: #64B5F6;
   background: rgba(10, 132, 255, 0.16);
   transform: scale(1.08);
+  z-index: 400;
 }
 
 .ico-info {
@@ -883,12 +913,12 @@ svg.ico-18 { width: 18px; height: 18px; }
   pointer-events: none;
   width: 260px;
   padding: 10px 13px;
-  background: rgba(24, 24, 32, 0.96);
+  background: rgba(18, 19, 25, 0.985);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.80), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   z-index: 1000;
   transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
 }
@@ -900,7 +930,7 @@ svg.ico-18 { width: 18px; height: 18px; }
   left: 14px;
   border-width: 5px;
   border-style: solid;
-  border-color: rgba(24, 24, 32, 0.96) transparent transparent transparent;
+  border-color: rgba(18, 19, 25, 0.985) transparent transparent transparent;
 }
 
 .info-tip-anchor:hover .apple-popover,
@@ -909,6 +939,39 @@ svg.ico-18 { width: 18px; height: 18px; }
   visibility: visible;
   transform: translateY(0) scale(1);
   pointer-events: auto;
+}
+
+.info-tip-anchor.open-below .apple-popover {
+  bottom: auto;
+  top: calc(100% + 8px);
+  transform: translateY(-4px) scale(0.96);
+  transform-origin: top left;
+}
+.info-tip-anchor.open-below .apple-popover::after {
+  top: auto;
+  bottom: 100%;
+  border-color: transparent transparent rgba(18, 19, 25, 0.985) transparent;
+}
+.info-tip-anchor.open-below:hover .apple-popover,
+.info-tip-anchor.open-below:focus-within .apple-popover {
+  transform: translateY(0) scale(1);
+}
+.info-tip-anchor.align-right .apple-popover {
+  left: auto;
+  right: -12px;
+  transform-origin: bottom right;
+}
+.info-tip-anchor.open-below.align-right .apple-popover {
+  transform-origin: top right;
+}
+.info-tip-anchor.align-right .apple-popover::after {
+  left: auto;
+  right: 16px;
+}
+
+.glass-panel:has(.info-tip-anchor:hover),
+.glass-panel:has(.info-tip-anchor:focus-within) {
+  z-index: 120 !important;
 }
 
 .popover-title {
@@ -1304,7 +1367,7 @@ svg.ico-18 { width: 18px; height: 18px; }
 /* ==================== ДИАГНОСТИЧЕСКАЯ СЕТКА (СИСТЕМА) ==================== */
 .sys-diag-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -1330,11 +1393,16 @@ svg.ico-18 { width: 18px; height: 18px; }
 
 .diag-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   font-size: 11.5px;
   color: var(--text-secondary);
-  gap: 8px;
+  gap: 10px;
+}
+
+.diag-row > span {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .diag-row strong {
@@ -1342,7 +1410,10 @@ svg.ico-18 { width: 18px; height: 18px; }
   font-weight: 600;
   color: var(--text-primary);
   text-align: right;
-  word-break: break-all;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.3;
+  min-width: 0;
 }
 
 /* ==================== АНИМАЦИЯ ФОНА (AMBIENT MIST CANVAS) ==================== */
@@ -1370,6 +1441,8 @@ svg.ico-18 { width: 18px; height: 18px; }
   padding: 7px 11px;
   font-size: 12.5px;
   font-weight: 500;
+  font-family: inherit;
+  text-align: left;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -1386,27 +1459,57 @@ svg.ico-18 { width: 18px; height: 18px; }
   border-color: var(--apple-blue);
   background: rgba(10, 132, 255, 0.10);
 }
+.cselect-portal-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5000;
+}
 .c-select-menu {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  right: 0;
-  min-width: 210px;
-  max-height: 230px;
+  position: fixed;
+  min-width: 180px;
+  max-height: 240px;
   overflow-y: auto;
-  background: rgba(24, 24, 29, 0.96);
-  backdrop-filter: blur(28px);
+  background: rgba(20, 21, 27, 0.98);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid var(--border-highlight);
   border-radius: 12px;
   padding: 5px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75);
-  z-index: 100;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  z-index: 5001;
   display: none;
   flex-direction: column;
   gap: 2px;
+  pointer-events: auto;
 }
+.c-select-menu.is-open,
 .c-select.open .c-select-menu {
   display: flex;
+  animation: cselectOpenPop 0.14s var(--spring-ease);
+}
+@keyframes cselectOpenPop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.c-select-menu.open-up.is-open {
+  animation-name: cselectOpenPopUp;
+}
+@keyframes cselectOpenPopUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .c-select-option {
   padding: 7px 10px;
@@ -1484,6 +1587,12 @@ input, textarea {
 }
 input:focus, textarea:focus { border-color: var(--apple-blue); }
 
+.mapper-table-scroll {
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .clean-table {
   width: 100%;
   border-collapse: collapse;
@@ -1493,11 +1602,20 @@ input:focus, textarea:focus { border-color: var(--apple-blue); }
   padding: 7px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.045);
   text-align: left;
+  vertical-align: middle;
+}
+.clean-table .c-select {
+  min-width: 210px;
 }
 .clean-table th {
   color: var(--text-secondary);
   font-weight: 500;
   font-size: 11.5px;
+}
+
+.row-gap-2 > input[type="text"],
+.row-gap-2 > .btn-save {
+  min-height: 34px;
 }
 
 .key-symbol-badge {
@@ -1605,6 +1723,11 @@ input:focus, textarea:focus { border-color: var(--apple-blue); }
   border-radius: 999px;
 }
 .preset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
   padding: 5px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
@@ -1665,6 +1788,9 @@ input:focus, textarea:focus { border-color: var(--apple-blue); }
 }
 .btn-refresh-large.spinning .ico-refresh {
   transform: rotate(360deg);
+}
+.ico-refresh.spinning {
+  animation: spinLoader 0.8s linear infinite;
 }
 
 .remote-header-bar {

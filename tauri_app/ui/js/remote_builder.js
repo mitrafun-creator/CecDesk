@@ -64,18 +64,29 @@ function getKeysPlural(count) {
  * Обогащение кнопки пульта мгновенной всплывающей подсказкой (Apple Floating Tooltip)
  */
 function applyButtonTooltip(btn, codeHex) {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const norm = codeHex.toUpperCase().startsWith("0X")
     ? "0x" + codeHex.substring(2).toUpperCase()
     : "0x" + codeHex.toUpperCase();
-  const def = KEY_DEFINITIONS[norm] || { name: `Кнопка ${norm}`, sym: norm };
+  const knownDef = KEY_DEFINITIONS[norm];
+  const displayName = knownDef
+    ? (typeof getKeyDisplayName === "function" ? getKeyDisplayName(norm, knownDef) : knownDef.name)
+    : `${_t("remote.button_prefix", "Кнопка")} ${norm}`;
   const mapping = (appConfig && appConfig.key_mappings && appConfig.key_mappings[norm]) || "NONE";
-  const actionObj = (typeof OS_ACTIONS !== "undefined" && Array.isArray(OS_ACTIONS))
-    ? OS_ACTIONS.find(a => a.value === mapping)
-    : null;
-  const actionLabel = actionObj ? actionObj.label : mapping;
+  let actionLabel = mapping;
+  if (mapping.startsWith("SCRIPT:")) {
+    actionLabel = `[${_t("action.script_prefix", "Сценарий")}] ${mapping.substring(7)}`;
+  } else {
+    const actionObj = (typeof OS_ACTIONS !== "undefined" && Array.isArray(OS_ACTIONS))
+      ? OS_ACTIONS.find(a => a.value === mapping)
+      : null;
+    actionLabel = _t("action." + mapping.toLowerCase(), actionObj ? actionObj.label : mapping);
+  }
 
-  btn.dataset.tooltip = `${def.name} (${norm})`;
-  btn.dataset.tooltipSub = mapping !== "NONE" ? `Действие ПК: ${actionLabel}` : "Действие ПК: не назначено";
+  const actPrefix = _t("remote.pc_action_prefix", "Действие ПК:");
+  const actNone = _t("remote.pc_action_none", "не назначено");
+  btn.dataset.tooltip = `${displayName} (${norm})`;
+  btn.dataset.tooltipSub = mapping !== "NONE" ? `${actPrefix} ${actionLabel}` : `${actPrefix} ${actNone}`;
   btn.removeAttribute("title");
 }
 
@@ -83,6 +94,7 @@ function applyButtonTooltip(btn, codeHex) {
  * Динамическая сборка виртуального пульта из реально доступных клавиш
  */
 function renderDynamicRemote() {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const container = document.getElementById("remote-chassis");
   if (!container) return;
   container.innerHTML = "";
@@ -95,7 +107,7 @@ function renderDynamicRemote() {
   const lblCount = document.getElementById("lbl-remote-count");
   if (lblCount) {
     lblCount.removeAttribute("title");
-    lblCount.dataset.tooltipSub = `Распознано: ${activeKeys.length} ${getKeysPlural(activeKeys.length)}`;
+    lblCount.dataset.tooltipSub = `${_t("remote.recognized_prefix", "Распознано:")} ${activeKeys.length} ${getKeysPlural(activeKeys.length)}`;
   }
 
   const keySet = new Set(activeKeys);
@@ -108,6 +120,7 @@ function renderDynamicRemote() {
     topKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
@@ -141,6 +154,7 @@ function renderDynamicRemote() {
 
     if (keySet.has("0x01")) {
       const up = document.createElement("button");
+      up.type = "button";
       up.id = "rem-btn-0x01";
       up.className = "dpad-dir dpad-up";
       applyButtonTooltip(up, "0x01");
@@ -150,6 +164,7 @@ function renderDynamicRemote() {
     }
     if (keySet.has("0x02")) {
       const down = document.createElement("button");
+      down.type = "button";
       down.id = "rem-btn-0x02";
       down.className = "dpad-dir dpad-down";
       applyButtonTooltip(down, "0x02");
@@ -159,6 +174,7 @@ function renderDynamicRemote() {
     }
     if (keySet.has("0x03")) {
       const left = document.createElement("button");
+      left.type = "button";
       left.id = "rem-btn-0x03";
       left.className = "dpad-dir dpad-left";
       applyButtonTooltip(left, "0x03");
@@ -168,6 +184,7 @@ function renderDynamicRemote() {
     }
     if (keySet.has("0x04")) {
       const right = document.createElement("button");
+      right.type = "button";
       right.id = "rem-btn-0x04";
       right.className = "dpad-dir dpad-right";
       applyButtonTooltip(right, "0x04");
@@ -177,6 +194,7 @@ function renderDynamicRemote() {
     }
     if (keySet.has("0x00")) {
       const center = document.createElement("button");
+      center.type = "button";
       center.id = "rem-btn-0x00";
       center.className = "clickpad-center";
       center.textContent = "OK";
@@ -195,6 +213,7 @@ function renderDynamicRemote() {
     colorKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k];
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = `rem-color-btn ${def.class}`;
       applyButtonTooltip(btn, k);
@@ -214,6 +233,7 @@ function renderDynamicRemote() {
     transportKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
@@ -245,6 +265,7 @@ function renderDynamicRemote() {
     volKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
@@ -276,6 +297,7 @@ function renderDynamicRemote() {
     otherCtrlKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k] || { code: k, sym: k, name: k };
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
@@ -305,6 +327,7 @@ function renderDynamicRemote() {
     numKeys.forEach(k => {
       const def = KEY_DEFINITIONS[k];
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-num-btn";
       btn.textContent = def.sym;
@@ -324,16 +347,33 @@ function renderDynamicRemote() {
     const extraWrap = document.createElement("div");
     extraWrap.className = "remote-extra-row";
 
+    const btnPrefix = _t("remote.button_prefix", "Кнопка");
+    const actPrefix = _t("remote.pc_action_prefix", "Действие ПК:");
+    const actNone = _t("remote.pc_action_none", "не назначено");
+
     extraKeys.forEach((k) => {
       const letter = letterMap[k];
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.id = `rem-btn-${k}`;
       btn.className = "rem-round-btn rem-letter-btn";
       btn.textContent = letter;
       const norm = k.toUpperCase().startsWith("0X") ? "0x" + k.substring(2).toUpperCase() : "0x" + k.toUpperCase();
       const mapping = (appConfig && appConfig.key_mappings && appConfig.key_mappings[norm]) || "NONE";
-      btn.dataset.tooltip = `Кнопка ${letter} (${norm})`;
-      btn.dataset.tooltipSub = mapping !== "NONE" ? `Действие ПК: ${mapping}` : "Действие ПК: не назначено";
+      let actionLabel = mapping;
+      if (mapping !== "NONE") {
+        if (mapping.startsWith("SCRIPT:")) {
+          actionLabel = `[${_t("action.script_prefix", "Сценарий")}] ${mapping.substring(7)}`;
+        } else {
+          const actionObj = (typeof OS_ACTIONS !== "undefined" && Array.isArray(OS_ACTIONS))
+            ? OS_ACTIONS.find(a => a.value === mapping)
+            : null;
+          actionLabel = _t("action." + mapping.toLowerCase(), actionObj ? actionObj.label : mapping);
+        }
+      }
+      btn.dataset.tooltip = `${btnPrefix} ${letter} (${norm})`;
+      btn.dataset.tooltipSub = mapping !== "NONE" ? `${actPrefix} ${actionLabel}` : `${actPrefix} ${actNone}`;
+      btn.removeAttribute("title");
       btn.onclick = () => uiRemoteOrOsClick(k);
       extraWrap.appendChild(btn);
     });

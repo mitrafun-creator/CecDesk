@@ -6,6 +6,12 @@ let currentLang = "ru";
 
 const I18N_DICTIONARY = {
   ru: {
+    // Окно
+    "win.minimize": "Свернуть",
+    "win.maximize": "Развернуть",
+    "win.hide_to_tray": "Свернуть в трей",
+    "window.title_tv": "ТВ",
+
     // Навигация
     "nav.remote": "Пульт",
     "nav.keys": "Кнопки",
@@ -15,11 +21,16 @@ const I18N_DICTIONARY = {
     // Экран Пульт
     "remote.connection_active": "Связь с телевизором активна",
     "remote.syncing": "Синхронизация...",
+    "remote.connecting": "Подключение...",
     "remote.turn_on_tv": "Включить ТВ",
     "remote.turn_off_tv": "Выключить ТВ",
     "remote.syncing_tv_state": "Определение состояния...",
     "remote.intercept_title": "Перехват пульта",
     "remote.intercept_sub": "Управление ПК пультом ТВ",
+    "remote.intercept_tip": "Управление компьютером при помощи пульта телевизора",
+    "remote.keys_count_tip": "Доступно кнопок в конструкторе",
+    "remote.calib_tip": "Обучить пульт нажатиями кнопок",
+    "remote.status_refresh_tip": "Обновить статус",
     "remote.hw_status_title": "Статус",
     "remote.usb_adapter": "USB-контроллер",
     "remote.cec_bus": "Связь с ТВ (CEC)",
@@ -42,11 +53,34 @@ const I18N_DICTIONARY = {
     "remote.offline_reason_line_low": "Линия HDMI-CEC 0V: проверьте кабель или питание ТВ",
     "remote.offline_reason_tv_no_resp": "Модуль подключен, но ТВ или пульт не отвечает",
     "remote.offline_reason_checking": "Опрос модуля и проверка связи с телевизором...",
+    "remote.searching_ctrl": "Поиск контроллера...",
+    "remote.searching_desc": "Попытка переподключения к адаптеру на порту",
+    "remote.searching_port": "Поиск COM-порта...",
+    "remote.searching_btn": "Поиск...",
+    "remote.usb_off_title": "USB-контроллер отключен",
+    "remote.usb_off_desc": "Связь с адаптером разорвана. Нажмите «Подключить», чтобы открыть COM-порт и возобновить работу.",
+    "remote.port_disconnected": "отключен",
+    "remote.no_ctrl_reason": "Контроллер не подключен",
+    "remote.btn_connect": "Подключить",
+    "remote.btn_connecting": "Подключение...",
+    "remote.btn_poll_bus": "Опросить шину",
+    "remote.btn_polling": "Опрос шины...",
+    "remote.line_err_title": "Ошибка линии CEC (0V)",
+    "remote.line_err_desc": "Контроллер подключен, но на шине CEC зафиксировано 0V (короткое замыкание или кабель). Проверьте кабель HDMI и питание ТВ.",
+    "remote.no_tv_port_reason": "Подключен, но ТВ не отвечает",
+    "remote.pc_action_prefix": "Действие ПК:",
+    "remote.pc_action_none": "не назначено",
+    "remote.recognized_prefix": "Распознано:",
+    "remote.button_prefix": "Кнопка",
 
     // Экран Кнопки
     "keys.title": "Кнопки пульта",
     "keys.scripts_folder": "Папка сценариев",
+    "keys.scripts_folder_tip": "Открыть папку scripts со своими .bat/.ps1 скриптами",
+    "keys.refresh_scripts_tip": "Пересканировать папку сценариев",
     "keys.save": "Сохранить",
+    "keys.save_name_tip": "Сохранить новое название профиля",
+    "keys.preset_hud_title": "Пресет кнопок",
     "keys.preset_base": "Универсальный",
     "keys.preset_cinema": "Кино",
     "keys.preset_steam": "Игры",
@@ -65,6 +99,47 @@ const I18N_DICTIONARY = {
     "keys.protocol": "Протокол CEC:",
     "keys.supported_keys_count": "Клавиш в базе:",
     "keys.default_pa": "Адрес по умолчанию:",
+    "keys.mapping_hint": "Назначения кнопок автоматически связываются с выбранным профилем телевизора. Синий индикатор в таблице указывает на клавиши, которые присутствуют на вашем пульте.",
+
+    // Клавиши пульта
+    "key.0x00": "Подтверждение",
+    "key.0x01": "Вверх",
+    "key.0x02": "Вниз",
+    "key.0x03": "Влево",
+    "key.0x04": "Вправо",
+    "key.0x0D": "Возврат",
+    "key.0x09": "Меню",
+    "key.0x0A": "Опции",
+    "key.0x0B": "Опции",
+    "key.0x0C": "Избранное",
+    "key.0x35": "Инфо",
+    "key.0x53": "Гид (EPG)",
+    "key.0x72": "Красная",
+    "key.0x73": "Зеленая",
+    "key.0x74": "Желтая",
+    "key.0x71": "Синяя",
+    "key.0x41": "Громкость +",
+    "key.0x42": "Громкость −",
+    "key.0x43": "Без звука",
+    "key.0x44": "Воспроизведение",
+    "key.0x46": "Пауза",
+    "key.0x45": "Стоп",
+    "key.0x4B": "Следующий",
+    "key.0x4C": "Предыдущий",
+    "key.0x48": "Перемотка назад",
+    "key.0x49": "Перемотка вперед",
+    "key.0x30": "Канал +",
+    "key.0x31": "Канал −",
+    "key.0x21": "Цифра 1",
+    "key.0x22": "Цифра 2",
+    "key.0x23": "Цифра 3",
+    "key.0x24": "Цифра 4",
+    "key.0x25": "Цифра 5",
+    "key.0x26": "Цифра 6",
+    "key.0x27": "Цифра 7",
+    "key.0x28": "Цифра 8",
+    "key.0x29": "Цифра 9",
+    "key.0x20": "Цифра 0",
 
     // Экран Система
     "sys.device": "Устройство:",
@@ -72,12 +147,31 @@ const I18N_DICTIONARY = {
     "sys.connect": "Подключить",
     "sys.disconnect": "Отключить",
     "sys.profile_tv": "Профиль ТВ:",
+    "sys.diag_title": "Подробная диагностика оборудования и шины CEC",
+    "sys.check_bus_btn": "Запросить статус шины",
+    "sys.card_usb": "USB-контроллер",
+    "sys.lbl_port": "Порт:",
+    "sys.lbl_state": "Состояние:",
+    "sys.lbl_firmware": "Контроллер:",
+    "sys.card_bus": "Физическая шина CEC",
+    "sys.lbl_line_level": "Уровень линии:",
+    "sys.lbl_pullup": "Подтяжка Pull-Up:",
+    "sys.lbl_contact": "Состояние контакта:",
+    "sys.card_tv_prefix": "Телевизор",
+    "sys.lbl_tv_pwr": "Питание матрицы:",
+    "sys.lbl_phys_addr": "Физический адрес:",
+    "sys.lbl_log_addr": "Логический адрес:",
+    "sys.card_remote": "Служба перехвата пульта",
+    "sys.lbl_intercept": "Перехват команд:",
+    "sys.lbl_keys_cnt": "Обучено кнопок:",
+    "sys.lbl_input_sys": "Подсистема ввода:",
     "sys.line_test": "Тест линии",
     "sys.tv_status": "Статус ТВ",
     "sys.check_updates": "Проверить обновления",
     "sys.tv_models": "Модели ТВ",
     "sys.search_ph": "Поиск...",
     "sys.sync_db": "Обновить базу",
+    "sys.sync_db_tip": "Синхронизировать онлайн базу профилей ТВ",
     "sys.json_config": "Конфигурация JSON",
     "sys.bus_queries": "Запросы шины",
     "sys.q_tv_addr": "Адрес ТВ",
@@ -92,6 +186,21 @@ const I18N_DICTIONARY = {
     "sys.copy": "Копировать",
     "sys.logs_folder": "Папка логов",
     "sys.clear": "Очистить",
+
+    // Диагностические значения
+    "diag.val_connected_baud": "Активен (115200 bps)",
+    "diag.val_disconnected": "Отключен",
+    "diag.val_level_high": "3.3V (Норма)",
+    "diag.val_level_low": "0V (КЗ / Обрыв)",
+    "diag.val_pullup_tv": "Активна (ТВ 27k)",
+    "diag.val_pullup_mcu": "Внутренняя MCU",
+    "diag.val_contact_ok": "Надежный контакт",
+    "diag.val_contact_wait": "Нет ответа ТВ",
+    "diag.val_tv_on": "Включен (ON)",
+    "diag.val_tv_standby": "Сон (Standby)",
+    "diag.val_intercept_on": "Активен (ПК)",
+    "diag.val_intercept_off": "Отключен (ТВ)",
+    "diag.val_input_subsys": "Win SendInput (Enigo)",
 
     // Экран Настройки
     "settings.port_params_title": "Параметры порта HDMI",
@@ -128,10 +237,14 @@ const I18N_DICTIONARY = {
     "settings.disp_sleep_desc": "Программное отключение второго дисплея в Windows при выключении ТВ, чтобы курсор и окна не терялись на отключенном экране.",
     "settings.lang_title": "Язык интерфейса / Language",
     "settings.about_title": "О программе",
+    "settings.os_badge": "ОС",
     "settings.os_version_title": "Windows 11 / 10 x64",
     "settings.xml_title": "Профили XML",
+    "settings.xml_box_tip": "Обмен конфигурациями кнопок пульта в формате XML",
     "settings.xml_export": "Экспорт в XML",
+    "settings.xml_export_tip": "Сохранить текущий профиль в файл .xml",
     "settings.xml_import": "Импорт из XML",
+    "settings.xml_import_tip": "Загрузить назначения кнопок из файла .xml",
     "settings.app_name": "HDMI-CEC Studio",
     "settings.app_desc": "Аппаратный мост HDMI-CEC",
     "settings.version": "Версия",
@@ -143,11 +256,14 @@ const I18N_DICTIONARY = {
     "calib.instruction": "Нажимайте по очереди все нужные кнопки на вашем реальном пульте телевизора (кроме кнопки выключения ТВ). Каждая нажатая кнопка мгновенно добавится в конструктор.",
     "calib.detected_count": "Распознано кнопок:",
     "calib.waiting": "Ожидание нажатия...",
+    "calib.power_skipped": "Кнопка питания ТВ пропущена для безопасности",
+    "calib.pressed_prefix": "Нажата:",
     "calib.build_btn": "Собрать пульт",
     "calib.cancel_btn": "Отмена",
     "calib.reset_btn": "Сбросить к базовому",
 
     // Статусы оборудования
+    "status.usb_connected_port": "Подключен",
     "status.usb_disconnected": "USB: Отключен",
     "status.usb_disconnected_desc": "Подключите адаптер к компьютеру",
     "status.ready_online": "Готово • ТВ в сети",
@@ -159,6 +275,15 @@ const I18N_DICTIONARY = {
     "status.line_err_badge": "0V / Ошибка",
     "status.line_free_badge": "Шина свободна",
     "status.line_no_power": "Нет питания",
+    "status.bus_polling": "Опрос шины...",
+    "status.bus_polling_short": "Опрос...",
+    "status.bus_no_usb": "Нет питания USB",
+    "status.tv_online_contact": "3.3V ТВ в сети (Контакт надежен)",
+    "status.bus_free_no_tv": "Шина свободна (ТВ не отвечает)",
+    "status.bus_error_0v": "0V / Ошибка линии CEC (КЗ или кабель)",
+    "status.remote_on_tip": "Включен (управление ПК)",
+    "status.remote_off_tip": "Выключен (пульт освобожден для ТВ)",
+    "status.measuring_line": "Замер линии...",
     "status.mouse_on": "Мышь ВКЛ",
     "status.mouse_on_desc": "Управление курсором (Стрелки / ЛКМ / ПКМ)",
     "status.mouse_off": "Готово",
@@ -241,8 +366,11 @@ const I18N_DICTIONARY = {
     "sys.q_opto_pulse": "Оптопара Power",
     "sys.q_pc_sleep": "Сон ПК",
     "settings.fw_box_title": "Прошивка контроллера",
+    "settings.fw_box_tip": "Автономное обновление микроконтроллера напрямую (UF2 / Serial OTA)",
     "settings.fw_flash_bundled_btn": "Прошить (v1.1.0)",
     "settings.fw_flash_custom_btn": "Из файла (.uf2 / .bin)",
+    "settings.fw_custom_tip": "Выбрать файл прошивки (.uf2 / .bin)",
+    "settings.fw_preparing": "Подготовка...",
     "settings.audio_tv_device_label": "Устройство вывода ТВ (при включении):",
     "settings.audio_fallback_device_label": "Устройство ПК / Наушники (при сне ТВ):",
     "settings.audio_device_none": "— Не выбрано —",
@@ -274,6 +402,12 @@ const I18N_DICTIONARY = {
     "bug.btn_close": "Закрыть"
   },
   en: {
+    // Window
+    "win.minimize": "Minimize",
+    "win.maximize": "Maximize",
+    "win.hide_to_tray": "Minimize to Tray",
+    "window.title_tv": "TV",
+
     // Navigation
     "nav.remote": "Remote",
     "nav.keys": "Buttons",
@@ -283,11 +417,16 @@ const I18N_DICTIONARY = {
     // Remote Screen
     "remote.connection_active": "TV connection active",
     "remote.syncing": "Syncing...",
+    "remote.connecting": "Connecting...",
     "remote.turn_on_tv": "Turn TV On",
     "remote.turn_off_tv": "Turn TV Off",
     "remote.syncing_tv_state": "Detecting state...",
     "remote.intercept_title": "Remote Intercept",
     "remote.intercept_sub": "Control PC via TV Remote",
+    "remote.intercept_tip": "Control your computer using the TV remote",
+    "remote.keys_count_tip": "Available buttons in remote builder",
+    "remote.calib_tip": "Learn remote layout by pressing buttons",
+    "remote.status_refresh_tip": "Refresh status",
     "remote.hw_status_title": "Status",
     "remote.usb_adapter": "USB Controller",
     "remote.cec_bus": "TV Link (CEC)",
@@ -310,11 +449,34 @@ const I18N_DICTIONARY = {
     "remote.offline_reason_line_low": "HDMI-CEC Line 0V: check cable or TV power",
     "remote.offline_reason_tv_no_resp": "Module connected, but TV or remote is not responding",
     "remote.offline_reason_checking": "Polling module and checking TV connection...",
+    "remote.searching_ctrl": "Searching controller...",
+    "remote.searching_desc": "Attempting to reconnect to adapter on port",
+    "remote.searching_port": "Scanning COM ports...",
+    "remote.searching_btn": "Searching...",
+    "remote.usb_off_title": "USB Controller Disconnected",
+    "remote.usb_off_desc": "Adapter link is closed. Click Connect to open the COM port and resume control.",
+    "remote.port_disconnected": "disconnected",
+    "remote.no_ctrl_reason": "Controller not connected",
+    "remote.btn_connect": "Connect",
+    "remote.btn_connecting": "Connecting...",
+    "remote.btn_poll_bus": "Poll CEC Bus",
+    "remote.btn_polling": "Polling bus...",
+    "remote.line_err_title": "CEC Line Error (0V)",
+    "remote.line_err_desc": "Controller connected, but 0V detected on CEC line (short circuit or cable issue). Check the HDMI cable and TV power.",
+    "remote.no_tv_port_reason": "Connected, no response from TV",
+    "remote.pc_action_prefix": "PC Action:",
+    "remote.pc_action_none": "unassigned",
+    "remote.recognized_prefix": "Detected:",
+    "remote.button_prefix": "Button",
 
     // Buttons Screen
     "keys.title": "Remote Buttons",
     "keys.scripts_folder": "Scripts Folder",
+    "keys.scripts_folder_tip": "Open scripts folder with custom .bat/.ps1 files",
+    "keys.refresh_scripts_tip": "Rescan scripts folder",
     "keys.save": "Save",
+    "keys.save_name_tip": "Save new profile name",
+    "keys.preset_hud_title": "Button Preset",
     "keys.preset_base": "Universal",
     "keys.preset_cinema": "Cinema",
     "keys.preset_steam": "Games",
@@ -333,6 +495,47 @@ const I18N_DICTIONARY = {
     "keys.protocol": "CEC Protocol:",
     "keys.supported_keys_count": "Keys in Database:",
     "keys.default_pa": "Default Address:",
+    "keys.mapping_hint": "Button mappings are automatically linked to the selected TV profile. The blue indicator marks keys detected on your remote.",
+
+    // Remote Keys
+    "key.0x00": "Confirm (OK)",
+    "key.0x01": "Up",
+    "key.0x02": "Down",
+    "key.0x03": "Left",
+    "key.0x04": "Right",
+    "key.0x0D": "Return",
+    "key.0x09": "Menu",
+    "key.0x0A": "Options",
+    "key.0x0B": "Options",
+    "key.0x0C": "Favorites",
+    "key.0x35": "Info",
+    "key.0x53": "Guide (EPG)",
+    "key.0x72": "Red",
+    "key.0x73": "Green",
+    "key.0x74": "Yellow",
+    "key.0x71": "Blue",
+    "key.0x41": "Volume +",
+    "key.0x42": "Volume −",
+    "key.0x43": "Mute",
+    "key.0x44": "Play",
+    "key.0x46": "Pause",
+    "key.0x45": "Stop",
+    "key.0x4B": "Next",
+    "key.0x4C": "Previous",
+    "key.0x48": "Rewind",
+    "key.0x49": "Fast Forward",
+    "key.0x30": "Channel +",
+    "key.0x31": "Channel −",
+    "key.0x21": "Digit 1",
+    "key.0x22": "Digit 2",
+    "key.0x23": "Digit 3",
+    "key.0x24": "Digit 4",
+    "key.0x25": "Digit 5",
+    "key.0x26": "Digit 6",
+    "key.0x27": "Digit 7",
+    "key.0x28": "Digit 8",
+    "key.0x29": "Digit 9",
+    "key.0x20": "Digit 0",
 
     // System Screen
     "sys.device": "Device:",
@@ -340,12 +543,31 @@ const I18N_DICTIONARY = {
     "sys.connect": "Connect",
     "sys.disconnect": "Disconnect",
     "sys.profile_tv": "TV Profile:",
+    "sys.diag_title": "Detailed Hardware & CEC Bus Diagnostics",
+    "sys.check_bus_btn": "Poll Bus Status",
+    "sys.card_usb": "USB Controller",
+    "sys.lbl_port": "Port:",
+    "sys.lbl_state": "State:",
+    "sys.lbl_firmware": "Controller:",
+    "sys.card_bus": "Physical CEC Bus",
+    "sys.lbl_line_level": "Line Level:",
+    "sys.lbl_pullup": "Pull-Up Resistor:",
+    "sys.lbl_contact": "Bus Contact:",
+    "sys.card_tv_prefix": "TV",
+    "sys.lbl_tv_pwr": "Panel Power:",
+    "sys.lbl_phys_addr": "Physical Address:",
+    "sys.lbl_log_addr": "Logical Address:",
+    "sys.card_remote": "Remote Intercept Service",
+    "sys.lbl_intercept": "Key Capture:",
+    "sys.lbl_keys_cnt": "Trained Keys:",
+    "sys.lbl_input_sys": "Input Backend:",
     "sys.line_test": "Line Test",
     "sys.tv_status": "TV Status",
     "sys.check_updates": "Check Updates",
     "sys.tv_models": "TV Models",
     "sys.search_ph": "Search...",
     "sys.sync_db": "Sync Online DB",
+    "sys.sync_db_tip": "Synchronize online TV profile catalog",
     "sys.json_config": "JSON Configuration",
     "sys.bus_queries": "Bus Commands",
     "sys.q_tv_addr": "TV Address",
@@ -360,6 +582,21 @@ const I18N_DICTIONARY = {
     "sys.copy": "Copy",
     "sys.logs_folder": "Logs Folder",
     "sys.clear": "Clear",
+
+    // Diagnostics values
+    "diag.val_connected_baud": "Active (115200 bps)",
+    "diag.val_disconnected": "Disconnected",
+    "diag.val_level_high": "3.3V (Normal)",
+    "diag.val_level_low": "0V (Short / Open)",
+    "diag.val_pullup_tv": "Active (TV 27k)",
+    "diag.val_pullup_mcu": "Internal MCU",
+    "diag.val_contact_ok": "Reliable link",
+    "diag.val_contact_wait": "No TV response",
+    "diag.val_tv_on": "Powered On (ON)",
+    "diag.val_tv_standby": "Standby",
+    "diag.val_intercept_on": "Active (PC)",
+    "diag.val_intercept_off": "Disabled (TV)",
+    "diag.val_input_subsys": "Win SendInput (Enigo)",
 
     // Settings Screen
     "settings.port_params_title": "HDMI Port Parameters",
@@ -396,10 +633,14 @@ const I18N_DICTIONARY = {
     "settings.disp_sleep_desc": "Software deactivation of the TV display in Windows when the TV turns off, preventing cursor and windows from getting lost.",
     "settings.lang_title": "Interface Language / Язык",
     "settings.about_title": "About Application",
+    "settings.os_badge": "OS",
     "settings.os_version_title": "Windows 11 / 10 x64",
     "settings.xml_title": "XML Profiles",
+    "settings.xml_box_tip": "Exchange remote button mappings in XML format",
     "settings.xml_export": "Export XML",
+    "settings.xml_export_tip": "Save current profile as an .xml file",
     "settings.xml_import": "Import XML",
+    "settings.xml_import_tip": "Load button mappings from an .xml file",
     "settings.app_name": "HDMI-CEC Studio",
     "settings.app_desc": "HDMI-CEC Hardware Bridge",
     "settings.version": "Version",
@@ -411,11 +652,14 @@ const I18N_DICTIONARY = {
     "calib.instruction": "Press all desired buttons on your physical TV remote one by one (except the TV Power button). Each detected button will appear in the remote builder.",
     "calib.detected_count": "Detected buttons:",
     "calib.waiting": "Waiting for button press...",
+    "calib.power_skipped": "TV Power button skipped for safety",
+    "calib.pressed_prefix": "Pressed:",
     "calib.build_btn": "Build Remote",
     "calib.cancel_btn": "Cancel",
     "calib.reset_btn": "Reset to Default",
 
     // Hardware status
+    "status.usb_connected_port": "Connected",
     "status.usb_disconnected": "USB: Disconnected",
     "status.usb_disconnected_desc": "Connect adapter to computer",
     "status.ready_online": "Ready • TV Online",
@@ -427,6 +671,15 @@ const I18N_DICTIONARY = {
     "status.line_err_badge": "0V / Error",
     "status.line_free_badge": "Bus idle",
     "status.line_no_power": "No power",
+    "status.bus_polling": "Polling bus...",
+    "status.bus_polling_short": "Polling...",
+    "status.bus_no_usb": "No USB power",
+    "status.tv_online_contact": "3.3V TV Online (Solid link)",
+    "status.bus_free_no_tv": "Bus idle (TV not responding)",
+    "status.bus_error_0v": "0V / CEC line error (short or cable)",
+    "status.remote_on_tip": "Enabled (PC control)",
+    "status.remote_off_tip": "Disabled (TV native remote)",
+    "status.measuring_line": "Measuring line...",
     "status.mouse_on": "Mouse ON",
     "status.mouse_on_desc": "Cursor control (Arrows / LMB / RMB)",
     "status.mouse_off": "Ready",
@@ -509,8 +762,11 @@ const I18N_DICTIONARY = {
     "sys.q_opto_pulse": "Opto Power",
     "sys.q_pc_sleep": "PC Sleep",
     "settings.fw_box_title": "Controller Firmware",
+    "settings.fw_box_tip": "Direct controller update without third-party tools (UF2 / Serial OTA)",
     "settings.fw_flash_bundled_btn": "Flash (v1.1.0)",
     "settings.fw_flash_custom_btn": "From File (.uf2 / .bin)",
+    "settings.fw_custom_tip": "Select firmware file (.uf2 / .bin)",
+    "settings.fw_preparing": "Preparing...",
     "settings.audio_tv_device_label": "TV Audio Device (on TV wake):",
     "settings.audio_fallback_device_label": "PC / Headphones Device (on TV sleep):",
     "settings.audio_device_none": "— Not selected —",
@@ -552,11 +808,25 @@ function t(key, fallback = "") {
 }
 
 /**
+ * Получение локализованного названия клавиши пульта
+ */
+function getKeyDisplayName(code, def) {
+  if (!def) return code;
+  if (def.isExtra) {
+    return `${t("remote.button_prefix", "Кнопка")} ${def.sym}`;
+  }
+  return t(`key.${code}`, def.name || code);
+}
+
+/**
  * Применение языка ко всему DOM
  */
 function applyLocalization(lang) {
   if (lang && (lang === "ru" || lang === "en")) {
     currentLang = lang;
+  }
+  if (document.documentElement) {
+    document.documentElement.lang = currentLang;
   }
 
   document.querySelectorAll("[data-i18n]").forEach(el => {
@@ -569,6 +839,12 @@ function applyLocalization(lang) {
     const key = el.getAttribute("data-i18n-title");
     const val = t(key);
     if (val) el.setAttribute("title", val);
+  });
+
+  document.querySelectorAll("[data-i18n-tooltip]").forEach(el => {
+    const key = el.getAttribute("data-i18n-tooltip");
+    const val = t(key);
+    if (val) el.setAttribute("data-tooltip", val);
   });
 
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
@@ -587,9 +863,15 @@ function applyLocalization(lang) {
     }
   });
 
-  // Обновление заголовка окна
+  // Обновление заголовка окна и локализованной диагностики/статуса питания
   if (typeof updateDynamicWindowTitle === "function") {
     updateDynamicWindowTitle();
+  }
+  if (typeof updateSystemDiagnostics === "function") {
+    updateSystemDiagnostics();
+  }
+  if (typeof renderPaSelect === "function" && typeof currentProfile !== "undefined" && currentProfile) {
+    renderPaSelect();
   }
 }
 
@@ -629,8 +911,8 @@ async function switchLanguage(newLang) {
   if (typeof renderAudioDeviceSelects === "function" && typeof cachedAudioEndpoints !== "undefined" && cachedAudioEndpoints !== null) {
     renderAudioDeviceSelects();
   }
-  if (typeof currentProfile !== "undefined" && currentProfile && typeof selectProfileById === "function") {
-    selectProfileById(currentProfile.id);
+  if (typeof tvPowerState !== "undefined" && typeof updateTvPowerButtonUi === "function") {
+    updateTvPowerButtonUi(tvPowerState);
   }
   if (typeof updateHardwareStatusUi === "function" && typeof lastHwStatus !== "undefined") {
     updateHardwareStatusUi(

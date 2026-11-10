@@ -53,6 +53,8 @@ window.addEventListener("keydown", (e) => {
  * Запуск сеанса калибровки: блокирует эмуляцию действий в ОС
  */
 async function startCalibration() {
+  if (typeof closeAllCustomSelects === "function") closeAllCustomSelects();
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   isCalibratingRemote = true;
   calibratedKeySet.clear();
 
@@ -64,7 +66,7 @@ async function startCalibration() {
   showCalibrationModalUi();
   document.getElementById("calib-count").textContent = "0";
   document.getElementById("calib-keys-list").innerHTML = "";
-  document.getElementById("calib-last-detected").textContent = "Ожидание нажатия...";
+  document.getElementById("calib-last-detected").textContent = _t("calib.waiting", "Ожидание нажатия...");
 
   // Отключаем действия кнопок на уровне ядра ОС
   if (invoke) {
@@ -95,17 +97,23 @@ async function cancelCalibration() {
  * Захват нажатия в режиме калибровки
  */
 function handleCalibrationKeyCapture(codeHex) {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const norm = codeHex.toUpperCase().startsWith("0X")
     ? "0x" + codeHex.substring(2).toUpperCase()
     : "0x" + codeHex.toUpperCase();
 
   // Игнорируем выключение (0x40, 0x6B, 0x6C), чтобы ТВ не гас при случайном нажатии
   if (norm === "0x40" || norm === "0x6B" || norm === "0x6C") {
-    document.getElementById("calib-last-detected").textContent = "Кнопка питания ТВ пропущена для безопасности";
+    document.getElementById("calib-last-detected").textContent = _t("calib.power_skipped", "Кнопка питания ТВ пропущена для безопасности");
     return;
   }
 
-  const def = KEY_DEFINITIONS[norm] || { code: norm, sym: norm.substring(2), name: `Код ${norm}` };
+  const rawDef = KEY_DEFINITIONS[norm];
+  const symText = rawDef ? rawDef.sym : norm.substring(2);
+  const displayName = rawDef
+    ? (typeof getKeyDisplayName === "function" ? getKeyDisplayName(norm, rawDef) : rawDef.name)
+    : `${_t("remote.button_prefix", "Кнопка")} ${norm}`;
+
   if (!calibratedKeySet.has(norm)) {
     calibratedKeySet.add(norm);
     document.getElementById("calib-count").textContent = calibratedKeySet.size;
@@ -115,11 +123,11 @@ function handleCalibrationKeyCapture(codeHex) {
     pill.className = "calib-key-pill";
     pill.id = `calib-pill-${norm}`;
     const symSpan = document.createElement("span");
-    symSpan.textContent = def.sym;
+    symSpan.textContent = symText;
     const nameSpan = document.createElement("span");
     nameSpan.style.opacity = "0.75";
     nameSpan.style.fontWeight = "400";
-    nameSpan.textContent = def.name;
+    nameSpan.textContent = displayName;
     pill.appendChild(symSpan);
     pill.appendChild(nameSpan);
     list.appendChild(pill);
@@ -136,7 +144,7 @@ function handleCalibrationKeyCapture(codeHex) {
     }, 350);
   }
 
-  document.getElementById("calib-last-detected").textContent = `Нажата: ${def.name} (${norm})`;
+  document.getElementById("calib-last-detected").textContent = `${_t("calib.pressed_prefix", "Нажата:")} ${displayName} (${norm})`;
 }
 
 /**
@@ -191,6 +199,7 @@ async function finishCalibration() {
 
   renderDynamicRemote();
   renderMapperTable();
+  if (typeof updateSystemDiagnostics === "function") updateSystemDiagnostics();
   addLog(`[Калибровка] Пульт сконструирован! Собрано кнопок: ${newKeys.length}`, "log-ok");
 }
 
@@ -213,5 +222,6 @@ async function resetToDefaultKeys() {
 
   renderDynamicRemote();
   renderMapperTable();
+  if (typeof updateSystemDiagnostics === "function") updateSystemDiagnostics();
   addLog("[Калибровка] Пульт сброшен к конфигурации профиля ТВ.", "log-ok");
 }

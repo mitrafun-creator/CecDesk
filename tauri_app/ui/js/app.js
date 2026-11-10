@@ -51,13 +51,22 @@ window.addEventListener("securitypolicyviolation", (ev) => {
 // Отключение контекстного меню в UI
 window.addEventListener("contextmenu", (e) => e.preventDefault());
 
-// Закрытие выпадающих списков при клике вне
+// Закрытие выпадающих списков при клике вне, скролле или изменении размера окна
 window.addEventListener("click", (e) => {
-  if (!e.target.closest(".c-select")) {
-    document.querySelectorAll(".c-select.open").forEach(el => el.classList.remove("open"));
-    document.querySelectorAll(".glass-panel").forEach(p => p.style.zIndex = "");
+  if (!e.target.closest(".c-select") && !e.target.closest(".c-select-menu")) {
+    closeAllCustomSelects();
   }
 });
+
+window.addEventListener("scroll", (e) => {
+  if (!e.target || !(e.target instanceof Element) || !e.target.closest(".c-select-menu")) {
+    closeAllCustomSelects();
+  }
+}, { capture: true, passive: true });
+
+window.addEventListener("resize", () => {
+  closeAllCustomSelects();
+}, { passive: true });
 
 let isConnected = false;
 let tvProfiles = [];
@@ -100,15 +109,20 @@ async function appWinHideToTray() {
 }
 
 /**
- * Инициализация плавного перетаскивания окна за шапку
+ * Инициализация перетаскивания окна за шапку (fallback вне нативного Tauri drag.js)
  */
 function initTitlebarDragging() {
   const tb = document.querySelector(".app-titlebar");
   if (!tb) return;
   tb.addEventListener("mousedown", (e) => {
-    // Перетаскиваем только при нажатии левой кнопки мыши вне элементов управления
+    if (window.__TAURI_INTERNALS__) {
+      // Нативный Tauri drag.js сам обрабатывает drag и double-click по data-tauri-drag-region="deep"
+      return;
+    }
     if (e.buttons === 1 && !e.target.closest("button, nav, .segmented-nav, .win-btn, .c-select, input, select, textarea")) {
-      if (invoke) {
+      if (e.detail === 2) {
+        appWinToggleMaximize();
+      } else if (invoke) {
         invoke("app_win_start_dragging").catch(() => {});
       }
     }
@@ -116,10 +130,181 @@ function initTitlebarDragging() {
 }
 
 /**
+ * Позиционирование (i) всплывающих подсказок без обрезания сверху и справа
+ */
+function initHelpPopovers() {
+  document.querySelectorAll(".info-tip-anchor").forEach((anchor) => {
+    if (anchor.dataset.popoverBound) return;
+    anchor.dataset.popoverBound = "1";
+    const adjust = () => {
+      const rect = anchor.getBoundingClientRect();
+      const vp = anchor.closest(".viewport");
+      const topEdge = vp ? vp.getBoundingClientRect().top : 48;
+      const rightEdge = vp ? vp.getBoundingClientRect().right : window.innerWidth;
+      anchor.classList.toggle("open-below", (rect.top - topEdge) < 185);
+      anchor.classList.toggle("align-right", (rect.left + 265) > (rightEdge - 24));
+    };
+    anchor.addEventListener("pointerenter", adjust);
+    anchor.addEventListener("focusin", adjust);
+  });
+}
+
+/**
+ * Централизованная привязка всех статических обработчиков UI (CSP 'self' без inline onclick)
+ */
+let uiBindingsInitialized = false;
+function initUiBindings() {
+  if (uiBindingsInitialized) return;
+  uiBindingsInitialized = true;
+
+  const onClick = (id, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", handler);
+  };
+  const onChange = (id, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => handler(el));
+  };
+
+  // Шапка и вкладки
+  document.querySelectorAll(".seg-btn[data-view-index]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.viewIndex);
+      if (Number.isInteger(idx)) switchViewIndex(idx, btn);
+    });
+  });
+  onClick("btn-win-min", appWinMinimize);
+  onClick("btn-win-max", appWinToggleMaximize);
+  onClick("btn-win-close", appWinHideToTray);
+
+  // Баннер восстановления после сбоя
+  onClick("btn-crash-create-report", () => openBugReportModal(true));
+  onClick("btn-crash-dismiss", dismissCrashBanner);
+
+  // Экран 0: Пульт
+  onClick("btn-tv-power", toggleTvPower);
+  onClick("btn-start-calib", startCalibration);
+  onChange("chk-remote-os", toggleRemotePass);
+  onClick("btn-refresh-hw", checkHardwareLineNow);
+  onClick("btn-remote-offline-refresh", handleRemoteOfflineAction);
+
+  // Экран 1: Кнопки
+  onClick("btn-scripts-folder", openScriptsFolder);
+  onClick("btn-refresh-scripts", refreshCustomScripts);
+  onClick("btn-save-keys", saveMapperConfig);
+  document.querySelectorAll(".preset-btn[data-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => applyKeyPreset(btn.dataset.preset, btn));
+  });
+  const inpProfName = document.getElementById("inp-profile-name");
+  if (inpProfName) {
+    inpProfName.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") renameCurrentProfile();
+    });
+  }
+  onClick("btn-rename-profile", renameCurrentProfile);
+
+  // Экран 2: Система
+  onClick("btn-refresh-ports", refreshPorts);
+  onClick("btn-conn", () => connectDeviceNow());
+  onClick("btn-disconn", disconnectDeviceNow);
+  onClick("btn-check-hw-sys", checkHardwareLineNow);
+  const inpSearchProf = document.getElementById("inp-search-prof");
+  if (inpSearchProf) inpSearchProf.addEventListener("input", renderProfilesCatalog);
+  onClick("btn-sync-profiles", syncTvProfilesOnlineUi);
+  onClick("btn-save-profile-json", saveCurrentProfileJson);
+
+  document.querySelectorAll("button[data-cec-cmd]").forEach((btn) => {
+    btn.addEventListener("click", () => sendCmd(btn.dataset.cecCmd));
+  });
+  document.querySelectorAll("button[data-os-key]").forEach((btn) => {
+    btn.addEventListener("click", () => pressOsKey(btn.dataset.osKey));
+  });
+
+  const inpRaw = document.getElementById("inp-raw");
+  if (inpRaw) {
+    inpRaw.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendCustomRaw();
+    });
+  }
+  onClick("btn-send-raw", sendCustomRaw);
+  onClick("btn-copy-logs", copySelectedOrAllLogs);
+  onClick("btn-open-logs", openLogsFolder);
+  onClick("btn-clear-logs", clearLog);
+
+  // Экран 3: Настройки
+  const inpOsd = document.getElementById("inp-osd");
+  if (inpOsd) {
+    inpOsd.addEventListener("input", checkOsdDirtyState);
+    inpOsd.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") saveOsdName();
+    });
+  }
+  onClick("btn-save-osd", saveOsdName);
+  onClick("btn-apply-pa", applyPaOverride);
+
+  onChange("chk-wake-pc-on-tv", autoSaveQolSettings);
+  onChange("chk-wake-tv-on-pc", autoSaveQolSettings);
+  onChange("chk-tv-off-on-pc", autoSaveQolSettings);
+  onChange("chk-pc-off-on-tv", onPcOffOnTvToggleChanged);
+
+  document.querySelectorAll(".lang-choice-btn[data-lang]").forEach((btn) => {
+    btn.addEventListener("click", () => switchLanguage(btn.dataset.lang));
+  });
+
+  onClick("btn-check-update-settings", () => {
+    const btn = document.getElementById("btn-check-update-settings");
+    if (btn && btn.dataset.updateUrl) {
+      openReleasesPage();
+    } else {
+      checkAppUpdatesUi(false);
+    }
+  });
+  onClick("btn-flash-bundled-fw", () => flashModuleFirmwareUi(false));
+  onClick("btn-flash-custom-fw", () => flashModuleFirmwareUi(true));
+  onClick("btn-export-xml", exportXmlProfileStub);
+  onClick("btn-import-xml", importXmlProfileStub);
+
+  onChange("chk-autostart", (el) => toggleAutostart(el.checked));
+  onChange("chk-hud-overlay", autoSaveQolSettings);
+  onChange("chk-auto-audio", onAutoAudioToggleChanged);
+  onChange("chk-soundbar", autoSaveQolSettings);
+  onChange("chk-hold-seek", autoSaveQolSettings);
+  onChange("chk-emergency-kill", autoSaveQolSettings);
+  onChange("chk-non-intrusive", autoSaveQolSettings);
+  onChange("chk-auto-heal", autoSaveQolSettings);
+  onChange("chk-disp-sleep", autoSaveQolSettings);
+
+  onChange("chk-telemetry-opt-in", onTelemetryOptInChanged);
+  onClick("btn-save-telemetry-endpoint", saveTelemetrySettings);
+  onClick("btn-open-bug-modal", () => openBugReportModal());
+  onClick("btn-open-reports-dir", openReportsFolderUi);
+  onClick("btn-open-github-issue", openGithubIssueDirect);
+
+  // Модальные окна
+  onClick("btn-calib-close", cancelCalibration);
+  onClick("btn-calib-finish", finishCalibration);
+  onClick("btn-calib-cancel", cancelCalibration);
+  onClick("btn-calib-reset", resetToDefaultKeys);
+
+  onClick("btn-bug-close-top", closeBugReportModal);
+  onClick("btn-modal-create-zip", createSupportBundleFromModal);
+  onClick("btn-modal-open-reports", openReportsFolderUi);
+  onClick("btn-modal-send-webhook", sendBugReportWebhookFromModal);
+  onClick("btn-modal-github-issue", openGithubBugIssueFromModal);
+  onClick("btn-bug-close-bottom", closeBugReportModal);
+
+  initHelpPopovers();
+}
+
+/**
  * Плавное переключение экранов без микрофризов и с анимацией скроллбара
  */
 let slideTimeout = null;
 function switchViewIndex(idx, btn) {
+  closeAllCustomSelects();
+  const globalTip = document.getElementById("global-floating-tooltip");
+  if (globalTip) globalTip.classList.remove("visible");
+
   document.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
   if (idx === 1 && typeof window.ensureMapperRendered === "function") {
@@ -150,19 +335,77 @@ function switchViewIndex(idx, btn) {
   }, 380);
 }
 
+function ensureCustomSelectPortal() {
+  let layer = document.getElementById("cselect-portal-layer");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "cselect-portal-layer";
+    layer.className = "cselect-portal-layer";
+    document.body.appendChild(layer);
+  }
+  return layer;
+}
+
+function closeAllCustomSelects() {
+  document.querySelectorAll(".c-select.open").forEach(el => el.classList.remove("open"));
+  document.querySelectorAll(".c-select-menu.is-open").forEach(m => {
+    m.classList.remove("is-open", "open-up");
+    if (m.parentNode && m.parentNode.id === "cselect-portal-layer") {
+      m.parentNode.removeChild(m);
+    }
+  });
+  document.querySelectorAll(".glass-panel").forEach(p => { p.style.zIndex = ""; });
+}
+
+function positionCustomSelectMenu(trigger, menu) {
+  const rect = trigger.getBoundingClientRect();
+  const gap = 5;
+  const margin = 8;
+  const menuWidth = Math.max(rect.width, 200);
+  let left = rect.left;
+  if (left + menuWidth > window.innerWidth - margin) {
+    left = Math.max(margin, window.innerWidth - menuWidth - margin);
+  }
+  menu.style.width = `${Math.round(rect.width)}px`;
+  menu.style.minWidth = `${Math.round(menuWidth)}px`;
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.right = "auto";
+
+  const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
+  const spaceAbove = rect.top - gap - margin;
+  const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+  const maxAvail = Math.max(110, Math.min(240, openUp ? spaceAbove : spaceBelow));
+  menu.style.maxHeight = `${Math.round(maxAvail)}px`;
+
+  if (openUp) {
+    menu.classList.add("open-up");
+    menu.style.top = "auto";
+    menu.style.bottom = `${Math.round(window.innerHeight - rect.top + gap)}px`;
+  } else {
+    menu.classList.remove("open-up");
+    menu.style.bottom = "auto";
+    menu.style.top = `${Math.round(rect.bottom + gap)}px`;
+  }
+}
+
 /**
- * Кастомный компонент выпадающего списка в стиле Apple macOS
+ * Кастомный компонент выпадающего списка в стиле Apple macOS (с безопасным порталом)
  */
 function createCustomSelect(containerOrId, options, currentValue, onChange) {
   const root = typeof containerOrId === "string" ? document.getElementById(containerOrId) : containerOrId;
   if (!root) return;
+  if (root._portalMenu && root._portalMenu.parentNode) {
+    root._portalMenu.parentNode.removeChild(root._portalMenu);
+  }
+  root.classList.remove("open");
   root.innerHTML = "";
   root.setAttribute("data-value", currentValue || "");
 
   const curOpt = options.find(o => o.value === currentValue) || options[0] || { value: "", label: "—" };
   root.setAttribute("data-value", curOpt.value);
 
-  const trigger = document.createElement("div");
+  const trigger = document.createElement("button");
+  trigger.type = "button";
   trigger.className = "c-select-trigger";
   const labelSpan = document.createElement("span");
   labelSpan.className = "c-select-label";
@@ -175,6 +418,7 @@ function createCustomSelect(containerOrId, options, currentValue, onChange) {
 
   const menu = document.createElement("div");
   menu.className = "c-select-menu";
+  root._portalMenu = menu;
 
   const frag = document.createDocumentFragment();
   for (let i = 0; i < options.length; i++) {
@@ -188,7 +432,7 @@ function createCustomSelect(containerOrId, options, currentValue, onChange) {
   }
   menu.appendChild(frag);
 
-  menu.onclick = (e) => {
+  menu.addEventListener("click", (e) => {
     const item = e.target.closest(".c-select-option");
     if (!item) return;
     e.stopPropagation();
@@ -199,26 +443,31 @@ function createCustomSelect(containerOrId, options, currentValue, onChange) {
     const prevSel = menu.querySelector(".c-select-option.selected");
     if (prevSel) prevSel.classList.remove("selected");
     item.classList.add("selected");
-    root.classList.remove("open");
-    const parentPanel = root.closest(".glass-panel");
-    if (parentPanel) parentPanel.style.zIndex = "";
+    closeAllCustomSelects();
     if (onChange) onChange(val);
-  };
+  });
 
-  trigger.onclick = (e) => {
+  trigger.addEventListener("click", (e) => {
     e.stopPropagation();
     const wasOpen = root.classList.contains("open");
-    document.querySelectorAll(".c-select.open").forEach(el => el.classList.remove("open"));
-    document.querySelectorAll(".glass-panel").forEach(p => p.style.zIndex = "");
+    closeAllCustomSelects();
     if (!wasOpen) {
+      const portal = ensureCustomSelectPortal();
+      portal.appendChild(menu);
       root.classList.add("open");
+      menu.classList.add("is-open");
+      positionCustomSelectMenu(trigger, menu);
+      const selOpt = menu.querySelector(".c-select-option.selected");
+      if (selOpt) {
+        const topOffset = selOpt.offsetTop - menu.clientHeight / 2 + selOpt.offsetHeight / 2;
+        menu.scrollTop = Math.max(0, topOffset);
+      }
       const parentPanel = root.closest(".glass-panel");
       if (parentPanel) parentPanel.style.zIndex = "100";
     }
-  };
+  });
 
   root.appendChild(trigger);
-  root.appendChild(menu);
 }
 
 /**
@@ -371,6 +620,21 @@ function renderProfilesCatalog() {
     });
 }
 
+function renderPaSelect() {
+  const portPrefix = typeof t === "function" ? t("settings.port_prefix", "Разъем") : "Разъем";
+  const ports = (currentProfile && Array.isArray(currentProfile.hdmi_ports) && currentProfile.hdmi_ports.length > 0)
+    ? currentProfile.hdmi_ports
+    : [
+        { pa: "1000", label: "HDMI 1" },
+        { pa: "2000", label: "HDMI 2" },
+        { pa: "3000", label: "HDMI 3" },
+        { pa: "4000", label: "HDMI 4" }
+      ];
+  const paOpts = ports.map((hp, i) => ({ value: hp.pa, label: `${portPrefix} ${i + 1} (${hp.label})` }));
+  createCustomSelect("csel-pa", paOpts, selectedPa, (val) => { selectedPa = val; });
+}
+window.renderPaSelect = renderPaSelect;
+
 function selectProfileById(id, options = {}) {
   const prof = tvProfiles.find(p => p.id === id);
   if (!prof) return;
@@ -402,9 +666,7 @@ function selectProfileById(id, options = {}) {
     });
   }
 
-  const portPrefix = typeof t === "function" ? t("settings.port_prefix", "Разъем") : "Разъем";
-  const paOpts = prof.hdmi_ports.map((hp, i) => ({ value: hp.pa, label: `${portPrefix} ${i + 1} (${hp.label})` }));
-  createCustomSelect("csel-pa", paOpts, selectedPa, (val) => { selectedPa = val; });
+  renderPaSelect();
 
   // Заполнение информационной карточки параметров профиля
   const elBrand = document.getElementById("pinfo-brand");
@@ -412,7 +674,9 @@ function selectProfileById(id, options = {}) {
   const elProto = document.getElementById("pinfo-protocol");
   if (elProto) elProto.textContent = prof.cec_system_name || "HDMI-CEC";
   const elKeysCount = document.getElementById("pinfo-keys-count");
-  const supportedKeysList = prof.supported_keys || prof.keys || [];
+  const supportedKeysList = (prof.supported_keys && prof.supported_keys.length > 0)
+    ? prof.supported_keys
+    : ((prof.keys && prof.keys.length > 0) ? prof.keys : (typeof DEFAULT_BASE_KEYS !== "undefined" ? DEFAULT_BASE_KEYS : []));
   if (elKeysCount) elKeysCount.textContent = supportedKeysList.length;
   const elDefPa = document.getElementById("pinfo-default-pa");
   if (elDefPa) {
@@ -429,6 +693,9 @@ function selectProfileById(id, options = {}) {
     if (typeof window.invalidateMapperTable === "function") window.invalidateMapperTable();
   } else {
     renderMapperTable();
+  }
+  if (typeof updateSystemDiagnostics === "function") {
+    updateSystemDiagnostics();
   }
   updateDynamicWindowTitle();
 }
@@ -615,9 +882,7 @@ function updatePcOffModeEnabledState() {
   } else {
     wrap.classList.add("is-disabled");
     const sel = wrap.querySelector(".c-select.open");
-    if (sel) sel.classList.remove("open");
-    const panel = wrap.closest(".glass-panel");
-    if (panel) panel.style.zIndex = "";
+    if (sel) closeAllCustomSelects();
   }
 }
 
@@ -683,6 +948,9 @@ async function applyPaOverride() {
     if (invoke) {
       await invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
     }
+  }
+  if (typeof updateSystemDiagnostics === "function") {
+    updateSystemDiagnostics();
   }
   await sendCmd(`PA ${selectedPa}`);
   addLog(`[HDMI] Номер разъема применен: ${selectedPa}`, "log-ok");
@@ -790,6 +1058,10 @@ async function switchHdmi(pa, chipEl) {
     document.querySelectorAll(".hdmi-chip").forEach(c => c.classList.remove("active-input"));
     chipEl.classList.add("active-input");
   }
+  renderPaSelect();
+  if (typeof updateSystemDiagnostics === "function") {
+    updateSystemDiagnostics();
+  }
   const b1 = pa.substring(0, 2);
   const b2 = pa.substring(2, 4);
   await sendCmd(`RAW 0F 86 ${b1} ${b2}`);
@@ -877,7 +1149,7 @@ async function checkAppUpdatesUi(silent = false) {
         btn.style.background = "var(--apple-blue)";
         btn.style.color = "#ffffff";
         btn.textContent = `v${info.latest_version}`;
-        btn.onclick = () => openReleasesPage();
+        btn.dataset.updateUrl = latestUpdateUrl;
       }
       if (btnSettings) {
         const openText = typeof t === "function" ? t("settings.open_releases") : "Скачать";
@@ -891,7 +1163,7 @@ async function checkAppUpdatesUi(silent = false) {
         span.textContent = `${openText} v${info.latest_version}`;
         btnSettings.appendChild(svg);
         btnSettings.appendChild(span);
-        btnSettings.onclick = () => openReleasesPage();
+        btnSettings.dataset.updateUrl = latestUpdateUrl;
       }
       if (lblStatus) {
         lblStatus.textContent = typeof t === "function" ? t("settings.update_available") : "Доступна новая версия";
@@ -961,7 +1233,7 @@ async function flashModuleFirmwareUi(useCustomFile = false) {
     bar.style.background = "var(--apple-blue)";
   }
   if (txt) {
-    txt.textContent = "Подготовка программатора...";
+    txt.textContent = typeof t === "function" ? t("settings.fw_preparing", "Подготовка программатора...") : "Подготовка программатора...";
     txt.style.color = "var(--text-secondary)";
   }
 
@@ -1016,7 +1288,7 @@ function updateDynamicWindowTitle() {
 
   const model = getAdapterModelDisplay();
   const port = selectedPort || (lastHwStatus && lastHwStatus.port) || "COM6";
-  const statusConnecting = typeof t === "function" ? t("remote.syncing", "Подключение...") : "Подключение...";
+  const statusConnecting = typeof t === "function" ? t("remote.connecting", "Подключение...") : "Подключение...";
   const statusDisc = typeof t === "function" ? t("remote.status_disconnected", "Отключен") : "Отключен";
 
   const fwBadge = document.getElementById("lbl-fw-chip-badge");
@@ -1041,6 +1313,7 @@ function updateDynamicWindowTitle() {
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
 window.addEventListener("DOMContentLoaded", async () => {
+  initUiBindings();
   initTitlebarDragging();
 
   const osLabel = document.getElementById("lbl-os-platform");
@@ -1116,9 +1389,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     listen("mouse-mode-changed", (ev) => {
       const isMouse = ev.payload;
       if (isMouse) {
-        setHumanStatus("online", "Мышь ВКЛ", "Управление курсором (Стрелки / ЛКМ / ПКМ)");
+        setHumanStatus(
+          "online",
+          typeof t === "function" ? t("status.mouse_on", "Мышь ВКЛ") : "Мышь ВКЛ",
+          typeof t === "function" ? t("status.mouse_on_desc", "Управление курсором (Стрелки / ЛКМ / ПКМ)") : "Управление курсором (Стрелки / ЛКМ / ПКМ)"
+        );
       } else {
-        setHumanStatus("online", "Готово", "Обычный режим пульта");
+        setHumanStatus(
+          "online",
+          typeof t === "function" ? t("status.mouse_off", "Готово") : "Готово",
+          typeof t === "function" ? t("status.mouse_off_desc", "Обычный режим пульта") : "Обычный режим пульта"
+        );
       }
     }),
 
@@ -1337,6 +1618,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         saveMapperConfig();
       }
     } else if (e.key === "Escape") {
+      if (document.querySelector(".c-select.open")) {
+        e.preventDefault();
+        closeAllCustomSelects();
+        return;
+      }
       const bugModal = document.getElementById("bug-report-modal");
       if (bugModal && (bugModal.classList.contains("is-open") || bugModal.style.display === "flex")) {
         e.preventDefault();
@@ -1397,6 +1683,9 @@ function initFloatingTooltips() {
 
   document.addEventListener("pointerout", (e) => {
     if (activeTooltipEl && (e.target === activeTooltipEl || activeTooltipEl.contains(e.target))) {
+      if (e.relatedTarget && activeTooltipEl.contains(e.relatedTarget)) {
+        return;
+      }
       tip.classList.remove("visible");
       activeTooltipEl = null;
     }
@@ -1410,8 +1699,11 @@ function initFloatingTooltips() {
   });
 
   window.addEventListener("scroll", () => {
-    if (activeTooltipEl) tip.classList.remove("visible");
-  }, { passive: true });
+    if (activeTooltipEl) {
+      tip.classList.remove("visible");
+      activeTooltipEl = null;
+    }
+  }, { capture: true, passive: true });
 }
 
 function positionTooltip(target, tip) {
@@ -1558,6 +1850,7 @@ function formatDiagnosticsSummaryText(snap) {
 }
 
 async function openBugReportModal(fromCrash = false) {
+  if (typeof closeAllCustomSelects === "function") closeAllCustomSelects();
   const modal = document.getElementById("bug-report-modal");
   const summaryBox = document.getElementById("bug-report-summary");
   const resultBox = document.getElementById("bug-report-result");

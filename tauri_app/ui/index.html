@@ -10,24 +10,24 @@
 <body class="app-initializing">
 
   <!-- ==================== КАСТОМНАЯ ШАПКА ОКНА (TITLEBAR) ==================== -->
-  <header class="app-titlebar" data-tauri-drag-region>
-    <div class="titlebar-left" data-tauri-drag-region></div>
+  <header class="app-titlebar" data-tauri-drag-region="deep">
+    <div class="titlebar-left"></div>
 
     <div class="titlebar-center">
-      <nav class="segmented-nav">
-        <button class="seg-btn active" onclick="switchViewIndex(0, this)">
+      <nav class="segmented-nav" data-tauri-drag-region="false">
+        <button type="button" class="seg-btn active" data-view-index="0">
           <svg class="ico" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="6"></rect><circle cx="12" cy="8" r="2"></circle><path d="M12 15v2"></path></svg>
           <span data-i18n="nav.remote">Пульт</span>
         </button>
-        <button class="seg-btn" onclick="switchViewIndex(1, this)">
+        <button type="button" class="seg-btn" data-view-index="1">
           <svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"></path><circle cx="18" cy="18" r="2"></circle></svg>
           <span data-i18n="nav.keys">Кнопки</span>
         </button>
-        <button class="seg-btn" onclick="switchViewIndex(2, this)">
+        <button type="button" class="seg-btn" data-view-index="2">
           <svg class="ico" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
           <span data-i18n="nav.system">Система</span>
         </button>
-        <button class="seg-btn" onclick="switchViewIndex(3, this)">
+        <button type="button" class="seg-btn" data-view-index="3">
           <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span data-i18n="nav.settings">Настройки</span>
         </button>
@@ -35,13 +35,13 @@
     </div>
 
     <div class="titlebar-controls">
-      <button class="win-btn btn-min" onclick="appWinMinimize()" data-tooltip="Свернуть">
+      <button type="button" id="btn-win-min" class="win-btn btn-min" data-tauri-drag-region="false" data-tooltip="Свернуть" data-i18n-tooltip="win.minimize">
         <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"></line></svg>
       </button>
-      <button class="win-btn btn-max" onclick="appWinToggleMaximize()" data-tooltip="Развернуть">
+      <button type="button" id="btn-win-max" class="win-btn btn-max" data-tauri-drag-region="false" data-tooltip="Развернуть" data-i18n-tooltip="win.maximize">
         <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1"></rect></svg>
       </button>
-      <button class="win-btn btn-close" onclick="appWinHideToTray()" data-tooltip="Свернуть в трей">
+      <button type="button" id="btn-win-close" class="win-btn btn-close" data-tauri-drag-region="false" data-tooltip="Свернуть в трей" data-i18n-tooltip="win.hide_to_tray">
         <svg viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9"></line><line x1="9" y1="3" x2="3" y2="9"></line></svg>
       </button>
     </div>
@@ -54,8 +54,8 @@
       <span id="lbl-crash-banner-text" data-i18n="crash.banner_default">Предыдущий запуск завершился некорректно. Вы можете собрать диагностический отчёт для отправки разработчику.</span>
     </div>
     <div class="crash-banner-actions">
-      <button class="apple-btn accent-blue" style="padding:5px 12px; font-size:11.5px;" onclick="openBugReportModal(true)" data-i18n="crash.create_report">Создать отчёт (.zip)</button>
-      <button class="apple-btn" style="padding:5px 10px; font-size:11.5px;" onclick="dismissCrashBanner()" data-i18n="crash.dismiss">Скрыть</button>
+      <button type="button" id="btn-crash-create-report" class="apple-btn accent-blue" style="padding:5px 12px; font-size:11.5px;" data-i18n="crash.create_report">Создать отчёт (.zip)</button>
+      <button type="button" id="btn-crash-dismiss" class="apple-btn" style="padding:5px 10px; font-size:11.5px;" data-i18n="crash.dismiss">Скрыть</button>
     </div>
   </div>
 
@@ -84,7 +84,7 @@
 
               <!-- Единая умная кнопка питания ТВ: Включить / Выключить / Определение состояния -->
               <div class="power-single-row">
-                <button class="apple-btn power-toggle-btn is-syncing" id="btn-tv-power" onclick="toggleTvPower()" disabled>
+                <button type="button" class="apple-btn power-toggle-btn is-syncing" id="btn-tv-power" disabled>
                   <svg class="ico ico-lg ico-spin" id="spin-tv-power" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" fill="none" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"></circle></svg>
                   <svg class="ico ico-lg ico-power" id="ico-tv-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
                   <span id="lbl-tv-power" data-i18n="remote.syncing_tv_state">Определение состояния...</span>
@@ -98,22 +98,22 @@
             <!-- Единственный переключатель пульта: включен / выключен -->
             <div class="glass-panel glass-panel-padd">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                <div style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1;" data-tooltip="Управление компьютером при помощи пульта телевизора">
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:1;" data-tooltip="Управление компьютером при помощи пульта телевизора" data-i18n-tooltip="remote.intercept_tip">
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="toggle-title" style="font-size:13px; font-weight:600;" data-i18n="remote.intercept_title">Перехват пульта</span>
-                    <span class="remote-count-chip" id="lbl-remote-count" data-tooltip="Доступно кнопок в конструкторе">
+                    <span class="remote-count-chip" id="lbl-remote-count" data-tooltip="Доступно кнопок в конструкторе" data-i18n-tooltip="remote.keys_count_tip">
                       <span class="count-num" id="lbl-count-value">0</span>
                       <span class="count-text" id="lbl-count-unit" data-i18n="remote.keys_unit">кнопок</span>
                     </span>
                   </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-                  <button class="apple-btn btn-action" onclick="startCalibration()" data-tooltip="Обучить пульт нажатиями кнопок" style="padding:5px 10px; font-size:11.5px;">
+                  <button type="button" id="btn-start-calib" class="apple-btn btn-action" data-tooltip="Обучить пульт нажатиями кнопок" data-i18n-tooltip="remote.calib_tip" style="padding:5px 10px; font-size:11.5px;">
                     <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     <span data-i18n="remote.btn_calib">Калибровка</span>
                   </button>
                   <label class="ios-switch">
-                    <input type="checkbox" id="chk-remote-os" checked onchange="toggleRemotePass()" />
+                    <input type="checkbox" id="chk-remote-os" checked />
                     <span class="ios-slider"></span>
                   </label>
                 </div>
@@ -127,7 +127,7 @@
                   <svg class="ico" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"></rect><rect x="2" y="14" width="20" height="8" rx="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
                   <span data-i18n="remote.hw_status_title">Статус</span>
                 </div>
-                <button id="btn-refresh-hw" class="apple-btn btn-refresh-large" onclick="checkHardwareLineNow()" data-tooltip="Обновить статус">
+                <button type="button" id="btn-refresh-hw" class="apple-btn btn-refresh-large" data-tooltip="Обновить статус" data-i18n-tooltip="remote.status_refresh_tip">
                   <svg class="ico ico-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                 </button>
               </div>
@@ -203,7 +203,7 @@
               <span class="remote-offline-dot" id="remote-offline-dot"></span>
               <span id="remote-offline-reason" data-i18n="remote.offline_reason_init">Ожидание ответа от модуля...</span>
             </div>
-            <button class="apple-btn accent-blue remote-offline-btn" id="btn-remote-offline-refresh" onclick="refreshRemoteConnectionModal()">
+            <button type="button" class="apple-btn accent-blue remote-offline-btn" id="btn-remote-offline-refresh">
               <svg class="ico ico-refresh" id="ico-remote-offline-refresh" style="width:15px;height:15px;" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
               <span id="lbl-remote-offline-btn" data-i18n="sys.refresh">Обновить</span>
             </button>
@@ -221,14 +221,14 @@
               <div class="panel-header">
                 <div class="panel-title" data-i18n="keys.title">Кнопки пульта</div>
                 <div class="row-gap-2">
-                  <button class="apple-btn btn-action" onclick="openScriptsFolder()" title="Открыть папку scripts со своими .bat/.ps1 скриптами">
+                  <button type="button" id="btn-scripts-folder" class="apple-btn btn-action" data-tooltip="Открыть папку scripts со своими .bat/.ps1 скриптами" data-i18n-tooltip="keys.scripts_folder_tip">
                     <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     <span data-i18n="keys.scripts_folder">Папка сценариев</span>
                   </button>
-                  <button class="apple-btn btn-action-icon" onclick="refreshCustomScripts()" title="Пересканировать папку сценариев">
+                  <button type="button" id="btn-refresh-scripts" class="apple-btn btn-action-icon" data-tooltip="Пересканировать папку сценариев" data-i18n-tooltip="keys.refresh_scripts_tip">
                     <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                   </button>
-                  <button id="btn-save-keys" class="apple-btn btn-saved-idle btn-save" onclick="saveMapperConfig()" disabled data-i18n="keys.save">
+                  <button type="button" id="btn-save-keys" class="apple-btn btn-saved-idle btn-save" disabled data-i18n="keys.save">
                     Сохранить
                   </button>
                 </div>
@@ -236,29 +236,29 @@
 
               <!-- Быстрые пресеты кнопок пульта -->
               <div class="preset-strip">
-                <button class="preset-btn active" id="pbtn-balanced" onclick="applyKeyPreset('balanced', this)">
+                <button type="button" class="preset-btn active" id="pbtn-balanced" data-preset="balanced">
                   <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
                   <span data-i18n="keys.preset_base">Универсальный</span>
                 </button>
-                <button class="preset-btn" id="pbtn-cinema" onclick="applyKeyPreset('cinema', this)">
+                <button type="button" class="preset-btn" id="pbtn-cinema" data-preset="cinema">
                   <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                   <span data-i18n="keys.preset_cinema">Кино</span>
                 </button>
-                <button class="preset-btn" id="pbtn-steam" onclick="applyKeyPreset('steam', this)">
+                <button type="button" class="preset-btn" id="pbtn-steam" data-preset="steam">
                   <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line><rect x="2" y="6" width="20" height="12" rx="6"></rect></svg>
                   <span data-i18n="keys.preset_steam">Игры</span>
                 </button>
-                <button class="preset-btn" id="pbtn-desktop" onclick="applyKeyPreset('desktop', this)">
+                <button type="button" class="preset-btn" id="pbtn-desktop" data-preset="desktop">
                   <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
                   <span data-i18n="keys.preset_surf">Браузер</span>
                 </button>
-                <button class="preset-btn" id="pbtn-numpad" onclick="applyKeyPreset('numpad', this)">
+                <button type="button" class="preset-btn" id="pbtn-numpad" data-preset="numpad">
                   <svg class="ico" style="width:12px;height:12px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8" cy="8" r="1"></circle><circle cx="12" cy="8" r="1"></circle><circle cx="16" cy="8" r="1"></circle><circle cx="8" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="16" cy="12" r="1"></circle></svg>
                   <span data-i18n="keys.preset_numpad">Цифры</span>
                 </button>
               </div>
 
-              <div style="max-height: 480px; overflow-y: auto; padding-right: 4px;">
+              <div class="mapper-table-scroll">
                 <table class="clean-table">
                   <thead>
                     <tr>
@@ -283,9 +283,9 @@
                 <div id="csel-profile" class="c-select"></div>
 
                 <div class="text-footnote text-secondary" style="margin-top:10px;" data-i18n="keys.profile_name">Название профиля</div>
-                <div class="row-gap-2">
+                <div class="row-gap-2" style="margin-top:4px;">
                   <input id="inp-profile-name" type="text" placeholder="Название профиля..." style="flex:1;" data-i18n-placeholder="keys.profile_name" />
-                  <button class="apple-btn accent-blue btn-save" onclick="renameCurrentProfile()" title="Сохранить новое название профиля" data-i18n="keys.save">
+                  <button type="button" id="btn-rename-profile" class="apple-btn accent-blue btn-save" data-tooltip="Сохранить новое название профиля" data-i18n-tooltip="keys.save_name_tip" data-i18n="keys.save">
                     Сохранить
                   </button>
                 </div>
@@ -303,7 +303,7 @@
                 </div>
                 <div class="inset-row">
                   <span class="text-secondary" style="font-size:12px;" data-i18n="keys.supported_keys_count">Клавиш в базе:</span>
-                  <span id="pinfo-keys-count" class="fw-medium" style="font-size:12px;">19</span>
+                  <span id="pinfo-keys-count" class="fw-medium" style="font-size:12px;">15</span>
                 </div>
                 <div class="inset-row">
                   <span class="text-secondary" style="font-size:12px;" data-i18n="keys.default_pa">Адрес по умолчанию:</span>
@@ -314,8 +314,8 @@
               <!-- Информационная карточка связи раскладки -->
               <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-hairline); border-radius:var(--r-md); padding:14px; display:flex; gap:12px; align-items:flex-start;">
                 <svg class="ico text-blue" style="width:18px;height:18px;margin-top:2px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                <div style="font-size:11.5px; line-height:1.5; color:var(--text-secondary);">
-                  Назначения кнопок автоматически связываются с выбранным профилем телевизора. Зеленый индикатор в таблице указывает на клавиши, которые присутствуют на вашем пульте.
+                <div style="font-size:11.5px; line-height:1.5; color:var(--text-secondary);" data-i18n="keys.mapping_hint">
+                  Назначения кнопок автоматически связываются с выбранным профилем телевизора. Синий индикатор в таблице указывает на клавиши, которые присутствуют на вашем пульте.
                 </div>
               </div>
 
@@ -334,9 +334,9 @@
               <div class="row">
                 <span style="font-size:12px; color:var(--text-secondary);" data-i18n="sys.device">Устройство:</span>
                 <div id="csel-port" class="c-select" style="min-width:230px;"></div>
-                <button class="apple-btn" style="padding:7px 11px;" onclick="refreshPorts()" data-i18n="sys.refresh">Обновить</button>
-                <button id="btn-conn" class="apple-btn accent-blue" style="padding:7px 14px;" onclick="connectDeviceNow()" data-i18n="sys.connect">Подключить</button>
-                <button id="btn-disconn" class="apple-btn btn-saved-idle" style="padding:7px 14px;" onclick="disconnectDeviceNow()" disabled data-i18n="sys.disconnect">Отключить</button>
+                <button type="button" id="btn-refresh-ports" class="apple-btn" style="padding:7px 11px;" data-i18n="sys.refresh">Обновить</button>
+                <button type="button" id="btn-conn" class="apple-btn accent-blue" style="padding:7px 14px;" data-i18n="sys.connect">Подключить</button>
+                <button type="button" id="btn-disconn" class="apple-btn btn-saved-idle" style="padding:7px 14px;" disabled data-i18n="sys.disconnect">Отключить</button>
               </div>
 
               <div class="row">
@@ -351,34 +351,34 @@
             <div class="panel-header" style="margin-bottom:12px;">
               <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
                 <svg class="ico" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                <span>Подробная диагностика оборудования и шины CEC</span>
+                <span data-i18n="sys.diag_title">Подробная диагностика оборудования и шины CEC</span>
               </div>
-              <button class="apple-btn" style="padding:4px 10px; font-size:11.5px;" onclick="checkHardwareLineNow()">Запросить статус шины</button>
+              <button type="button" id="btn-check-hw-sys" class="apple-btn" style="padding:4px 10px; font-size:11.5px;" data-i18n="sys.check_bus_btn">Запросить статус шины</button>
             </div>
             <div class="sys-diag-grid">
               <div class="diag-card">
-                <div class="diag-card-title">USB-контроллер</div>
-                <div class="diag-row"><span>Порт:</span><strong id="diag-usb-port">Не подключен</strong></div>
-                <div class="diag-row"><span>Состояние:</span><strong id="diag-usb-conn">Отключен</strong></div>
-                <div class="diag-row"><span>Микрокод:</span><strong id="diag-usb-chip">RP2040-Zero (USB CDC)</strong></div>
+                <div class="diag-card-title" data-i18n="sys.card_usb">USB-контроллер</div>
+                <div class="diag-row"><span data-i18n="sys.lbl_port">Порт:</span><strong id="diag-usb-port">Не подключен</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_state">Состояние:</span><strong id="diag-usb-conn">Отключен</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_firmware">Контроллер:</span><strong id="diag-usb-chip">RP2040-Zero (USB CDC)</strong></div>
               </div>
               <div class="diag-card">
-                <div class="diag-card-title">Физическая шина CEC</div>
-                <div class="diag-row"><span>Уровень линии:</span><strong id="diag-cec-level">Не замерено</strong></div>
-                <div class="diag-row"><span>Подтяжка Pull-Up:</span><strong id="diag-cec-pull">—</strong></div>
-                <div class="diag-row"><span>Состояние контакта:</span><strong id="diag-cec-contact">—</strong></div>
+                <div class="diag-card-title" data-i18n="sys.card_bus">Физическая шина CEC</div>
+                <div class="diag-row"><span data-i18n="sys.lbl_line_level">Уровень линии:</span><strong id="diag-cec-level">Не замерено</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_pullup">Подтяжка Pull-Up:</span><strong id="diag-cec-pull">—</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_contact">Состояние контакта:</span><strong id="diag-cec-contact">—</strong></div>
               </div>
               <div class="diag-card">
-                <div class="diag-card-title">Телевизор (EasyLink)</div>
-                <div class="diag-row"><span>Питание матрицы:</span><strong id="diag-tv-pwr">Определение...</strong></div>
-                <div class="diag-row"><span>Физический адрес:</span><strong id="diag-tv-phys">3.0.0.0 (HDMI 3)</strong></div>
-                <div class="diag-row"><span>Логический адрес:</span><strong id="diag-tv-la">0x04 (Playback 1)</strong></div>
+                <div class="diag-card-title" id="diag-tv-card-title">Телевизор (CEC)</div>
+                <div class="diag-row"><span data-i18n="sys.lbl_tv_pwr">Питание матрицы:</span><strong id="diag-tv-pwr">Определение...</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_phys_addr">Физический адрес:</span><strong id="diag-tv-phys">3.0.0.0 (HDMI 3)</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_log_addr">Логический адрес:</span><strong id="diag-tv-la">0x04 (Playback 1)</strong></div>
               </div>
               <div class="diag-card">
-                <div class="diag-card-title">Служба перехвата пульта</div>
-                <div class="diag-row"><span>Перехват команд:</span><strong id="diag-remote-active">Включен</strong></div>
-                <div class="diag-row"><span>Обучено кнопок:</span><strong id="diag-remote-keys-cnt">0 кнопок</strong></div>
-                <div class="diag-row"><span>Подсистема ввода:</span><strong id="diag-remote-subsys">Windows SendInput / Enigo</strong></div>
+                <div class="diag-card-title" data-i18n="sys.card_remote">Служба перехвата пульта</div>
+                <div class="diag-row"><span data-i18n="sys.lbl_intercept">Перехват команд:</span><strong id="diag-remote-active">Включен</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_keys_cnt">Обучено кнопок:</span><strong id="diag-remote-keys-cnt">0 кнопок</strong></div>
+                <div class="diag-row"><span data-i18n="sys.lbl_input_sys">Подсистема ввода:</span><strong id="diag-remote-subsys">Win SendInput (Enigo)</strong></div>
               </div>
             </div>
           </div>
@@ -388,8 +388,8 @@
               <div class="panel-header">
                 <div class="panel-title"><span data-i18n="sys.tv_models">Модели ТВ</span> (<span id="prof-count">0</span>)</div>
                 <div class="row" style="gap:6px;">
-                  <input id="inp-search-prof" type="text" placeholder="Поиск..." oninput="renderProfilesCatalog()" style="width:105px; padding:4px 8px; font-size:11.5px;" data-i18n-placeholder="sys.search_ph" />
-                  <button class="apple-btn" style="padding:4px 8px; font-size:11px;" onclick="syncTvProfilesOnlineUi()" title="Синхронизировать онлайн базу профилей ТВ" data-i18n="sys.sync_db">Обновить базу</button>
+                  <input id="inp-search-prof" type="text" placeholder="Поиск..." style="width:105px; padding:4px 8px; font-size:11.5px;" data-i18n-placeholder="sys.search_ph" />
+                  <button type="button" id="btn-sync-profiles" class="apple-btn" style="padding:4px 8px; font-size:11px;" data-tooltip="Синхронизировать онлайн базу профилей ТВ" data-i18n-tooltip="sys.sync_db_tip" data-i18n="sys.sync_db">Обновить базу</button>
                 </div>
               </div>
               <div id="profiles-catalog" class="profiles-list"></div>
@@ -398,7 +398,7 @@
             <div class="glass-panel" style="padding:16px 18px;">
               <div class="panel-header">
                 <div class="panel-title" data-i18n="sys.json_config">Конфигурация JSON</div>
-                <button class="apple-btn accent-blue" style="padding:5px 11px; font-size:11.5px;" onclick="saveCurrentProfileJson()" data-i18n="keys.save">Сохранить</button>
+                <button type="button" id="btn-save-profile-json" class="apple-btn accent-blue" style="padding:5px 11px; font-size:11.5px;" data-i18n="keys.save">Сохранить</button>
               </div>
               <textarea id="txt-profile-json" style="flex:1; min-height:220px; font-family:Consolas, monospace; font-size:11.5px;"></textarea>
             </div>
@@ -408,21 +408,21 @@
                 <div class="panel-title" data-i18n="sys.bus_queries">Запросы шины</div>
               </div>
               <div class="grid-2">
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('STATE')" data-i18n="sys.line_test">Тест линии</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('RAW 00 8F')" data-i18n="sys.tv_status">Статус ТВ</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('RAW 00 83')" data-i18n="sys.q_tv_addr">Адрес ТВ</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('RAW 00 8C')" data-i18n="sys.q_tv_brand">Бренд ТВ</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('RAW 00 9F')" data-i18n="sys.q_cec_ver">Версия CEC</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('RAW 0F 85')" data-i18n="sys.q_active_in">Активный вход</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('RAW 00 46')" data-i18n="sys.q_tv_name">Имя ТВ</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('ANNOUNCE')" data-i18n="sys.q_pc_announce">Анонс ПК</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="sendCmd('PC_PWR_PULSE')" data-i18n="sys.q_opto_pulse">Оптопара Power</button>
-                <button class="apple-btn" style="padding:8px; font-size:12px;" onclick="pressOsKey('PC_SLEEP')" data-i18n="sys.q_pc_sleep">Сон ПК</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="STATE" data-i18n="sys.line_test">Тест линии</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 00 8F" data-i18n="sys.tv_status">Статус ТВ</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 00 83" data-i18n="sys.q_tv_addr">Адрес ТВ</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 00 8C" data-i18n="sys.q_tv_brand">Бренд ТВ</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 00 9F" data-i18n="sys.q_cec_ver">Версия CEC</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 0F 85" data-i18n="sys.q_active_in">Активный вход</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 00 46" data-i18n="sys.q_tv_name">Имя ТВ</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="ANNOUNCE" data-i18n="sys.q_pc_announce">Анонс ПК</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="PC_PWR_PULSE" data-i18n="sys.q_opto_pulse">Оптопара Power</button>
+                <button type="button" id="btn-sys-pc-sleep" class="apple-btn" style="padding:8px; font-size:12px;" data-os-key="PC_SLEEP" data-i18n="sys.q_pc_sleep">Сон ПК</button>
               </div>
               <div style="font-size:12px; color:var(--text-secondary); margin-top:auto;" data-i18n="sys.command_label">Команда</div>
               <div class="row">
-                <input id="inp-raw" type="text" value="RAW 00 8F" style="flex:1; font-family:monospace;" onkeydown="if(event.key==='Enter') sendCustomRaw()" />
-                <button class="apple-btn accent-blue" style="padding:8px 13px;" onclick="sendCustomRaw()" data-i18n="sys.send">Отпр.</button>
+                <input id="inp-raw" type="text" value="RAW 00 8F" style="flex:1; font-family:monospace;" />
+                <button type="button" id="btn-send-raw" class="apple-btn accent-blue" style="padding:8px 13px;" data-i18n="sys.send">Отпр.</button>
               </div>
             </div>
           </div>
@@ -434,9 +434,9 @@
                 <span id="lbl-log-file" style="font-size:11px; color:var(--text-tertiary);"></span>
               </div>
               <div class="row">
-                <button class="apple-btn" style="padding:4px 10px; font-size:11.5px; border-radius:8px;" onclick="copySelectedOrAllLogs()" data-i18n="sys.copy">Копировать</button>
-                <button class="apple-btn" style="padding:4px 10px; font-size:11.5px; border-radius:8px;" onclick="openLogsFolder()" data-i18n="sys.logs_folder">Папка логов</button>
-                <button class="apple-btn" style="padding:4px 10px; font-size:11.5px; border-radius:8px;" onclick="clearLog()" data-i18n="sys.clear">Очистить</button>
+                <button type="button" id="btn-copy-logs" class="apple-btn" style="padding:4px 10px; font-size:11.5px; border-radius:8px;" data-i18n="sys.copy">Копировать</button>
+                <button type="button" id="btn-open-logs" class="apple-btn" style="padding:4px 10px; font-size:11.5px; border-radius:8px;" data-i18n="sys.logs_folder">Папка логов</button>
+                <button type="button" id="btn-clear-logs" class="apple-btn" style="padding:4px 10px; font-size:11.5px; border-radius:8px;" data-i18n="sys.clear">Очистить</button>
               </div>
             </div>
             <div id="log-container" class="console-body"></div>
@@ -460,8 +460,8 @@
 
                 <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.pc_name">Имя компьютера на ТВ (OSD)</div>
                 <div class="row" style="gap:8px;">
-                  <input id="inp-osd" type="text" value="GAMING PC" maxlength="14" style="flex:1;" oninput="checkOsdDirtyState()" />
-                  <button id="btn-save-osd" class="apple-btn btn-saved-idle" style="padding:8px 16px;" onclick="saveOsdName()" disabled data-i18n="keys.save">
+                  <input id="inp-osd" type="text" value="GAMING PC" maxlength="14" style="flex:1;" />
+                  <button type="button" id="btn-save-osd" class="apple-btn btn-saved-idle" style="padding:8px 16px;" disabled data-i18n="keys.save">
                     Сохранить
                   </button>
                 </div>
@@ -469,7 +469,7 @@
                 <div style="font-size:12px; color:var(--text-secondary); margin-top:8px;" data-i18n="settings.hdmi_num">Номер разъема HDMI</div>
                 <div class="row" style="gap:8px;">
                   <div id="csel-pa" class="c-select" style="flex:1;"></div>
-                  <button id="btn-apply-pa" class="apple-btn accent-blue" style="padding:8px 16px;" onclick="applyPaOverride()" data-i18n="settings.apply">
+                  <button type="button" id="btn-apply-pa" class="apple-btn accent-blue" style="padding:8px 16px;" data-i18n="settings.apply">
                     Применить
                   </button>
                 </div>
@@ -497,7 +497,7 @@
                     </div>
                   </div>
                   <label class="ios-switch">
-                    <input type="checkbox" id="chk-wake-pc-on-tv" checked onchange="autoSaveQolSettings()" />
+                    <input type="checkbox" id="chk-wake-pc-on-tv" checked />
                     <span class="ios-slider"></span>
                   </label>
                 </div>
@@ -517,7 +517,7 @@
                     </div>
                   </div>
                   <label class="ios-switch">
-                    <input type="checkbox" id="chk-wake-tv-on-pc" onchange="autoSaveQolSettings()" />
+                    <input type="checkbox" id="chk-wake-tv-on-pc" />
                     <span class="ios-slider"></span>
                   </label>
                 </div>
@@ -537,7 +537,7 @@
                     </div>
                   </div>
                   <label class="ios-switch">
-                    <input type="checkbox" id="chk-tv-off-on-pc" onchange="autoSaveQolSettings()" />
+                    <input type="checkbox" id="chk-tv-off-on-pc" />
                     <span class="ios-slider"></span>
                   </label>
                 </div>
@@ -557,7 +557,7 @@
                     </div>
                   </div>
                   <label class="ios-switch">
-                    <input type="checkbox" id="chk-pc-off-on-tv" onchange="onPcOffOnTvToggleChanged()" />
+                    <input type="checkbox" id="chk-pc-off-on-tv" />
                     <span class="ios-slider"></span>
                   </label>
                 </div>
@@ -570,10 +570,10 @@
 
                 <!-- Быстрые кнопки проверки оптопары и сна -->
                 <div class="row" style="gap:8px; margin-top:10px;">
-                  <button class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" onclick="sendCmd('PC_PWR_PULSE')" data-i18n="settings.test_opto_btn">
+                  <button type="button" id="btn-test-opto" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-cec-cmd="PC_PWR_PULSE" data-i18n="settings.test_opto_btn">
                     Тест оптопары (350 мс)
                   </button>
-                  <button class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" onclick="pressOsKey('PC_SLEEP')" data-i18n="settings.test_sleep_btn">
+                  <button type="button" id="btn-test-sleep" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-os-key="PC_SLEEP" data-i18n="settings.test_sleep_btn">
                     Сон ПК
                   </button>
                 </div>
@@ -585,10 +585,10 @@
                   <div class="panel-title" data-i18n="settings.lang_title">Язык интерфейса / Language</div>
                 </div>
                 <div class="lang-segmented" style="margin-top:8px;">
-                  <button class="lang-choice-btn active" data-lang="ru" onclick="switchLanguage('ru')">
+                  <button type="button" class="lang-choice-btn active" data-lang="ru">
                     Русский
                   </button>
-                  <button class="lang-choice-btn" data-lang="en" onclick="switchLanguage('en')">
+                  <button type="button" class="lang-choice-btn" data-lang="en">
                     English
                   </button>
                 </div>
@@ -602,14 +602,14 @@
                 <div class="app-about-card" style="margin-top:6px;">
                   <div class="app-about-header" style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                     <div style="font-size:12.5px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-                      <span style="color:var(--apple-blue); font-size:10.5px; padding:2px 7px; border-radius:6px; background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.25);">ОС</span>
+                      <span style="color:var(--apple-blue); font-size:10.5px; padding:2px 7px; border-radius:6px; background:rgba(10,132,255,0.12); border:1px solid rgba(10,132,255,0.25);" data-i18n="settings.os_badge">ОС</span>
                       <span id="lbl-os-platform">Windows 11 / 10 x64</span>
                       <span style="font-size:11.5px; color:var(--text-secondary); font-weight:400;">• <span data-i18n="settings.version">Версия</span> <span id="lbl-app-version-val">1.1.0-beta.1</span></span>
                     </div>
                   </div>
 
                   <div class="row" style="margin-bottom:12px; gap:8px;">
-                    <button id="btn-check-update-settings" class="apple-btn accent-blue" style="padding:7px 14px; font-size:12px;" onclick="checkAppUpdatesUi()">
+                    <button type="button" id="btn-check-update-settings" class="apple-btn accent-blue" style="padding:7px 14px; font-size:12px;">
                       <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                       <span data-i18n="settings.check_update_btn">Проверить обновления</span>
                     </button>
@@ -619,7 +619,7 @@
                   <!-- Прошивка контроллера -->
                   <div class="xml-support-box" style="margin-bottom:10px; padding:11px 12px; border-radius:12px; background:rgba(10,132,255,0.04); border:1px solid rgba(10,132,255,0.18);">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px;">
-                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;" data-tooltip="Автономное обновление микроконтроллера напрямую (UF2 / Serial OTA)">
+                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;" data-tooltip="Автономное обновление микроконтроллера напрямую (UF2 / Serial OTA)" data-i18n-tooltip="settings.fw_box_tip">
                         <svg class="ico" style="width:14px;height:14px;stroke:var(--apple-blue);" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
                         <span data-i18n="settings.fw_box_title">Прошивка контроллера</span>
                       </div>
@@ -632,11 +632,11 @@
                       <div id="lbl-fw-progress-text" style="font-size:11px; color:var(--text-secondary);">Подготовка...</div>
                     </div>
                     <div class="row" style="gap:8px;">
-                      <button id="btn-flash-bundled-fw" class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;" onclick="flashModuleFirmwareUi(false)">
+                      <button type="button" id="btn-flash-bundled-fw" class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
                         <span data-i18n="settings.fw_flash_bundled_btn">Прошить (v1.1.0)</span>
                       </button>
-                      <button id="btn-flash-custom-fw" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" onclick="flashModuleFirmwareUi(true)" data-tooltip="Выбрать файл прошивки (.uf2 / .bin)">
+                      <button type="button" id="btn-flash-custom-fw" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" data-tooltip="Выбрать файл прошивки (.uf2 / .bin)" data-i18n-tooltip="settings.fw_custom_tip">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                         <span data-i18n="settings.fw_flash_custom_btn">Из файла (.uf2 / .bin)</span>
                       </button>
@@ -646,17 +646,17 @@
                   <!-- Профили XML -->
                   <div class="xml-support-box" style="padding:11px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;" data-tooltip="Обмен конфигурациями кнопок пульта в формате XML">
+                      <div style="font-size:12px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;" data-tooltip="Обмен конфигурациями кнопок пульта в формате XML" data-i18n-tooltip="settings.xml_box_tip">
                         <svg class="ico" style="width:14px;height:14px;stroke:var(--apple-blue);" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                         <span data-i18n="settings.xml_title">Профили XML</span>
                       </div>
                     </div>
                     <div class="row" style="gap:8px;">
-                      <button id="btn-export-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" onclick="exportXmlProfileStub()" data-tooltip="Сохранить текущий профиль в файл .xml">
+                      <button type="button" id="btn-export-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" data-tooltip="Сохранить текущий профиль в файл .xml" data-i18n-tooltip="settings.xml_export_tip">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         <span data-i18n="settings.xml_export">Экспорт в XML</span>
                       </button>
-                      <button id="btn-import-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" onclick="importXmlProfileStub()" data-tooltip="Загрузить назначения кнопок из файла .xml">
+                      <button type="button" id="btn-import-xml" class="apple-btn" style="padding:6px 12px; font-size:11.5px; flex:1;" data-tooltip="Загрузить назначения кнопок из файла .xml" data-i18n-tooltip="settings.xml_import_tip">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         <span data-i18n="settings.xml_import">Импорт из XML</span>
                       </button>
@@ -687,7 +687,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-autostart" onchange="toggleAutostart(this.checked)" />
+                  <input type="checkbox" id="chk-autostart" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -706,7 +706,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-hud-overlay" checked onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-hud-overlay" checked />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -725,7 +725,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-auto-audio" onchange="onAutoAudioToggleChanged()" />
+                  <input type="checkbox" id="chk-auto-audio" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -751,7 +751,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-soundbar" onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-soundbar" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -770,7 +770,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-hold-seek" checked onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-hold-seek" checked />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -789,7 +789,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-emergency-kill" onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-emergency-kill" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -808,7 +808,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-non-intrusive" checked onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-non-intrusive" checked />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -827,7 +827,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-auto-heal" checked onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-auto-heal" checked />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -846,7 +846,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-disp-sleep" onchange="autoSaveQolSettings()" />
+                  <input type="checkbox" id="chk-disp-sleep" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -875,7 +875,7 @@
                   </div>
                 </div>
                 <label class="ios-switch">
-                  <input type="checkbox" id="chk-telemetry-opt-in" onchange="onTelemetryOptInChanged()" />
+                  <input type="checkbox" id="chk-telemetry-opt-in" />
                   <span class="ios-slider"></span>
                 </label>
               </div>
@@ -894,17 +894,17 @@
               <div style="font-size:11.5px; color:var(--text-secondary); margin-top:10px;" data-i18n="diag.endpoint_label">HTTPS Webhook для отчётов / телеметрии (опционально):</div>
               <div class="row" style="gap:8px; margin-top:4px;">
                 <input id="inp-telemetry-endpoint" type="url" placeholder="https://example.com/api/cec-report" style="flex:1; font-size:12px;" />
-                <button id="btn-save-telemetry-endpoint" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" onclick="saveTelemetrySettings()" data-i18n="keys.save">Сохранить</button>
+                <button type="button" id="btn-save-telemetry-endpoint" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" data-i18n="keys.save">Сохранить</button>
               </div>
               <div id="lbl-telemetry-status" style="font-size:11px; color:var(--text-tertiary); margin-top:4px; min-height:14px;"></div>
 
               <div class="row" style="gap:8px; margin-top:10px; flex-wrap:wrap;">
-                <button class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;" onclick="openBugReportModal(false)">
+                <button type="button" id="btn-open-bug-modal" class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;">
                   <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   <span data-i18n="diag.btn_bundle">Создать отчёт (.zip)</span>
                 </button>
-                <button class="apple-btn" style="padding:7px 11px; font-size:11.5px;" onclick="openReportsFolderUi()" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
-                <button class="apple-btn" style="padding:7px 11px; font-size:11.5px;" onclick="openGithubIssueDirect()" data-i18n="diag.btn_github_issue">Сообщить об ошибке</button>
+                <button type="button" id="btn-open-reports-dir" class="apple-btn" style="padding:7px 11px; font-size:11.5px;" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
+                <button type="button" id="btn-open-github-issue" class="apple-btn" style="padding:7px 11px; font-size:11.5px;" data-i18n="diag.btn_github_issue">Сообщить об ошибке</button>
               </div>
             </div>
             </div>
@@ -924,7 +924,7 @@
           <svg class="ico" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           <span data-i18n="calib.title">Калибровка пульта ТВ</span>
         </div>
-        <button class="apple-btn calib-close-btn" type="button" onclick="cancelCalibration()">
+        <button id="btn-calib-close" class="apple-btn calib-close-btn" type="button">
           <svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -941,12 +941,12 @@
       <div id="calib-keys-list" class="calib-keys-grid"></div>
 
       <div class="calib-actions">
-        <button class="apple-btn accent-blue" type="button" tabindex="-1" onclick="finishCalibration()">
+        <button id="btn-calib-finish" class="apple-btn accent-blue" type="button" tabindex="-1">
           <svg class="ico" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
           <span data-i18n="calib.build_btn">Собрать пульт</span>
         </button>
-        <button class="apple-btn" type="button" tabindex="-1" onclick="cancelCalibration()" data-i18n="calib.cancel_btn">Отмена</button>
-        <button class="apple-btn" type="button" tabindex="-1" onclick="resetToDefaultKeys()" style="opacity:0.6;" data-i18n="calib.reset_btn">Сбросить к базовому</button>
+        <button id="btn-calib-cancel" class="apple-btn" type="button" tabindex="-1" data-i18n="calib.cancel_btn">Отмена</button>
+        <button id="btn-calib-reset" class="apple-btn" type="button" tabindex="-1" style="opacity:0.6;" data-i18n="calib.reset_btn">Сбросить к базовому</button>
       </div>
     </div>
   </div>
@@ -959,7 +959,7 @@
           <svg class="ico bug-modal-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
           <span data-i18n="bug.modal_title">Диагностический отчёт</span>
         </div>
-        <button class="apple-btn calib-close-btn" type="button" onclick="closeBugReportModal()">
+        <button id="btn-bug-close-top" class="apple-btn calib-close-btn" type="button">
           <svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -978,11 +978,11 @@
       <div id="bug-report-result" class="bug-result-banner"></div>
 
       <div class="calib-actions bug-modal-actions">
-        <button id="btn-modal-create-zip" class="apple-btn accent-blue" type="button" onclick="createSupportBundleFromModal()" data-i18n="bug.btn_create_zip">Собрать .zip</button>
-        <button id="btn-modal-open-reports" class="apple-btn" type="button" onclick="openReportsFolderUi()" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
-        <button id="btn-modal-send-webhook" class="apple-btn is-hidden" type="button" onclick="sendBugReportWebhookFromModal()" data-i18n="bug.btn_send_webhook">Отправить на Webhook</button>
-        <button id="btn-modal-github-issue" class="apple-btn" type="button" onclick="openGithubBugIssueFromModal()" data-i18n="bug.btn_github_issue">GitHub Issue</button>
-        <button class="apple-btn" type="button" onclick="closeBugReportModal()" data-i18n="bug.btn_close">Закрыть</button>
+        <button id="btn-modal-create-zip" class="apple-btn accent-blue" type="button" data-i18n="bug.btn_create_zip">Собрать .zip</button>
+        <button id="btn-modal-open-reports" class="apple-btn" type="button" data-i18n="diag.btn_reports_folder">Папка отчётов</button>
+        <button id="btn-modal-send-webhook" class="apple-btn is-hidden" type="button" data-i18n="bug.btn_send_webhook">Отправить на Webhook</button>
+        <button id="btn-modal-github-issue" class="apple-btn" type="button" data-i18n="bug.btn_github_issue">GitHub Issue</button>
+        <button id="btn-bug-close-bottom" class="apple-btn" type="button" data-i18n="bug.btn_close">Закрыть</button>
       </div>
     </div>
   </div>

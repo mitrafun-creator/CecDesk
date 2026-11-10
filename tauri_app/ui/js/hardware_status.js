@@ -165,6 +165,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
   }
 
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const curPort = lastHwStatus.port || selectedPort || "COM10";
 
   // 1. USB-контроллер (лампочка #lamp-usb)
@@ -173,7 +174,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
 
   if (lastHwStatus.usbConnected) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(true);
-    const tipText = `Подключен (${curPort})`;
+    const tipText = `${_t("status.usb_connected_port", "Подключен")} (${curPort})`;
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-green";
       lampUsb.setAttribute("data-tooltip", tipText);
@@ -185,7 +186,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
   } else if (usbState && usbState.reconnecting) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(false);
-    const tipText = "Поиск контроллера...";
+    const tipText = _t("remote.searching_ctrl", "Поиск контроллера...");
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-yellow";
       lampUsb.setAttribute("data-tooltip", tipText);
@@ -193,11 +194,11 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
     if (usbBadge) {
       usbBadge.className = "hw-badge badge-warning";
-      usbBadge.textContent = tipText;
+      usbBadge.textContent = _t("status.reconnecting", "Поиск...");
     }
   } else {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(false);
-    const tipText = "Отключен";
+    const tipText = _t("remote.status_disconnected", "Отключен");
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-gray";
       lampUsb.setAttribute("data-tooltip", tipText);
@@ -216,7 +217,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
   const isReconnecting = !!(usbState && usbState.reconnecting);
 
   if (!lastHwStatus.usbConnected && isReconnecting) {
-    const tipText = "Опрос шины...";
+    const tipText = _t("status.bus_polling", "Опрос шины...");
     if (lampCec) {
       lampCec.className = "status-lamp lamp-yellow";
       lampCec.setAttribute("data-tooltip", tipText);
@@ -224,10 +225,10 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-warning";
-      cecBadge.textContent = "Опрос...";
+      cecBadge.textContent = _t("status.bus_polling_short", "Опрос...");
     }
   } else if (!lastHwStatus.usbConnected) {
-    const tipText = "Нет питания USB";
+    const tipText = _t("status.bus_no_usb", "Нет питания USB");
     if (lampCec) {
       lampCec.className = "status-lamp lamp-gray";
       lampCec.setAttribute("data-tooltip", tipText);
@@ -239,7 +240,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
   } else if (lastHwStatus.lineHigh) {
     if (lastHwStatus.tvConnected) {
-      const tipText = "3.3V ТВ в сети (Контакт надежен)";
+      const tipText = _t("status.tv_online_contact", "3.3V ТВ в сети (Контакт надежен)");
       if (lampCec) {
         lampCec.className = "status-lamp lamp-green";
         lampCec.setAttribute("data-tooltip", tipText);
@@ -247,10 +248,10 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       }
       if (cecBadge) {
         cecBadge.className = "hw-badge badge-online";
-        cecBadge.textContent = "3.3V ТВ в сети";
+        cecBadge.textContent = _t("remote.status_online", "3.3V ТВ в сети");
       }
     } else {
-      const tipText = "Шина свободна (ТВ не отвечает)";
+      const tipText = _t("status.bus_free_no_tv", "Шина свободна (ТВ не отвечает)");
       if (lampCec) {
         lampCec.className = "status-lamp lamp-yellow";
         lampCec.setAttribute("data-tooltip", tipText);
@@ -258,11 +259,11 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       }
       if (cecBadge) {
         cecBadge.className = "hw-badge badge-warning";
-        cecBadge.textContent = "Шина свободна";
+        cecBadge.textContent = _t("status.line_free_badge", "Шина свободна");
       }
     }
   } else if (confirmedLineLow) {
-    const tipText = "0V / Ошибка линии CEC (КЗ или кабель)";
+    const tipText = _t("status.bus_error_0v", "0V / Ошибка линии CEC (КЗ или кабель)");
     if (lampCec) {
       lampCec.className = "status-lamp lamp-red";
       lampCec.setAttribute("data-tooltip", tipText);
@@ -270,13 +271,13 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-error";
-      cecBadge.textContent = "0V / Ошибка";
+      cecBadge.textContent = _t("status.line_err_badge", "0V / Ошибка");
     }
     if (typeof window.setAmbientMood === "function") {
       window.setAmbientMood("red");
     }
   } else {
-    const tipText = "Опрос шины...";
+    const tipText = _t("status.bus_polling", "Опрос шины...");
     if (lampCec) {
       lampCec.className = "status-lamp lamp-yellow";
       lampCec.setAttribute("data-tooltip", tipText);
@@ -284,7 +285,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
     if (cecBadge) {
       cecBadge.className = "hw-badge badge-warning";
-      cecBadge.textContent = "Опрос...";
+      cecBadge.textContent = _t("status.bus_polling_short", "Опрос...");
     }
   }
 
@@ -295,7 +296,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
   const isPass = remoteState !== undefined ? remoteState : (chkRemote ? chkRemote.checked : true);
 
   if (isPass) {
-    const tipText = "Включен (управление ПК)";
+    const tipText = _t("status.remote_on_tip", "Включен (управление ПК)");
     if (lampRemote) {
       lampRemote.className = "status-lamp lamp-green";
       lampRemote.setAttribute("data-tooltip", tipText);
@@ -303,10 +304,10 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
     if (remBadge) {
       remBadge.className = "hw-badge badge-online";
-      remBadge.textContent = "Включен";
+      remBadge.textContent = _t("remote.status_enabled", "Включен");
     }
   } else {
-    const tipText = "Выключен (пульт освобожден для ТВ)";
+    const tipText = _t("status.remote_off_tip", "Выключен (пульт освобожден для ТВ)");
     if (lampRemote) {
       lampRemote.className = "status-lamp lamp-gray";
       lampRemote.setAttribute("data-tooltip", tipText);
@@ -314,7 +315,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
     }
     if (remBadge) {
       remBadge.className = "hw-badge badge-neutral";
-      remBadge.textContent = "Выключен";
+      remBadge.textContent = _t("remote.status_disabled", "Выключен");
     }
   }
 
@@ -369,6 +370,8 @@ function ensureTvPowerFreshness() {
  * Обновление подробной аппаратной диагностики в разделе «Система»
  */
 function updateSystemDiagnostics() {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
+
   const elPort = document.getElementById("diag-usb-port");
   const elConn = document.getElementById("diag-usb-conn");
   const elChip = document.getElementById("diag-usb-chip");
@@ -377,6 +380,7 @@ function updateSystemDiagnostics() {
   const elPull = document.getElementById("diag-cec-pull");
   const elContact = document.getElementById("diag-cec-contact");
 
+  const elTvTitle = document.getElementById("diag-tv-card-title");
   const elPwr = document.getElementById("diag-tv-pwr");
   const elPhys = document.getElementById("diag-tv-phys");
   const elLa = document.getElementById("diag-tv-la");
@@ -385,76 +389,99 @@ function updateSystemDiagnostics() {
   const elRemKeys = document.getElementById("diag-remote-keys-cnt");
   const elRemSubsys = document.getElementById("diag-remote-subsys");
 
-  const curPort = lastHwStatus.port || selectedPort || "COM10";
+  const curPort = lastHwStatus.port || (typeof selectedPort !== "undefined" ? selectedPort : "") || "COM10";
 
-  if (elPort) elPort.textContent = lastHwStatus.usbConnected ? curPort : "Не подключен";
+  if (elTvTitle) {
+    const sysName = (typeof currentProfile !== "undefined" && currentProfile && currentProfile.cec_system_name)
+      ? currentProfile.cec_system_name
+      : "CEC";
+    elTvTitle.textContent = `${_t("sys.card_tv_prefix", "Телевизор")} (${sysName})`;
+  }
+
+  if (elPort) elPort.textContent = lastHwStatus.usbConnected ? curPort : _t("remote.status_disconnected", "Отключен");
   if (elConn) {
-    elConn.textContent = lastHwStatus.usbConnected ? "Связь установлена (115200)" : "Отключен";
+    elConn.textContent = lastHwStatus.usbConnected
+      ? _t("diag.val_connected_baud", "Активен (115200 bps)")
+      : _t("diag.val_disconnected", "Отключен");
     elConn.style.color = lastHwStatus.usbConnected ? "var(--apple-green)" : "var(--apple-red)";
   }
-  if (elChip) elChip.textContent = "RP2040-Zero (USB CDC • GP0/GP1)";
+  if (elChip) {
+    const model = typeof getAdapterModelDisplay === "function" ? getAdapterModelDisplay() : "RP2040-Zero";
+    elChip.textContent = `${model} (USB CDC)`;
+  }
 
   if (elLevel) {
     if (!lastHwStatus.usbConnected) {
-      elLevel.textContent = "Нет питания";
+      elLevel.textContent = _t("status.line_no_power", "Нет питания");
       elLevel.style.color = "var(--text-secondary)";
     } else if (lastHwStatus.lineHigh) {
-      elLevel.textContent = "3.3V (Высокий уровень)";
+      elLevel.textContent = _t("diag.val_level_high", "3.3V (Норма)");
       elLevel.style.color = "var(--apple-green)";
     } else if (confirmedLineLow) {
-      elLevel.textContent = "0V (КЗ / Обрыв)";
+      elLevel.textContent = _t("diag.val_level_low", "0V (КЗ / Обрыв)");
       elLevel.style.color = "var(--apple-red)";
     } else {
-      elLevel.textContent = "Опрос шины...";
+      elLevel.textContent = _t("status.bus_polling", "Опрос шины...");
       elLevel.style.color = "var(--apple-amber)";
     }
   }
 
   if (elPull) {
-    elPull.textContent = lastHwStatus.tvConnected ? "Активна (ТВ в сети 27k)" : "Внутренняя RP2040";
+    elPull.textContent = lastHwStatus.tvConnected
+      ? _t("diag.val_pullup_tv", "Активна (ТВ 27k)")
+      : _t("diag.val_pullup_mcu", "Внутренняя MCU");
   }
 
   if (elContact) {
-    elContact.textContent = (lastHwStatus.lineHigh && lastHwStatus.tvConnected) ? "Надежный контакт" : "Нет ответа ТВ";
+    elContact.textContent = (lastHwStatus.lineHigh && lastHwStatus.tvConnected)
+      ? _t("diag.val_contact_ok", "Надежный контакт")
+      : _t("diag.val_contact_wait", "Нет ответа ТВ");
     elContact.style.color = (lastHwStatus.lineHigh && lastHwStatus.tvConnected) ? "var(--apple-green)" : "var(--apple-amber)";
   }
 
   if (elPwr) {
     if (tvPowerState === "on") {
-      elPwr.textContent = "Включен (ON)";
+      elPwr.textContent = _t("diag.val_tv_on", "Включен (ON)");
       elPwr.style.color = "var(--apple-green)";
     } else if (tvPowerState === "off") {
-      elPwr.textContent = "Режим ожидания (Standby)";
+      elPwr.textContent = _t("diag.val_tv_standby", "Сон (Standby)");
       elPwr.style.color = "var(--apple-amber)";
     } else {
-      elPwr.textContent = "Определение состояния...";
+      elPwr.textContent = _t("remote.syncing_tv_state", "Определение состояния...");
       elPwr.style.color = "var(--text-secondary)";
     }
   }
 
   if (elPhys) {
-    elPhys.textContent = typeof selectedPa !== "undefined" && selectedPa ? `${selectedPa[0]}.${selectedPa[1]}.${selectedPa[2]}.${selectedPa[3]} (HDMI ${selectedPa[0]})` : "3.0.0.0 (HDMI 3)";
+    elPhys.textContent = (typeof selectedPa !== "undefined" && selectedPa && selectedPa.length >= 4)
+      ? `${selectedPa[0]}.${selectedPa[1]}.${selectedPa[2]}.${selectedPa[3]} (HDMI ${selectedPa[0]})`
+      : "3.0.0.0 (HDMI 3)";
   }
-  if (elLa) elLa.textContent = "0x04 (Playback Device 1)";
+  if (elLa) elLa.textContent = "0x04 (Playback 1)";
 
   const chkRemote = document.getElementById("chk-remote-os");
   const isPass = chkRemote ? chkRemote.checked : true;
   if (elRemActive) {
-    elRemActive.textContent = isPass ? "Активен (Перехват кнопок)" : "Отключен (Штатный пульт)";
+    elRemActive.textContent = isPass
+      ? _t("diag.val_intercept_on", "Активен (ПК)")
+      : _t("diag.val_intercept_off", "Отключен (ТВ)");
     elRemActive.style.color = isPass ? "var(--apple-green)" : "var(--text-secondary)";
   }
 
   const countVal = document.getElementById("lbl-count-value");
-  if (elRemKeys && countVal) {
-    elRemKeys.textContent = `${countVal.textContent || "0"} кнопок`;
+  if (elRemKeys) {
+    const cnt = parseInt(countVal ? countVal.textContent : "0", 10) || 0;
+    const unit = typeof getKeysPlural === "function" ? getKeysPlural(cnt) : _t("remote.keys_unit", "кнопок");
+    elRemKeys.textContent = `${cnt} ${unit}`;
   }
-  if (elRemSubsys) elRemSubsys.textContent = "Windows SendInput / Enigo";
+  if (elRemSubsys) elRemSubsys.textContent = _t("diag.val_input_subsys", "Win SendInput (Enigo)");
 }
 
 /**
  * Показ/скрытие модального перекрытия раздела «Пульт» с контекстными действиями
  */
 function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const stage = document.getElementById("remote-stage");
   const overlay = document.getElementById("remote-offline-overlay");
   const titleEl = document.getElementById("remote-offline-title");
@@ -466,6 +493,9 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
   const icoEl = document.getElementById("ico-remote-offline-refresh");
 
   if (!stage || !overlay) return;
+
+  const refreshSvg = '<polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>';
+  const plugSvg = '<path d="M12 22v-5"></path><path d="M9 8V2"></path><path d="M15 8V2"></path><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"></path>';
 
   if (isTvOnline) {
     if (startupGraceTimer) {
@@ -484,44 +514,51 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
 
     if (!lastHwStatus.usbConnected) {
       if (isReconnecting) {
-        if (titleEl) titleEl.textContent = "Поиск контроллера...";
-        if (descEl) descEl.textContent = "Попытка автоматического переподключения к адаптеру RP2040 на порту " + (curPort || "COM") + "...";
-        if (reasonEl) reasonEl.textContent = "Поиск COM-порта...";
+        if (titleEl) titleEl.textContent = _t("remote.searching_ctrl", "Поиск контроллера...");
+        if (descEl) descEl.textContent = `${_t("remote.searching_desc", "Попытка переподключения к адаптеру на порту")} ${curPort || "COM"}...`;
+        if (reasonEl) reasonEl.textContent = _t("remote.searching_port", "Поиск COM-порта...");
         if (dotEl) { dotEl.style.background = "var(--apple-amber)"; }
-        if (lblEl) lblEl.textContent = "Поиск...";
+        if (lblEl) lblEl.textContent = _t("remote.searching_btn", "Поиск...");
         if (btnEl) btnEl.disabled = true;
+        if (icoEl) icoEl.innerHTML = refreshSvg;
       } else {
-        if (titleEl) titleEl.textContent = "USB-контроллер отключен";
-        if (descEl) descEl.textContent = "Связь с адаптером RP2040 разорвана. Нажмите «Подключить», чтобы открыть COM-порт и возобновить управление телевизором.";
-        if (reasonEl) reasonEl.textContent = curPort ? `Порт ${curPort} отключен` : "Контроллер не подключен";
-        if (dotEl) { dotEl.style.background = "var(--apple-gray)"; }
-        if (lblEl) lblEl.textContent = "Подключить";
+        if (titleEl) titleEl.textContent = _t("remote.usb_off_title", "USB-контроллер отключен");
+        if (descEl) descEl.textContent = _t("remote.usb_off_desc", "Связь с адаптером разорвана. Нажмите «Подключить», чтобы открыть COM-порт и возобновить работу.");
+        if (reasonEl) {
+          reasonEl.textContent = curPort
+            ? `${curPort} (${_t("remote.port_disconnected", "отключен")})`
+            : _t("remote.no_ctrl_reason", "Контроллер не подключен");
+        }
+        if (dotEl) { dotEl.style.background = "var(--text-tertiary)"; }
+        if (lblEl) lblEl.textContent = _t("remote.btn_connect", "Подключить");
         if (btnEl) btnEl.disabled = false;
         if (icoEl) {
-          icoEl.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+          icoEl.innerHTML = plugSvg;
         }
       }
     } else if (confirmedLineLow) {
-      if (titleEl) titleEl.textContent = "Ошибка линии CEC (0V)";
-      if (descEl) descEl.textContent = "Контроллер подключен к " + (curPort || "порту") + ", но на шине CEC зафиксировано 0V (короткое замыкание или обрыв). Проверьте кабель HDMI и пины.";
-      if (reasonEl) reasonEl.textContent = "Линия HDMI-CEC 0V: проверьте кабель или питание телевизора";
+      if (titleEl) titleEl.textContent = _t("remote.line_err_title", "Ошибка линии CEC (0V)");
+      if (descEl) descEl.textContent = _t("remote.line_err_desc", "Контроллер подключен, но на шине CEC зафиксировано 0V (короткое замыкание или кабель). Проверьте кабель HDMI и питание ТВ.");
+      if (reasonEl) reasonEl.textContent = _t("remote.offline_reason_line_low", "Линия HDMI-CEC 0V: проверьте кабель или питание ТВ");
       if (dotEl) { dotEl.style.background = "var(--apple-red)"; }
-      if (lblEl) lblEl.textContent = "Опросить шину";
+      if (lblEl) lblEl.textContent = _t("remote.btn_poll_bus", "Опросить шину");
       if (btnEl) btnEl.disabled = false;
       if (icoEl) {
-        icoEl.innerHTML = '<polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>';
+        icoEl.innerHTML = refreshSvg;
       }
     } else {
-      if (titleEl) titleEl.textContent = "Нет связи с телевизором";
-      if (descEl) descEl.textContent = curPort
-        ? `Контроллер подключен к ${curPort}, но телевизор не отвечает по шине HDMI-CEC. Убедитесь, что ТВ включен в розетку и провод HDMI подключен.`
-        : "Контроллер подключен, но телевизор не отвечает по шине HDMI-CEC. Убедитесь, что ТВ включен в розетку и провод HDMI подключен.";
-      if (reasonEl) reasonEl.textContent = curPort ? `Контроллер подключен (${curPort}), но телевизор не отвечает` : "Контроллер подключен, но телевизор не отвечает";
+      if (titleEl) titleEl.textContent = _t("remote.offline_modal_title", "Нет связи с телевизором");
+      if (descEl) descEl.textContent = _t("remote.offline_modal_desc", "Модуль не обнаружил ответ от телевизора по шине HDMI-CEC или связь с контроллером потеряна. Проверьте кабель HDMI и питание телевизора.");
+      if (reasonEl) {
+        reasonEl.textContent = curPort
+          ? `${curPort}: ${_t("remote.no_tv_port_reason", "Подключен, но ТВ не отвечает")}`
+          : _t("remote.offline_reason_tv_no_resp", "Модуль подключен, но ТВ или пульт не отвечает");
+      }
       if (dotEl) { dotEl.style.background = "var(--apple-amber)"; }
-      if (lblEl) lblEl.textContent = "Опросить шину";
+      if (lblEl) lblEl.textContent = _t("remote.btn_poll_bus", "Опросить шину");
       if (btnEl) btnEl.disabled = false;
       if (icoEl) {
-        icoEl.innerHTML = '<polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>';
+        icoEl.innerHTML = refreshSvg;
       }
     }
   }
@@ -531,12 +568,13 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
  * Обработчик действия в модальном окне отключенного состояния
  */
 async function handleRemoteOfflineAction() {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const btn = document.getElementById("btn-remote-offline-refresh");
   const lbl = document.getElementById("lbl-remote-offline-btn");
   const ico = document.getElementById("ico-remote-offline-refresh");
 
   if (!lastHwStatus.usbConnected) {
-    if (lbl) lbl.textContent = "Подключение...";
+    if (lbl) lbl.textContent = _t("remote.btn_connecting", "Подключение...");
     if (btn) btn.disabled = true;
     if (ico) ico.classList.add("spinning");
     try {
@@ -552,10 +590,10 @@ async function handleRemoteOfflineAction() {
     } finally {
       if (ico) ico.classList.remove("spinning");
       if (btn) btn.disabled = false;
-      if (lbl) lbl.textContent = lastHwStatus.usbConnected ? "Опросить шину" : "Подключить";
+      if (lbl) lbl.textContent = lastHwStatus.usbConnected ? _t("remote.btn_poll_bus", "Опросить шину") : _t("remote.btn_connect", "Подключить");
     }
   } else {
-    if (lbl) lbl.textContent = "Опрос шины...";
+    if (lbl) lbl.textContent = _t("remote.btn_polling", "Опрос шины...");
     if (btn) btn.disabled = true;
     if (ico) ico.classList.add("spinning");
     try {
@@ -568,7 +606,7 @@ async function handleRemoteOfflineAction() {
       setTimeout(() => {
         if (ico) ico.classList.remove("spinning");
         if (btn) btn.disabled = false;
-        if (lbl) lbl.textContent = "Опросить шину";
+        if (lbl) lbl.textContent = lastHwStatus.usbConnected ? _t("remote.btn_poll_bus", "Опросить шину") : _t("remote.btn_connect", "Подключить");
       }, 700);
     }
   }
@@ -580,6 +618,7 @@ window.handleRemoteOfflineAction = handleRemoteOfflineAction;
  * Ручной опрос состояния шины CEC
  */
 async function checkHardwareLineNow() {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
   const btn = document.getElementById("btn-refresh-hw");
   if (btn) {
     btn.classList.add("spinning");
@@ -589,7 +628,7 @@ async function checkHardwareLineNow() {
   const lampCec = document.getElementById("lamp-cec");
   if (lampCec) {
     lampCec.className = "status-lamp lamp-yellow";
-    lampCec.setAttribute("data-tooltip", "Замер линии...");
+    lampCec.setAttribute("data-tooltip", _t("status.measuring_line", "Замер линии..."));
   }
 
   if (typeof window.setAmbientMood === "function") {

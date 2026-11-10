@@ -69,18 +69,26 @@ test("UI HTML/CSS avoids Tauri CSP nonce/hash invalidation and hides modals by d
   const htmlFiles = ["index.html", "hud.html", "osk.html"];
   for (const file of htmlFiles) {
     const html = fs.readFileSync(path.join(uiDir, file), "utf8");
-    assert.ok(!/<style\b/i.test(html), `${file} must not contain inline <style> (triggers Tauri style-src nonce)`);
+    const htmlWithoutComments = html.replace(/<!--[\s\S]*?-->/g, "");
+    assert.ok(!/<style\b/i.test(htmlWithoutComments), `${file} must not contain inline <style> (triggers Tauri style-src nonce)`);
     assert.ok(
-      !/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i.test(html),
+      !/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i.test(htmlWithoutComments),
       `${file} must not contain inline <script> (triggers Tauri script-src hash)`
     );
     assert.ok(
-      !/\bstyle\s*=\s*["'][^"']*display\s*:\s*none/i.test(html),
+      !/\son[a-z]+\s*=/i.test(htmlWithoutComments),
+      `${file} must not contain inline on*= event attributes (blocked by Tauri script-src hash/self CSP)`
+    );
+    assert.ok(
+      !/\bstyle\s*=\s*["'][^"']*display\s*:\s*none/i.test(htmlWithoutComments),
       `${file} must not rely on inline style="display:none"`
     );
   }
 
   const css = fs.readFileSync(path.join(uiDir, "style.css"), "utf8");
+  assert.match(css, /\.cselect-portal-layer\s*\{/);
+  assert.match(css, /\.c-select-menu\.is-open/);
+  assert.match(css, /\.mapper-table-scroll\s*\{/);
   assert.match(css, /\.calib-modal-backdrop\s*\{[^}]*display:\s*none\s*;/s);
   assert.match(css, /\.calib-modal-backdrop\.is-open\s*\{[^}]*display:\s*flex\s*;/s);
   assert.match(css, /\.crash-recovery-banner\s*\{[^}]*display:\s*none\s*;/s);

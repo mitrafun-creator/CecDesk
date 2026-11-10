@@ -66,19 +66,32 @@ function applyKeyPreset(presetKey, btnEl) {
   const p = KEY_PRESETS[presetKey];
   if (!p || !appConfig) return;
 
+  const presetI18nMap = {
+    balanced: "keys.preset_base",
+    cinema: "keys.preset_cinema",
+    steam: "keys.preset_steam",
+    desktop: "keys.preset_surf",
+    numpad: "keys.preset_numpad"
+  };
+  const localizedName = (typeof t === "function" && presetI18nMap[presetKey])
+    ? t(presetI18nMap[presetKey], p.name)
+    : p.name;
+  const hudTitle = typeof t === "function" ? t("keys.preset_hud_title", "Пресет кнопок") : "Пресет кнопок";
+
   document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
   if (btnEl) btnEl.classList.add("active");
 
   appConfig.key_mappings = Object.assign({}, p.mappings);
   renderMapperTable(true);
+  if (typeof renderDynamicRemote === "function") renderDynamicRemote();
   checkMapperDirtyState();
   addLog(`[Пресет] Применен: ${p.name}`, "log-ok");
 
   if (window.__TAURI__ && (!appConfig || appConfig.hud_enabled !== false)) {
     window.__TAURI__.event.emit("show-hud", {
       icon: p.icon,
-      title: "Пресет кнопок",
-      desc: p.name
+      title: hudTitle,
+      desc: localizedName
     });
   }
 }
@@ -128,6 +141,7 @@ async function refreshCustomScripts() {
  * Отрисовка таблицы сопоставления кнопок пульта и команд ОС
  */
 function renderMapperTable(isPresetChange = false) {
+  if (typeof closeAllCustomSelects === "function") closeAllCustomSelects();
   const tbody = document.getElementById("mapper-tbody");
   if (!tbody) return;
   mapperNeedsRender = false;
@@ -183,7 +197,7 @@ function renderMapperTable(isPresetChange = false) {
     const nameSpan = document.createElement("span");
     nameSpan.style.fontWeight = isAvail ? "600" : "400";
     nameSpan.style.color = isAvail ? "var(--text-primary)" : "var(--text-secondary)";
-    nameSpan.textContent = def.name;
+    nameSpan.textContent = typeof getKeyDisplayName === "function" ? getKeyDisplayName(code, def) : def.name;
 
     const badgeSpan = document.createElement("span");
     badgeSpan.className = isAvail ? "badge-remote-avail" : "badge-remote-unavail";
@@ -334,6 +348,7 @@ async function saveMapperConfig() {
   }
 
   await invoke("save_app_config", { newCfg: appConfig });
+  if (typeof renderDynamicRemote === "function") renderDynamicRemote();
   captureSavedState();
   setHumanStatus("online", "Готово", "Настройки применены и сохранены");
 }
