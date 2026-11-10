@@ -137,7 +137,7 @@ function handleCalibrationKeyCapture(codeHex) {
   const pEl = document.getElementById(`calib-pill-${norm}`);
   if (pEl) {
     pEl.style.borderColor = "var(--apple-green)";
-    pEl.style.boxShadow = "0 0 12px rgba(48, 209, 88, 0.6)";
+    pEl.style.boxShadow = "0 0 12px rgba(66, 184, 131, 0.50)";
     setTimeout(() => {
       pEl.style.borderColor = "";
       pEl.style.boxShadow = "";

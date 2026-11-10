@@ -49,7 +49,7 @@ function checkMapperDirtyState() {
 function markMapperDirty() {
   const b1 = document.getElementById("btn-save-keys");
   if (b1) {
-    b1.className = "apple-btn accent-blue";
+    b1.className = "apple-btn accent-blue btn-save";
     b1.removeAttribute("disabled");
   }
 }
@@ -57,7 +57,7 @@ function markMapperDirty() {
 function markMapperClean() {
   const b1 = document.getElementById("btn-save-keys");
   if (b1) {
-    b1.className = "apple-btn btn-saved-idle";
+    b1.className = "apple-btn btn-saved-idle btn-save";
     b1.setAttribute("disabled", "true");
   }
 }
