@@ -58,6 +58,11 @@ cp -r "$APP_DIR/bin/firmware/"* "$INSTALL_DIR/bin/firmware/" 2>/dev/null || true
 if [ -f "$APP_DIR/cec_studio_config.default.json" ] && [ ! -f "$INSTALL_DIR/cec_studio_config.json" ]; then
     cp "$APP_DIR/cec_studio_config.default.json" "$INSTALL_DIR/cec_studio_config.json" 2>/dev/null || true
 fi
+if [ -f "$APP_DIR/icon.png" ]; then
+    cp "$APP_DIR/icon.png" "$INSTALL_DIR/icon.png" 2>/dev/null || true
+elif [ -f "$APP_DIR/tauri_app/src-tauri/icons/icon.png" ]; then
+    cp "$APP_DIR/tauri_app/src-tauri/icons/icon.png" "$INSTALL_DIR/icon.png" 2>/dev/null || true
+fi
 
 echo "[1/4] Настройка правил udev (доступ к портам ESP32-S3 / RP2040-Zero и виртуальному вводу uinput через uaccess без world-writable прав)..."
 UDEV_RULE_CONTENT='# HDMI-CEC Studio: ESP32-S3 (303a) и RP2040-Zero (2e8a) + uinput для Gamescope / Wayland
@@ -76,6 +81,10 @@ fi
 
 echo "[2/4] Создание ярлыка приложения для Desktop Mode (KDE Plasma) и добавления в Steam..."
 mkdir -p "$HOME/.local/share/applications"
+ICON_LINE=""
+if [ -f "$INSTALL_DIR/icon.png" ]; then
+    ICON_LINE="Icon=$INSTALL_DIR/icon.png"
+fi
 cat > "$HOME/.local/share/applications/hdmi-cec-studio.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -83,6 +92,7 @@ Name=HDMI-CEC Studio
 Comment=Управление SteamOS / ПК с пульта телевизора по HDMI-CEC
 Exec=$BIN_PATH
 Path=$INSTALL_DIR
+${ICON_LINE}
 Terminal=false
 Categories=Utility;HardwareSettings;Game;
 StartupNotify=false

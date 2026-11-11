@@ -332,6 +332,9 @@ fn main() {
             let icon = app.default_window_icon().cloned().unwrap_or_else(|| {
                 tauri::include_image!("icons/icon.png")
             });
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_icon(icon.clone());
+            }
             if let Err(e) = tray_builder.icon(icon).build(app) {
                 log_error("tray", &format!("Tray icon build failed: {}", e));
             }

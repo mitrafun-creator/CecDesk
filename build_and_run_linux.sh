@@ -56,6 +56,9 @@ if [ -f "$ROOT_DIR/install_steamos.sh" ]; then
     cp "$ROOT_DIR/install_steamos.sh" "$DIST_DIR/install_steamos.sh"
     chmod +x "$DIST_DIR/install_steamos.sh"
 fi
+if [ -f "$ROOT_DIR/tauri_app/src-tauri/icons/icon.png" ]; then
+    cp "$ROOT_DIR/tauri_app/src-tauri/icons/icon.png" "$DIST_DIR/icon.png"
+fi
 
 echo "[HDMI-CEC Studio] Пакет для SteamOS / Linux готов в папке: $DIST_DIR"
 
