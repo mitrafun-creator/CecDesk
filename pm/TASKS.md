@@ -14,6 +14,7 @@
 
 | ID | Приоритет | Компонент | Задача | Критерии и проверка QA |
 | --- | --- | --- | --- | --- |
+| `TASK-009` | P1 | `workspace`, `qa` | Очистка рабочей папки ПК от legacy-хвостов с архивацией и полная проверка целостности проекта | 19 хвостов в `_CecDesk_Legacy_Archive`, JSON/assets/ZIP/Git/Clippy/20 Rust + 6 JS тестов |
 | `TASK-005` | P1 | `docs`, `release` | Оформление GitHub About/Topics/Releases, пайплайн версий на ПК (`release_tool.bat`, `CHANGELOG.md`) и ролевой бизнес-процесс (`AGENTS.md`, `pm/TASKS.md`) | `release_tool.bat check`, тесты и `README` проверены QA |
 
 ---
