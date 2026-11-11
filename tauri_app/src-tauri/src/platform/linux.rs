@@ -118,17 +118,17 @@ pub fn run_script(path: &Path, ext: &str, dir: &Path) -> Result<(), String> {
 
 pub fn check_single_instance_or_focus(_window_title: &str) -> bool {
     let lock_path = if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-        PathBuf::from(runtime_dir).join("hdmi-cec-studio.lock")
+        PathBuf::from(runtime_dir).join("cecdesk.lock")
     } else if let Ok(home) = env::var("HOME") {
         let dir = PathBuf::from(home)
             .join(".local")
             .join("share")
-            .join("hdmi-cec-studio");
+            .join("cecdesk");
         let _ = fs::create_dir_all(&dir);
         dir.join("app.lock")
     } else {
         let uid = unsafe { libc::geteuid() };
-        PathBuf::from(format!("/tmp/hdmi-cec-studio-{}.lock", uid))
+        PathBuf::from(format!("/tmp/cecdesk-{}.lock", uid))
     };
 
     if let Ok(mut file) = OpenOptions::new()
@@ -142,7 +142,7 @@ pub fn check_single_instance_or_focus(_window_title: &str) -> bool {
             let err = std::io::Error::last_os_error();
             if matches!(err.raw_os_error(), Some(libc::EWOULDBLOCK) | Some(libc::EAGAIN)) {
                 let _ = Command::new("xdotool")
-                    .args(["search", "--name", "HDMI-CEC Studio", "windowactivate"])
+                    .args(["search", "--name", "CecDesk", "windowactivate"])
                     .spawn();
                 return false;
             }
@@ -418,7 +418,7 @@ pub fn emergency_kill_foreground_task() -> String {
              if [ -n \"$PID\" ]; then \
                COMM=$(cat /proc/$PID/comm 2>/dev/null | tr '[:upper:]' '[:lower:]'); \
                case \"$COMM\" in \
-                 *hdmi_cec*|*steam*|*gamescope*|*kwin*|*plasmashell*|*systemd*|*xwayland*) exit 0 ;; \
+                 *cecdesk*|*hdmi_cec*|*steam*|*gamescope*|*kwin*|*plasmashell*|*systemd*|*xwayland*) exit 0 ;; \
                  *) kill -9 \"$PID\" 2>/dev/null ;; \
                esac; \
              fi",
@@ -427,7 +427,7 @@ pub fn emergency_kill_foreground_task() -> String {
     "Зависшее приложение принудительно закрыто".to_string()
 }
 
-/// Выход из режима Steam Big Picture / Gaming Mode обратно на рабочий стол без вылета фоновой службы HDMI-CEC Studio
+/// Выход из режима Steam Big Picture / Gaming Mode обратно на рабочий стол без вылета фоновой службы CecDesk
 pub fn exit_steam_big_picture_to_desktop() -> String {
     STEAM_BP_ACTIVE.store(false, Ordering::Relaxed);
 
@@ -539,7 +539,7 @@ pub fn switch_display_mode(_extend: bool) {}
 /// Прописывает X11-атомы оверлея Gamescope (`STEAM_OVERLAY`, `STEAM_NOTIFICATION`, `STEAM_INPUT_FOCUS`),
 /// чтобы окна программы и HUD-уведомления отображались поверх Steam Big Picture / Gaming Mode.
 pub fn set_gamescope_overlay_props(win: &WebviewWindow, is_hud_or_osk: bool) {
-    let title = win.title().unwrap_or_else(|_| "HDMI-CEC Studio".to_string());
+    let title = win.title().unwrap_or_else(|_| "CecDesk".to_string());
     let script = if is_hud_or_osk {
         "WID=$(xdotool search --name \"$1\" 2>/dev/null | head -n 1); \
          if [ -n \"$WID\" ]; then \
@@ -638,7 +638,7 @@ fn autostart_desktop_path() -> Option<PathBuf> {
         Path::new(&home)
             .join(".config")
             .join("autostart")
-            .join("hdmi-cec-studio.desktop"),
+            .join("cecdesk.desktop"),
     )
 }
 
@@ -649,7 +649,7 @@ fn systemd_user_service_path() -> Option<PathBuf> {
             .join(".config")
             .join("systemd")
             .join("user")
-            .join("hdmi-cec-studio.service"),
+            .join("cecdesk.service"),
     )
 }
 
@@ -660,6 +660,9 @@ pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
         .to_string();
 
     if let Some(desktop_file) = autostart_desktop_path() {
+        if let Some(parent) = desktop_file.parent() {
+            let _ = fs::remove_file(parent.join("hdmi-cec-studio.desktop"));
+        }
         if enabled {
             if let Some(parent) = desktop_file.parent() {
                 let _ = fs::create_dir_all(parent);
@@ -667,7 +670,7 @@ pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
             let content = format!(
                 "[Desktop Entry]\n\
                  Type=Application\n\
-                 Name=HDMI-CEC Studio\n\
+                 Name=CecDesk\n\
                  Comment=Управление ПК и SteamOS пультом телевизора по HDMI-CEC\n\
                  Exec=\"{}\" --minimized\n\
                  Terminal=false\n\
@@ -683,14 +686,20 @@ pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
 
     // Создается независимый пользовательский сервис systemd (WantedBy=default.target, KillMode=process),
     // который НЕ завершается при переключении между Steam Big Picture (Gaming Mode) и рабочим столом (Desktop Mode).
+    let _ = Command::new("systemctl")
+        .args(["--user", "disable", "--now", "hdmi-cec-studio.service"])
+        .status();
     if let Some(service_file) = systemd_user_service_path() {
+        if let Some(parent) = service_file.parent() {
+            let _ = fs::remove_file(parent.join("hdmi-cec-studio.service"));
+        }
         if enabled {
             if let Some(parent) = service_file.parent() {
                 let _ = fs::create_dir_all(parent);
             }
             let unit = format!(
                 "[Unit]\n\
-                 Description=HDMI-CEC Studio Background Daemon (SteamOS Gaming & Desktop Mode)\n\
+                 Description=CecDesk Background Daemon (SteamOS Gaming & Desktop Mode)\n\
                  After=pipewire.service\n\n\
                  [Service]\n\
                  Type=simple\n\
@@ -709,12 +718,12 @@ pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
                     .args(["--user", "daemon-reload"])
                     .status();
                 let _ = Command::new("systemctl")
-                    .args(["--user", "enable", "--now", "hdmi-cec-studio.service"])
+                    .args(["--user", "enable", "--now", "cecdesk.service"])
                     .status();
             }
         } else {
             let _ = Command::new("systemctl")
-                .args(["--user", "disable", "hdmi-cec-studio.service"])
+                .args(["--user", "disable", "cecdesk.service"])
                 .status();
             if service_file.exists() {
                 let _ = fs::remove_file(&service_file);

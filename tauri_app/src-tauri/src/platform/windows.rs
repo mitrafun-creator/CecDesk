@@ -78,7 +78,7 @@ pub fn check_single_instance_or_focus(window_title_prefix: &str) -> bool {
         ) -> *mut core::ffi::c_void;
     }
 
-    let mutex_name: Vec<u16> = "Local\\HDMI_CEC_Studio_SingleInstance_Mutex\0"
+    let mutex_name: Vec<u16> = "Local\\CecDesk_SingleInstance_Mutex\0"
         .encode_utf16()
         .collect();
     let is_minimized = std::env::args().any(|a| a == "--minimized" || a == "-m");
@@ -119,6 +119,7 @@ pub fn check_single_instance_or_focus(window_title_prefix: &str) -> bool {
             if len > 0 {
                 let title = String::from_utf16_lossy(&buffer[..len as usize]);
                 if title.starts_with(&data.prefix)
+                    || title.contains("CecDesk")
                     || title.contains("HDMI-CEC Studio")
                     || title.contains("Перехват пульта")
                 {
@@ -162,7 +163,7 @@ pub fn check_single_instance_or_focus(window_title_prefix: &str) -> bool {
         CloseHandle(handle);
         let filter = format!("PID ne {}", my_pid);
         let _ = create_hidden_command("taskkill")
-            .args(["/F", "/IM", "HDMI_CEC_Studio.exe", "/FI", &filter])
+            .args(["/F", "/IM", "CecDesk.exe", "/FI", &filter])
             .output();
         std::thread::sleep(Duration::from_millis(120));
 
@@ -440,6 +441,7 @@ pub fn emergency_kill_foreground_task() -> String {
                             || proc_name.ends_with("csrss.exe")
                             || proc_name.ends_with("lsass.exe")
                             || proc_name.ends_with("services.exe")
+                            || proc_name.ends_with("cecdesk.exe")
                             || proc_name.ends_with("hdmi_cec_studio.exe")
                         {
                             return "Защищенный процесс Windows (пропуск)".to_string();
@@ -1055,9 +1057,11 @@ pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
 
     if enabled {
         run_key
-            .set_value("HDMI_CEC_Studio", &val_str)
+            .set_value("CecDesk", &val_str)
             .map_err(|e| e.to_string())?;
+        let _ = run_key.delete_value("HDMI_CEC_Studio");
     } else {
+        let _ = run_key.delete_value("CecDesk");
         let _ = run_key.delete_value("HDMI_CEC_Studio");
     }
     Ok(())
@@ -1069,7 +1073,8 @@ pub fn get_autostart_os() -> bool {
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     if let Ok(run_key) = hkcu.open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Run") {
-        run_key.get_value::<String, _>("HDMI_CEC_Studio").is_ok()
+        run_key.get_value::<String, _>("CecDesk").is_ok()
+            || run_key.get_value::<String, _>("HDMI_CEC_Studio").is_ok()
     } else {
         false
     }

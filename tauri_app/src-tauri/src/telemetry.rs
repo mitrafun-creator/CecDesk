@@ -21,11 +21,13 @@ use std::process::Stdio;
 
 const MAX_LOG_TAIL_BYTES: usize = 512 * 1024;
 const MAX_KEPT_BUNDLES: usize = 10;
-pub const GITHUB_REPO_PREFIX: &str = "https://github.com/mitrafun-creator/HDMI_CEC_Emulator";
+pub const GITHUB_REPO_PREFIX: &str = "https://github.com/mitrafun-creator/CecDesk";
 pub const GITHUB_RAW_PREFIX: &str =
+    "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/";
+pub const LEGACY_GITHUB_RAW_PREFIX: &str =
     "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/";
 pub const GITHUB_NEW_ISSUE_URL: &str =
-    "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/issues/new";
+    "https://github.com/mitrafun-creator/CecDesk/issues/new";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DiagnosticsSnapshot {
@@ -137,9 +139,11 @@ pub fn validate_https_webhook_url(raw: &str) -> Result<String, String> {
 pub fn validate_trusted_repo_url(raw: &str) -> Result<String, String> {
     let safe = validate_external_browser_url(raw)?;
     let repo_ok = safe == GITHUB_REPO_PREFIX
+        || safe.starts_with("https://github.com/mitrafun-creator/CecDesk/")
+        || safe.starts_with("https://github.com/mitrafun-creator/CecDesk?")
         || safe.starts_with("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/")
         || safe.starts_with("https://github.com/mitrafun-creator/HDMI_CEC_Emulator?");
-    if repo_ok || safe.starts_with(GITHUB_RAW_PREFIX) {
+    if repo_ok || safe.starts_with(GITHUB_RAW_PREFIX) || safe.starts_with(LEGACY_GITHUB_RAW_PREFIX) {
         Ok(safe)
     } else {
         Err("Недопустимый источник обновления: разрешен только официальный репозиторий GitHub".to_string())
@@ -459,7 +463,9 @@ fn prune_old_support_bundles(reports_dir: &Path, max_keep: usize) {
         for entry in entries.flatten() {
             let p = entry.path();
             if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
-                if name.starts_with("hdmi_cec_support_") && name.ends_with(".zip") {
+                if (name.starts_with("cecdesk_support_") || name.starts_with("hdmi_cec_support_"))
+                    && name.ends_with(".zip")
+                {
                     let mtime = entry
                         .metadata()
                         .and_then(|m| m.modified())
@@ -503,7 +509,7 @@ pub fn create_support_bundle_internal(
 
     let mut owned_entries: Vec<(&str, &[u8])> = vec![
         ("diagnostics.json", &diag_bytes),
-        ("cec_studio_config.json", &cfg_bytes),
+        ("cecdesk_config.json", &cfg_bytes),
     ];
     if let Some(ref b) = latest_log_bytes {
         owned_entries.push(("logs/cec_latest.log", b));
@@ -523,7 +529,7 @@ pub fn create_support_bundle_internal(
 
     let zip_bytes = build_zip_archive(&owned_entries)?;
     let reports_dir = find_reports_dir();
-    let filename = format!("hdmi_cec_support_{}.zip", now_unix_secs());
+    let filename = format!("cecdesk_support_{}.zip", now_unix_secs());
     let zip_path = reports_dir.join(&filename);
     let tmp_path = zip_path.with_extension("zip.tmp");
     fs::write(&tmp_path, &zip_bytes)
@@ -581,7 +587,7 @@ fn post_json_webhook(endpoint: &str, payload_json: &str) -> Result<String, Strin
             "-H",
             "Content-Type: application/json",
             "-H",
-            "X-HDMI-CEC-Studio-Schema: 1.0",
+            "X-CecDesk-Schema: 1.0",
             "-X",
             "POST",
             "--data-binary",
@@ -764,7 +770,7 @@ pub fn build_github_issue_url_internal(
     };
 
     let body = format!(
-        "### Описание проблемы\n{}\n\n### Диагностика\n- Версия: {}\n- ОС: {} ({}) / {}\n- Режим хранения: {}\n- Контроллер: {} ({})\n- ТВ EDID: {} / PA {}\n- Ошибки сессии: {}, Предупреждения: {}, Аварийный прошлый выход: {}\n\n### Последние ошибки\n```\n{}\n```\n\n> Прикрепите сформированный архив `hdmi_cec_support_*.zip` из папки `reports/`.",
+        "### Описание проблемы\n{}\n\n### Диагностика\n- Версия: {}\n- ОС: {} ({}) / {}\n- Режим хранения: {}\n- Контроллер: {} ({})\n- ТВ EDID: {} / PA {}\n- Ошибки сессии: {}, Предупреждения: {}, Аварийный прошлый выход: {}\n\n### Последние ошибки\n```\n{}\n```\n\n> Прикрепите сформированный архив `cecdesk_support_*.zip` из папки `reports/`.",
         note_str,
         snapshot.app_version,
         snapshot.os_platform,
@@ -833,8 +839,8 @@ mod tests {
 
     #[test]
     fn test_url_and_profile_id_validation() {
-        assert!(validate_external_browser_url("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases").is_ok());
-        assert!(validate_external_browser_url("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/issues/new?title=Test&body=Hello%20World").is_ok());
+        assert!(validate_external_browser_url("https://github.com/mitrafun-creator/CecDesk/releases").is_ok());
+        assert!(validate_external_browser_url("https://github.com/mitrafun-creator/CecDesk/issues/new?title=Test&body=Hello%20World").is_ok());
         assert!(validate_external_browser_url("javascript:alert(1)").is_err());
         assert!(validate_external_browser_url("file:///etc/passwd").is_err());
         assert!(validate_external_browser_url("https://example.com/a\"b").is_err());
@@ -843,9 +849,10 @@ mod tests {
         assert!(validate_https_webhook_url("http://telemetry.example.com/v1/ingest").is_err());
         assert!(validate_https_webhook_url("https://example.com/;calc.exe").is_err());
 
-        assert!(validate_trusted_repo_url("https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/version.json").is_ok());
+        assert!(validate_trusted_repo_url("https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/version.json").is_ok());
+        assert!(validate_trusted_repo_url("https://github.com/mitrafun-creator/CecDesk/releases/download/v1.1.0/app.zip").is_ok());
         assert!(validate_trusted_repo_url("https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/download/v1.1.0/app.zip").is_ok());
-        assert!(validate_trusted_repo_url("https://github.com/mitrafun-creator/HDMI_CEC_Emulator.evil.com/app.exe").is_err());
+        assert!(validate_trusted_repo_url("https://github.com/mitrafun-creator/CecDesk.evil.com/app.exe").is_err());
         assert!(validate_trusted_repo_url("https://evil.example.com/version.json").is_err());
 
         assert_eq!(sanitize_profile_id("lg_simplink-2026").unwrap(), "lg_simplink-2026");

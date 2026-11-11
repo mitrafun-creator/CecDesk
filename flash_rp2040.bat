@@ -1,7 +1,7 @@
 @echo off
 setlocal
 echo ====================================================
-echo  HDMI-CEC Emulator - RP2040-Zero Quick Flasher
+echo  CecDesk Dongle - RP2040-Zero Quick Flasher
 echo ====================================================
 
 set FIRMWARE_UF2=%~dp0firmware\.pio\build\rp2040-zero\firmware.uf2
@@ -39,7 +39,7 @@ for %%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
         if errorlevel 0 (
             echo.
             echo [SUCCESS] Firmware copied successfully!
-            echo The board will now reboot automatically as a USB CDC CEC-EMU adapter.
+            echo The board will now reboot automatically as a USB CDC CecDesk Dongle adapter.
             ping 127.0.0.1 -n 3 >nul
             exit /b 0
         ) else (

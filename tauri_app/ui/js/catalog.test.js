@@ -111,7 +111,7 @@ test("Beta readiness defaults exclude hardcoded dev COM ports and personal TV pr
   const appJs = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
   const hwJs = fs.readFileSync(path.join(__dirname, "hardware_status.js"), "utf8");
   const html = fs.readFileSync(path.join(uiDir, "index.html"), "utf8");
-  const defaultCfg = JSON.parse(fs.readFileSync(path.join(repoDir, "cec_studio_config.default.json"), "utf8"));
+  const defaultCfg = JSON.parse(fs.readFileSync(path.join(repoDir, "cecdesk_config.default.json"), "utf8"));
 
   assert.strictEqual(defaultCfg.active_profile_id, "universal_hdmi_cec");
   assert.ok(!/"COM(?:6|10)"/.test(appJs), "app.js must not hardcode COM6 or COM10 fallback");

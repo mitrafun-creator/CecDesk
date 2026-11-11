@@ -35,10 +35,13 @@ panic.txt
 trace.log
 
 # User local config (keep template)
+cecdesk_config.json
 cec_studio_config.json
-!cec_studio_config.default.json
+!cecdesk_config.default.json
 
 # Release binaries & distribution archives (hosted on GitHub Releases, built via build_release.bat)
+/CecDesk.exe
+/CecDesk_Windows_x64.zip
 /HDMI_CEC_Studio.exe
 /HDMI_CEC_Studio_Windows_x64.zip
 /WebView2Loader.dll

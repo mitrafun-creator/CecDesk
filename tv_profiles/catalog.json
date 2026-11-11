@@ -8,7 +8,7 @@
       "name": "Hisense VIDAA Smart TV",
       "cec_system_name": "CEC",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/hisense_vidaa_cec.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/hisense_vidaa_cec.json"
     },
     {
       "id": "lg_simplink_webos",
@@ -16,7 +16,7 @@
       "name": "LG OLED / NanoCell (webOS)",
       "cec_system_name": "SimpLink",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/lg_simplink_webos.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/lg_simplink_webos.json"
     },
     {
       "id": "panasonic_viera_link",
@@ -24,7 +24,7 @@
       "name": "Panasonic VIERA (EZ / OLED)",
       "cec_system_name": "VIERA Link",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/panasonic_viera_link.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/panasonic_viera_link.json"
     },
     {
       "id": "philips_32pfl9705h",
@@ -32,7 +32,7 @@
       "name": "Philips 32PFL9705H (9000 Series)",
       "cec_system_name": "EasyLink",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/philips_32pfl9705h.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/philips_32pfl9705h.json"
     },
     {
       "id": "philips_ambilight_android",
@@ -40,7 +40,7 @@
       "name": "Philips Ambilight (Android / Google TV)",
       "cec_system_name": "EasyLink",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/philips_ambilight_android.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/philips_ambilight_android.json"
     },
     {
       "id": "samsung_anynet_tizen",
@@ -48,7 +48,7 @@
       "name": "Samsung Neo QLED / Crystal (Tizen OS)",
       "cec_system_name": "Anynet+",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/samsung_anynet_tizen.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/samsung_anynet_tizen.json"
     },
     {
       "id": "sharp_aquos_link",
@@ -56,7 +56,7 @@
       "name": "Sharp AQUOS Series",
       "cec_system_name": "Aquos Link",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/sharp_aquos_link.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/sharp_aquos_link.json"
     },
     {
       "id": "sony_bravia_sync",
@@ -64,7 +64,7 @@
       "name": "Sony BRAVIA XR / OLED (Google TV)",
       "cec_system_name": "BRAVIA Sync",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/sony_bravia_sync.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/sony_bravia_sync.json"
     },
     {
       "id": "tcl_google_tv",
@@ -72,7 +72,7 @@
       "name": "TCL Mini-LED / QLED (Google TV)",
       "cec_system_name": "T-Link",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/tcl_google_tv.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/tcl_google_tv.json"
     },
     {
       "id": "toshiba_regza_link",
@@ -80,7 +80,7 @@
       "name": "Toshiba REGZA Smart TV",
       "cec_system_name": "CE-Link",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/toshiba_regza_link.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/toshiba_regza_link.json"
     },
     {
       "id": "universal_hdmi_cec",
@@ -88,7 +88,7 @@
       "name": "Универсальный HDMI-CEC профиль",
       "cec_system_name": "HDMI-CEC 1.4/2.0",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/universal_hdmi_cec.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/universal_hdmi_cec.json"
     },
     {
       "id": "xiaomi_mi_tv",
@@ -96,7 +96,7 @@
       "name": "Xiaomi TV / Redmi Max (PatchWall)",
       "cec_system_name": "HDMI-CEC",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/xiaomi_mi_tv.json"
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/xiaomi_mi_tv.json"
     }
   ]
 }

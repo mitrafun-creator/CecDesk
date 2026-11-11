@@ -93,27 +93,27 @@ pub fn resolve_data_dir_with_env(portable: bool, env: &DataDirEnv<'_>) -> PathBu
 
     if env.is_windows {
         if let Some(local) = env.local_app_data.filter(|s| !s.trim().is_empty()) {
-            return PathBuf::from(local).join("HDMI-CEC Studio");
+            return PathBuf::from(local).join("CecDesk");
         }
         if let Some(roaming) = env.app_data.filter(|s| !s.trim().is_empty()) {
-            return PathBuf::from(roaming).join("HDMI-CEC Studio");
+            return PathBuf::from(roaming).join("CecDesk");
         }
     } else {
         if let Some(xdg) = env.xdg_data_home.filter(|s| !s.trim().is_empty()) {
-            return PathBuf::from(xdg).join("hdmi-cec-studio");
+            return PathBuf::from(xdg).join("cecdesk");
         }
         if let Some(h) = env.home.filter(|s| !s.trim().is_empty()) {
             return PathBuf::from(h)
                 .join(".local")
                 .join("share")
-                .join("hdmi-cec-studio");
+                .join("cecdesk");
         }
     }
 
     env.resource_dir.to_path_buf()
 }
 
-/// Возвращает каталог записываемых пользовательских данных (%LOCALAPPDATA%\HDMI-CEC Studio или ~/.local/share/hdmi-cec-studio, либо рядом с exe в portable-режиме).
+/// Возвращает каталог записываемых пользовательских данных (%LOCALAPPDATA%\CecDesk или ~/.local/share/cecdesk, либо рядом с exe в portable-режиме).
 pub fn find_data_dir() -> PathBuf {
     let resource_dir = find_resource_dir();
     let exe_dir = std::env::current_exe()
@@ -179,7 +179,7 @@ pub fn find_reports_dir() -> PathBuf {
 }
 
 pub fn find_config_path() -> PathBuf {
-    find_data_dir().join("cec_studio_config.json")
+    find_data_dir().join("cecdesk_config.json")
 }
 
 fn copy_scripts_if_missing(src_scripts: &Path, dst_scripts: &Path) -> usize {
@@ -219,10 +219,14 @@ pub fn migrate_legacy_data_in_dirs(
     let _ = fs::create_dir_all(data_dir);
 
     let mut config_migrated = false;
-    let dst_cfg = data_dir.join("cec_studio_config.json");
+    let dst_cfg = data_dir.join("cecdesk_config.json");
     if !dst_cfg.exists() {
-        let mut candidates = vec![legacy_dir.join("cec_studio_config.json")];
+        let mut candidates = vec![
+            legacy_dir.join("cecdesk_config.json"),
+            legacy_dir.join("cec_studio_config.json"),
+        ];
         if let Some(extra) = extra_legacy_dir {
+            candidates.push(extra.join("cecdesk_config.json"));
             candidates.push(extra.join("cec_studio_config.json"));
         }
         for src_cfg in candidates {
@@ -245,15 +249,27 @@ pub fn migrate_legacy_data_if_needed() {
     MIGRATION_DONE.get_or_init(|| {
         let resource_dir = find_resource_dir();
         let data_dir = find_data_dir();
-        let extra_legacy: Option<PathBuf> = if cfg!(not(target_os = "windows")) {
-            std::env::var("HOME")
-                .ok()
-                .map(|h| PathBuf::from(h).join(".local").join("share").join("hdmi_cec_studio"))
+        let mut extra_dirs: Vec<PathBuf> = Vec::new();
+        if cfg!(target_os = "windows") {
+            if let Ok(local) = std::env::var("LOCALAPPDATA") {
+                extra_dirs.push(PathBuf::from(local).join("HDMI-CEC Studio"));
+            }
         } else {
-            None
-        };
-        let (cfg_migrated, scripts_copied) =
-            migrate_legacy_data_in_dirs(&resource_dir, extra_legacy.as_deref(), &data_dir);
+            if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
+                extra_dirs.push(PathBuf::from(xdg).join("hdmi-cec-studio"));
+            }
+            if let Ok(home) = std::env::var("HOME") {
+                extra_dirs.push(PathBuf::from(&home).join(".local").join("share").join("hdmi-cec-studio"));
+                extra_dirs.push(PathBuf::from(&home).join(".local").join("share").join("hdmi_cec_studio"));
+            }
+        }
+        let (mut cfg_migrated, mut scripts_copied) =
+            migrate_legacy_data_in_dirs(&resource_dir, None, &data_dir);
+        for extra in &extra_dirs {
+            let (c, s) = migrate_legacy_data_in_dirs(&resource_dir, Some(extra), &data_dir);
+            cfg_migrated = cfg_migrated || c;
+            scripts_copied += s;
+        }
         if cfg_migrated || scripts_copied > 0 {
             log_info(
                 "config",
@@ -578,7 +594,7 @@ mod tests {
                     is_windows: true,
                 }
             ),
-            PathBuf::from("C:\\Users\\Test\\AppData\\Local\\HDMI-CEC Studio")
+            PathBuf::from("C:\\Users\\Test\\AppData\\Local\\CecDesk")
         );
 
         assert_eq!(
@@ -594,7 +610,7 @@ mod tests {
                     is_windows: false,
                 }
             ),
-            PathBuf::from("/home/deck/.data/hdmi-cec-studio")
+            PathBuf::from("/home/deck/.data/cecdesk")
         );
 
         assert_eq!(
@@ -610,7 +626,7 @@ mod tests {
                     is_windows: false,
                 }
             ),
-            PathBuf::from("/home/deck/.local/share/hdmi-cec-studio")
+            PathBuf::from("/home/deck/.local/share/cecdesk")
         );
 
         assert_eq!(
@@ -632,7 +648,7 @@ mod tests {
 
     #[test]
     fn test_migrate_legacy_data_non_destructive() {
-        let root = std::env::temp_dir().join(format!("hdmi_cec_mig_test_{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("cecdesk_mig_test_{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         let legacy = root.join("install");
         let data = root.join("appdata");
@@ -643,7 +659,7 @@ mod tests {
         let (cfg_copied, scripts_copied) = migrate_legacy_data_in_dirs(&legacy, None, &data);
         assert!(cfg_copied);
         assert_eq!(scripts_copied, 1);
-        assert!(data.join("cec_studio_config.json").exists());
+        assert!(data.join("cecdesk_config.json").exists());
         assert!(data.join("scripts").join("kodi.bat").exists());
         assert!(legacy.join("cec_studio_config.json").exists());
 

@@ -278,6 +278,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cecdesk"
+version = "1.1.0-beta.1"
+dependencies = [
+ "crc32fast",
+ "flate2",
+ "libc",
+ "serde",
+ "serde_json",
+ "serialport",
+ "tauri",
+ "tauri-build",
+ "windows-sys 0.59.0",
+ "winreg 0.52.0",
+]
+
+[[package]]
 name = "cesu8"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1177,22 +1193,6 @@ name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
-
-[[package]]
-name = "hdmi_cec_studio"
-version = "1.1.0-beta.1"
-dependencies = [
- "crc32fast",
- "flate2",
- "libc",
- "serde",
- "serde_json",
- "serialport",
- "tauri",
- "tauri-build",
- "windows-sys 0.59.0",
- "winreg 0.52.0",
-]
 
 [[package]]
 name = "heck"

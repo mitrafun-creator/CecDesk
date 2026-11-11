@@ -1,9 +1,9 @@
 {
   "version": "1.1.0-beta.1",
   "published_at": "2026-11-11",
-  "notes": "HDMI-CEC Studio v1.1.0-beta.1 Pre-Beta Release:\n- Разделение ресурсов и пользовательских данных (AppData / XDG Data / Portable режим по portable.txt)\n- Полная сборка Windows в одном архиве HDMI_CEC_Studio_Windows_x64.zip и самообновление в 1 клик через GitHub (SHA-256 + проверка PE + безопасная распаковка)\n- Структурированное логирование с ротацией, захватом ошибок WebView и детектором прошлого падения\n- Экспорт диагностического архива (.zip) в 1 клик с маскированием персональных путей и токенов\n- Чистые дефолты для новых пользователей (Universal HDMI-CEC, активное определение EDID, честная проверка AudioTool.exe)\n- Улучшения безопасности и совместимости SteamOS (CSP, валидация манифестов, udev uaccess)",
-  "download_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/tag/v1.1.0-beta.1",
-  "windows_package_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/download/v1.1.0-beta.1/HDMI_CEC_Studio_Windows_x64.zip",
+  "notes": "CecDesk v1.1.0-beta.1 Public Beta:\n- Новое единое имя проекта: CecDesk (комплекс), CecDesk Dongle (аппаратный модуль), CecDesk App (десктопное приложение)\n- Разделение ресурсов и пользовательских данных (%LOCALAPPDATA%\\CecDesk, ~/.local/share/cecdesk, portable.txt) с авто-миграцией старых конфигов HDMI-CEC Studio\n- Полная сборка Windows в одном архиве CecDesk_Windows_x64.zip и самообновление в 1 клик через GitHub (SHA-256 + проверка PE + безопасная распаковка)\n- Структурированное логирование с ротацией, захватом ошибок WebView и детектором прошлого падения\n- Экспорт диагностического архива (.zip) в 1 клик с маскированием персональных путей и токенов\n- Лицензия PolyForm Noncommercial License 1.0.0 и чистый обновлённый логотип CecDesk",
+  "download_url": "https://github.com/mitrafun-creator/CecDesk/releases/tag/v1.1.0-beta.1",
+  "windows_package_url": "https://github.com/mitrafun-creator/CecDesk/releases/download/v1.1.0-beta.1/CecDesk_Windows_x64.zip",
   "windows_package_kind": "zip",
-  "windows_sha256": "9f7fce98f6ba866b00cd7d307fd91cc77b7fdb1e682de37159d417fbfb6d6bef"
+  "windows_sha256": "00f9f5854f13cd38447d8019a1189f534b7ba96a4f234768940bbe76838bdd4f"
 }

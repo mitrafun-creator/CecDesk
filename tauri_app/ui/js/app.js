@@ -538,7 +538,7 @@ function getAdapterModelDisplay() {
   const curPortObj = availablePortsList.find(p => p.name === curPort);
   if (curPortObj && curPortObj.desc) {
     if (curPortObj.desc.includes("RP2040")) return "RP2040-Zero";
-    if (curPortObj.desc.includes("dev/r.1")) return "CEC-EMU dev/r.1";
+    if (curPortObj.desc.includes("dev/r.1")) return "CecDesk Dongle";
     if (curPortObj.desc.includes("ESP32")) return "ESP32-S3";
   }
   return detectedHardwareModel || "USB CEC";
@@ -549,7 +549,7 @@ function populatePortsSelect(ports) {
   let preferred = null;
   const opts = availablePortsList.map(p => {
     if (p.is_preferred && !preferred) preferred = p.name;
-    return { value: p.name, label: p.desc || `${p.name} • CEC-EMU` };
+    return { value: p.name, label: p.desc || `${p.name} • CecDesk Dongle` };
   });
   const fallback = availablePortsList.length > 0 ? availablePortsList[0].name : "";
   const stillExists = selectedPort && availablePortsList.some(p => p.name === selectedPort);
@@ -1104,7 +1104,7 @@ function sendCustomRaw() {
   if (v) sendCmd(v);
 }
 
-let latestUpdateUrl = "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases";
+let latestUpdateUrl = "https://github.com/mitrafun-creator/CecDesk/releases";
 let latestUpdateInfo = null;
 let lastUpdateCheckFailed = false;
 const UPDATE_CHECK_THROTTLE_SECS = 43200; // 12 часов
@@ -1418,7 +1418,7 @@ function updateDynamicWindowTitle() {
     ? `${model} (${port || "USB"})`
     : `${model} (${selectedPort ? statusConnecting : statusDisc})`;
 
-  const dynamicTitle = `HDMI-CEC Studio — ${tvModel} • ${adapterStatus}`;
+  const dynamicTitle = `CecDesk — ${tvModel} • ${adapterStatus}`;
   if (document.title !== dynamicTitle) {
     document.title = dynamicTitle;
   }
@@ -2106,7 +2106,7 @@ function exportXmlProfileStub() {
   const brand = (currentProfile && currentProfile.brand) || "Generic";
   const mappings = (appConfig && appConfig.key_mappings) || {};
 
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- HDMI-CEC Studio Profile XML (v1.0) -->\n`;
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- CecDesk Profile XML (v1.0) -->\n`;
   xml += `<CecProfile brand="${escapeXmlAttr(brand)}" model="${escapeXmlAttr(profName)}" version="1.0">\n`;
   for (const [code, act] of Object.entries(mappings)) {
     if (act && act !== "NONE") {

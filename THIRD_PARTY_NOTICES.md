@@ -1,12 +1,12 @@
 # Third-Party Notices and Component Licensing
 
-HDMI-CEC Studio & Hardware Emulator (`tauri_app/`, host scripts, documentation, and TV profiles) is licensed under the **PolyForm Noncommercial License 1.0.0** (see [`LICENSE`](LICENSE)), except for the separate third-party and firmware components listed below, which remain subject to their respective license terms.
+CecDesk (`CecDesk App` desktop suite in `tauri_app/`, host scripts, documentation, and TV profiles) is licensed under the **PolyForm Noncommercial License 1.0.0** (see [`LICENSE`](LICENSE)), except for the separate third-party and firmware components listed below, which remain subject to their respective license terms.
 
 ---
 
-## 1. Microcontroller Firmware (`firmware/`) — GNU GPL v2.0
+## 1. Microcontroller Firmware (`firmware/` / `CecDesk Dongle`) — GNU GPL v2.0
 
-The embedded microcontroller firmware in `firmware/` (compiled into standalone `.uf2` / `.bin` binaries under `bin/firmware/` and communicating with the desktop host application exclusively over USB CDC Serial via the text/JSON CBP v1.0 protocol) links against:
+The embedded microcontroller firmware in `firmware/` for **CecDesk Dongle** (compiled into standalone `.uf2` / `.bin` binaries under `bin/firmware/` and communicating with the desktop host application exclusively over USB CDC Serial via the text/JSON CBP v1.0 protocol) links against:
 
 - **CEC-master (`firmware/lib/CEC-master`)**
   - Description: Arduino library for HDMI CEC wire-protocol communication.
@@ -40,8 +40,8 @@ Each crate remains governed by its respective upstream license as distributed on
 ## 3. Windows Runtime & Helper Binaries
 
 - **`WebView2Loader.dll`**
-  - Component: Microsoft Edge WebView2 SDK loader library (bundled alongside `HDMI_CEC_Studio.exe` in Windows distribution archives).
+  - Component: Microsoft Edge WebView2 SDK loader library (bundled alongside `CecDesk.exe` in Windows distribution archives).
   - License: Subject to the Microsoft Edge WebView2 SDK redistribution terms.
 - **`bin/AudioTool.exe`**
   - Component: Project-bundled .NET Framework (`v4.0.30319`) Windows CoreAudio / WASAPI helper binary used to enumerate and switch default audio output endpoints.
-  - License: Covered by the project [`LICENSE`](LICENSE) terms for distribution as part of HDMI-CEC Studio.
+  - License: Covered by the project [`LICENSE`](LICENSE) terms for distribution as part of CecDesk.

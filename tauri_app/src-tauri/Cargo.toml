@@ -1,10 +1,10 @@
 [package]
-name = "hdmi_cec_studio"
+name = "cecdesk"
 version = "1.1.0-beta.1"
-description = "HDMI-CEC Studio (Windows & Linux / SteamOS)"
-authors = ["HDMI-CEC Studio Contributors"]
+description = "CecDesk App (Windows & Linux / SteamOS)"
+authors = ["CecDesk Contributors"]
 license = "PolyForm-Noncommercial-1.0.0"
-repository = "https://github.com/mitrafun-creator/HDMI_CEC_Emulator"
+repository = "https://github.com/mitrafun-creator/CecDesk"
 edition = "2021"
 
 [profile.release]

@@ -38,7 +38,7 @@ fn main() {
     let debug_enabled =
         std::env::args().any(|a| a == "--debug" || a == "-d") || std::env::var("CEC_DEBUG").is_ok();
 
-    if !platform::check_single_instance_or_focus("HDMI-CEC Studio") {
+    if !platform::check_single_instance_or_focus("CecDesk") {
         return;
     }
 
@@ -81,7 +81,7 @@ fn main() {
     log_info(
         "app",
         &format!(
-            "Starting HDMI-CEC Studio v{} (debug={}, storage={})",
+            "Starting CecDesk v{} (debug={}, storage={})",
             updater::CURRENT_APP_VERSION,
             debug_enabled,
             config::data_storage_mode_label()
@@ -180,7 +180,7 @@ fn main() {
             }
 
             // ==================== СИСТЕМНЫЙ ТРЕЙ (ФОНОВЫЙ РЕЖИМ + STEAM BIG PICTURE) ====================
-            let show_i = MenuItem::with_id(app, "show", "Открыть HDMI-CEC Studio", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Открыть CecDesk", true, None::<&str>)?;
             let hide_i = MenuItem::with_id(app, "hide", "Свернуть в трей", true, None::<&str>)?;
             let mouse_i = MenuItem::with_id(
                 app,
@@ -229,7 +229,7 @@ fn main() {
             let initial_show_click = Arc::clone(&initial_show_setup);
             let tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
-                .tooltip("HDMI-CEC Studio — Управление ПК и SteamOS пультом ТВ")
+                .tooltip("CecDesk — Управление ПК и SteamOS пультом ТВ")
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| {
                     match event.id.as_ref() {

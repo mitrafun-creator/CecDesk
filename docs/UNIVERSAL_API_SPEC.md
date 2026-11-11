@@ -2,7 +2,7 @@
 
 > **Статус:** Черновик архитектуры (v1.0-draft)  
 > **Автор проекта:** Dimitryi Garutt  
-> **Идентификатор устройства:** `CEC-EMU dev/r.1`
+> **Идентификатор устройства:** `CecDesk Dongle dev/r.1`
 
 ---
 
@@ -82,7 +82,7 @@ flowchart TD
 ```json
 {
   "cmd": "hello",
-  "client": "HDMI_CEC_Studio",
+  "client": "CecDesk",
   "proto_ver": 1
 }
 ```
@@ -92,7 +92,7 @@ flowchart TD
 {
   "res": "hello",
   "status": "ok",
-  "device": "CEC-EMU dev/r.1",
+  "device": "CecDesk Dongle dev/r.1",
   "manufacturer": "Dimitryi Garutt",
   "mcu": "ESP32-S3",
   "fw_ver": "2.0.0",
@@ -266,9 +266,9 @@ firmware/
 ## 6. Идентификация устройства в ОС
 
 Устройство идентифицируется как:
-- **Product Name:** `CEC-EMU dev/r.1 by Dimitryi Garutt`
+- **Product Name:** `CecDesk Dongle dev/r.1 by Dimitryi Garutt`
 - **Manufacturer:** `Dimitryi Garutt`
 - **USB VID / PID:** `0x303A:0x1001` (Espressif USB Composite)
-- **Serial Number:** `CEC-EMU-001`
+- **Serial Number:** `CECDESK-001`
 
 ПО автоматически обнаруживает устройство по VID/PID и строке дескриптора, исключая необходимость ручного выбора COM-порта пользователем.

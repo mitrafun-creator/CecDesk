@@ -1,4 +1,4 @@
-# Телеметрия, логирование и сбор баг-репортов (HDMI-CEC Studio)
+# Телеметрия, логирование и сбор баг-репортов (CecDesk)
 
 ## Принципы приватности (Opt-In & Zero-PII)
 
@@ -11,17 +11,17 @@
 
 ## Хранилище данных (AppData / XDG / Portable)
 
-- **Windows (стандартный режим)**: `%LOCALAPPDATA%\HDMI-CEC Studio\` (`cec_studio_config.json`, `logs/`, `scripts/`, `tv_profiles/`, `reports/`, `session.active`).
-- **Linux / SteamOS**: `$XDG_DATA_HOME/hdmi-cec-studio/` или `~/.local/share/hdmi-cec-studio/`.
+- **Windows (стандартный режим)**: `%LOCALAPPDATA%\CecDesk\` (`cecdesk_config.json`, `logs/`, `scripts/`, `tv_profiles/`, `reports/`, `session.active`).
+- **Linux / SteamOS**: `$XDG_DATA_HOME/cecdesk/` или `~/.local/share/cecdesk/`.
 - **Portable-режим**: активируется при наличии пустого файла `portable.txt` (или `.portable`) рядом с исполняемым файлом, переменной среды `CEC_PORTABLE=1` или флага `--portable`. Все данные сохраняются рядом с программой.
-- При первом запуске после обновления выполняется однократная неразрушающая миграция legacy-конфига и пользовательских скриптов.
+- При первом запуске после обновления выполняется однократная неразрушающая миграция legacy-конфига (`cec_studio_config.json` / `HDMI-CEC Studio`) и пользовательских скриптов.
 
-## Структура диагностического архива (`hdmi_cec_support_<ts>.zip`)
+## Структура диагностического архива (`cecdesk_support_<ts>.zip`)
 
 Создаётся локально в папке `reports/` по нажатию кнопки в интерфейсе:
 
 - `diagnostics.json` — снимок среды (версия приложения, ОС/архитектура, тип дисплейной сессии `Windows Desktop` / `Gamescope` / `Wayland` / `X11`, тип и порт контроллера, EDID PNP/Physical Address, счётчики ошибок/предупреждений, признак прошлого аварийного завершения, последние санитизированные ошибки и заметка пользователя).
-- `cec_studio_config.json` — копия конфигурации без секретных query-параметров.
+- `cecdesk_config.json` — копия конфигурации без секретных query-параметров.
 - `logs/cec_latest.log` (хвост до 512 КБ, санитизированный).
 - `logs/cec_session_latest.log` (хвост до 512 КБ).
 - `logs/trace.log` и `logs/trace.prev.log` (если есть, до 512 КБ).
@@ -31,7 +31,7 @@
 
 При настройке `telemetry_endpoint` (обязательно `https://...`) приложение отправляет `POST` с заголовками:
 - `Content-Type: application/json`
-- `X-HDMI-CEC-Studio-Schema: 1.0`
+- `X-CecDesk-Schema: 1.0`
 
 ### 1. Анонимный heartbeat (`kind: "telemetry_heartbeat"`)
 

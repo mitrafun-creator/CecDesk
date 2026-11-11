@@ -309,7 +309,7 @@ pub fn init_logger(logs_dir: PathBuf, session_log: PathBuf, latest_log: PathBuf,
     let trace_path = logs_dir.join("trace.log");
 
     let header = format!(
-        "\u{FEFF}=== HDMI-CEC STUDIO LOG STARTED ({}) ===\n",
+        "\u{FEFF}=== CECDESK LOG STARTED ({}) ===\n",
         now_iso8601()
     );
     let _ = fs::write(&latest_log, &header);
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn test_redact_windows_and_unix_paths() {
-        let win = r#"Failed to open C:\Users\AliceSmith\AppData\Local\HDMI-CEC Studio\cfg.json"#;
+        let win = r#"Failed to open C:\Users\AliceSmith\AppData\Local\CecDesk\cfg.json"#;
         let red_w = redact_sensitive(win);
         assert!(!red_w.contains("AliceSmith"));
         assert!(red_w.contains("C:\\Users\\<USER>\\AppData\\Local"));
@@ -559,7 +559,7 @@ mod tests {
         assert!(!red_c.contains("Дмитрий"));
         assert!(red_c.contains("<USER>"));
 
-        let nix = "Reading /home/deck/.local/share/hdmi-cec-studio/trace.log";
+        let nix = "Reading /home/deck/.local/share/cecdesk/trace.log";
         let red_n = redact_sensitive(nix);
         assert!(!red_n.contains("/deck/"));
         assert!(red_n.contains("/home/<USER>/.local"));

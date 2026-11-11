@@ -23,9 +23,9 @@ use tauri::{AppHandle, Emitter};
 
 pub const CURRENT_APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DEFAULT_CATALOG_URL: &str =
-    "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/catalog.json";
+    "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/catalog.json";
 pub const DEFAULT_APP_VERSION_URL: &str =
-    "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/version.json";
+    "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/version.json";
 pub const LATEST_BUNDLED_FW_VERSION: &str = "1.1.0";
 
 static APP_UPDATE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
@@ -207,7 +207,7 @@ pub fn generate_local_catalog_manifest(
                                 cec_system_name: p.cec_system_name,
                                 version: "1.0.0".to_string(),
                                 url: format!(
-                                    "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/tv_profiles/{}",
+                                    "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/{}",
                                     file_name
                                 ),
                             });
@@ -361,7 +361,7 @@ pub fn parse_version_manifest(
         serde_json::from_str(txt).map_err(|e| format!("Ошибка формата version.json: {}", e))?;
 
     let fallback_release_url =
-        "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases".to_string();
+        "https://github.com/mitrafun-creator/CecDesk/releases".to_string();
     let latest_ver = val["version"].as_str().unwrap_or(current_ver).to_string();
     let has_update = compare_semver(&latest_ver, current_ver) == Ordering::Greater;
     let release_notes = val["notes"]
@@ -445,11 +445,11 @@ pub fn parse_version_manifest(
     })
 }
 
-/// Проверка наличия новых версий приложения HDMI-CEC Studio
+/// Проверка наличия новых версий приложения CecDesk
 pub fn check_app_updates() -> AppVersionInfo {
     let current_ver = CURRENT_APP_VERSION.to_string();
     let fallback_release_url =
-        "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases".to_string();
+        "https://github.com/mitrafun-creator/CecDesk/releases".to_string();
 
     if let Ok(txt) = fetch_url_text(DEFAULT_APP_VERSION_URL, 5) {
         if let Ok(info) = parse_version_manifest(&txt, &current_ver, cfg!(target_os = "windows")) {
@@ -646,7 +646,10 @@ fn normalize_allowed_update_rel_path(segments: &[String], exe_name: &str) -> Opt
     }
     if segments.len() == 1 {
         let f = &segments[0];
-        if f.eq_ignore_ascii_case("hdmi_cec_studio.exe") || f.eq_ignore_ascii_case(exe_name) {
+        if f.eq_ignore_ascii_case("cecdesk.exe")
+            || f.eq_ignore_ascii_case("hdmi_cec_studio.exe")
+            || f.eq_ignore_ascii_case(exe_name)
+        {
             return Some(PathBuf::from(exe_name));
         }
         if f.eq_ignore_ascii_case("WebView2Loader.dll")
@@ -794,7 +797,8 @@ pub fn extract_safe_update_zip(
             .all(|e| e.segments.len() >= 2 && e.segments[0] == *root)
             && entries.iter().any(|e| {
                 e.segments.len() == 2
-                    && (e.segments[1].eq_ignore_ascii_case("hdmi_cec_studio.exe")
+                    && (e.segments[1].eq_ignore_ascii_case("cecdesk.exe")
+                        || e.segments[1].eq_ignore_ascii_case("hdmi_cec_studio.exe")
                         || e.segments[1].eq_ignore_ascii_case(exe_name))
             })
     });
@@ -968,7 +972,7 @@ fn cleanup_stale_update_dirs(temp_root: &Path) {
         let now = std::time::SystemTime::now();
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
-            if name.starts_with("hdmi_cec_update_") {
+            if name.starts_with("cecdesk_update_") || name.starts_with("hdmi_cec_update_") {
                 if let Ok(meta) = entry.metadata() {
                     if let Ok(modified) = meta.modified() {
                         if now.duration_since(modified).unwrap_or_default()
@@ -1079,11 +1083,11 @@ fn install_app_update_windows(app: &AppHandle, state: &AppState) -> Result<Strin
         .file_name()
         .and_then(|s| s.to_str())
         .filter(|s| !s.is_empty())
-        .unwrap_or("HDMI_CEC_Studio.exe")
+        .unwrap_or("CecDesk.exe")
         .to_string();
 
-    // Проверяем права на запись в папку с HDMI_CEC_Studio.exe ДО скачивания обновления
-    let probe_path = target_dir.join(format!(".hdmi_cec_write_probe_{}.tmp", std::process::id()));
+    // Проверяем права на запись в папку с CecDesk.exe ДО скачивания обновления
+    let probe_path = target_dir.join(format!(".cecdesk_write_probe_{}.tmp", std::process::id()));
     fs::write(&probe_path, b"ok").map_err(|e| {
         format!(
             "Нет прав на обновление файлов в каталоге {} ({}). Переместите программу в папку с правами записи или запустите от имени администратора.",
@@ -1116,7 +1120,7 @@ fn install_app_update_windows(app: &AppHandle, state: &AppState) -> Result<Strin
     let temp_root = std::env::temp_dir();
     cleanup_stale_update_dirs(&temp_root);
 
-    let stage_root = temp_root.join(format!("hdmi_cec_update_{}", std::process::id()));
+    let stage_root = temp_root.join(format!("cecdesk_update_{}", std::process::id()));
     let dl_dir = stage_root.join("download");
     let payload_dir = stage_root.join("payload");
     let _ = fs::remove_dir_all(&stage_root);
@@ -1792,8 +1796,8 @@ mod tests {
             "version": "1.2.0",
             "published_at": "2026-11-11",
             "notes": "Self update test",
-            "download_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases",
-            "windows_package_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/download/v1.2.0/HDMI_CEC_Studio_Windows_x64.zip",
+            "download_url": "https://github.com/mitrafun-creator/CecDesk/releases",
+            "windows_package_url": "https://github.com/mitrafun-creator/CecDesk/releases/download/v1.2.0/CecDesk_Windows_x64.zip",
             "windows_sha256": valid_sha.to_uppercase()
         })
         .to_string();
@@ -1826,7 +1830,7 @@ mod tests {
 
         let missing_sha = serde_json::json!({
             "version": "1.2.0",
-            "windows_package_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/raw/main/HDMI_CEC_Studio.exe"
+            "windows_package_url": "https://github.com/mitrafun-creator/CecDesk/raw/main/CecDesk.exe"
         })
         .to_string();
         let no_sha_info = parse_version_manifest(&missing_sha, "1.1.0-beta.1", true).unwrap();
@@ -1845,10 +1849,10 @@ mod tests {
         let prof_bytes = br#"{"id":"lg_test"}"#;
 
         let zip_bytes = crate::telemetry::build_zip_archive(&[
-            ("HDMI_CEC_Studio_Win/HDMI_CEC_Studio.exe", &fake_exe),
-            ("HDMI_CEC_Studio_Win/bin/firmware/rp2040_zero_firmware.uf2", fw_bytes),
-            ("HDMI_CEC_Studio_Win/tv_profiles/lg_test.json", prof_bytes),
-            ("HDMI_CEC_Studio_Win/extra/ignored.txt", b"ignore"),
+            ("CecDesk_Win/CecDesk.exe", &fake_exe),
+            ("CecDesk_Win/bin/firmware/rp2040_zero_firmware.uf2", fw_bytes),
+            ("CecDesk_Win/tv_profiles/lg_test.json", prof_bytes),
+            ("CecDesk_Win/extra/ignored.txt", b"ignore"),
         ])
         .unwrap();
 
@@ -1858,9 +1862,9 @@ mod tests {
         assert_eq!(digest, compute_sha256_hex(&zip_bytes));
 
         let stage = root.join("stage");
-        let extracted = extract_safe_update_zip(&zip_path, &stage, "HDMI_CEC_Studio.exe").unwrap();
+        let extracted = extract_safe_update_zip(&zip_path, &stage, "CecDesk.exe").unwrap();
         assert_eq!(extracted.len(), 3);
-        assert!(verify_windows_pe_binary(&stage.join("HDMI_CEC_Studio.exe")).is_ok());
+        assert!(verify_windows_pe_binary(&stage.join("CecDesk.exe")).is_ok());
         assert_eq!(
             fs::read(stage.join("bin/firmware/rp2040_zero_firmware.uf2")).unwrap(),
             fw_bytes
@@ -1877,7 +1881,7 @@ mod tests {
         .unwrap();
         let evil_path = root.join("evil.zip");
         fs::write(&evil_path, &evil_zip).unwrap();
-        assert!(extract_safe_update_zip(&evil_path, &root.join("stage_evil"), "HDMI_CEC_Studio.exe").is_err());
+        assert!(extract_safe_update_zip(&evil_path, &root.join("stage_evil"), "CecDesk.exe").is_err());
 
         let not_pe = root.join("not_pe.exe");
         fs::write(&not_pe, vec![0x00u8; 1_050_000]).unwrap();
@@ -1905,21 +1909,21 @@ mod tests {
             "windows_sha256 in version.json must not remain all-zeros"
         );
 
-        let zip_path = repo_root.join("HDMI_CEC_Studio_Windows_x64.zip");
+        let zip_path = repo_root.join("CecDesk_Windows_x64.zip");
         if zip_path.is_file() {
             let actual_sha = compute_file_sha256_hex(&zip_path).unwrap();
             assert_eq!(
                 actual_sha, sha,
-                "version.json windows_sha256 must match HDMI_CEC_Studio_Windows_x64.zip"
+                "version.json windows_sha256 must match CecDesk_Windows_x64.zip"
             );
 
             let stage = std::env::temp_dir()
-                .join(format!("hdmi_cec_real_zip_verify_{}", std::process::id()));
+                .join(format!("cecdesk_real_zip_verify_{}", std::process::id()));
             let _ = fs::remove_dir_all(&stage);
-            let extracted = extract_safe_update_zip(&zip_path, &stage, "HDMI_CEC_Studio.exe")
-                .expect("HDMI_CEC_Studio_Windows_x64.zip must unpack via extract_safe_update_zip");
+            let extracted = extract_safe_update_zip(&zip_path, &stage, "CecDesk.exe")
+                .expect("CecDesk_Windows_x64.zip must unpack via extract_safe_update_zip");
 
-            assert!(verify_windows_pe_binary(&stage.join("HDMI_CEC_Studio.exe")).is_ok());
+            assert!(verify_windows_pe_binary(&stage.join("CecDesk.exe")).is_ok());
             assert!(stage.join("WebView2Loader.dll").is_file());
             assert!(stage.join("README.md").is_file());
             assert!(stage.join("LICENSE").is_file());

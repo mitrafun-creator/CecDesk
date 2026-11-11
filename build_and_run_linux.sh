@@ -7,14 +7,14 @@ if ! command -v cargo >/dev/null 2>&1; then
     if [ -f "$HOME/.cargo/env" ]; then
         source "$HOME/.cargo/env"
     else
-        echo "[HDMI-CEC Studio] Установка компилятора Rust (rustup)..."
+        echo "[CecDesk] Установка компилятора Rust (rustup)..."
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         source "$HOME/.cargo/env"
     fi
 fi
 
 if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
-    echo "[HDMI-CEC Studio] Проверка системных библиотек для сборки..."
+    echo "[CecDesk] Проверка системных библиотек для сборки..."
     if command -v pacman >/dev/null 2>&1; then
         sudo steamos-readonly disable 2>/dev/null || true
         sudo pacman-key --init 2>/dev/null || true
@@ -29,19 +29,19 @@ fi
 
 cd "$ROOT_DIR/tauri_app/src-tauri"
 
-echo "[HDMI-CEC Studio] Сборка нативного бинарного файла для Linux / SteamOS (x86_64)..."
+echo "[CecDesk] Сборка нативного бинарного файла для Linux / SteamOS (x86_64)..."
 cargo build --release
 
-BIN_SRC="$ROOT_DIR/tauri_app/src-tauri/target/release/hdmi_cec_studio"
-cp "$BIN_SRC" "$ROOT_DIR/hdmi_cec_studio_linux"
-chmod +x "$ROOT_DIR/hdmi_cec_studio_linux"
+BIN_SRC="$ROOT_DIR/tauri_app/src-tauri/target/release/cecdesk"
+cp "$BIN_SRC" "$ROOT_DIR/cecdesk_linux"
+chmod +x "$ROOT_DIR/cecdesk_linux"
 
-DIST_DIR="$ROOT_DIR/HDMI_CEC_Studio_SteamOS_Linux_x64"
+DIST_DIR="$ROOT_DIR/CecDesk_SteamOS_Linux_x64"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR/bin/firmware" "$DIST_DIR/tv_profiles" "$DIST_DIR/scripts" "$DIST_DIR/logs"
 
-cp "$ROOT_DIR/hdmi_cec_studio_linux" "$DIST_DIR/hdmi_cec_studio_linux"
-chmod +x "$DIST_DIR/hdmi_cec_studio_linux"
+cp "$ROOT_DIR/cecdesk_linux" "$DIST_DIR/cecdesk_linux"
+chmod +x "$DIST_DIR/cecdesk_linux"
 
 if [ -d "$ROOT_DIR/tv_profiles" ]; then
     cp -r "$ROOT_DIR/tv_profiles/"* "$DIST_DIR/tv_profiles/" 2>/dev/null || true
@@ -60,10 +60,10 @@ if [ -f "$ROOT_DIR/tauri_app/src-tauri/icons/icon.png" ]; then
     cp "$ROOT_DIR/tauri_app/src-tauri/icons/icon.png" "$DIST_DIR/icon.png"
 fi
 
-echo "[HDMI-CEC Studio] Пакет для SteamOS / Linux готов в папке: $DIST_DIR"
+echo "[CecDesk] Пакет для SteamOS / Linux готов в папке: $DIST_DIR"
 
 if [ "$1" != "--build-only" ]; then
-    echo "[HDMI-CEC Studio] Запуск $ROOT_DIR/hdmi_cec_studio_linux..."
+    echo "[CecDesk] Запуск $ROOT_DIR/cecdesk_linux..."
     cd "$ROOT_DIR"
-    ./hdmi_cec_studio_linux
+    ./cecdesk_linux
 fi

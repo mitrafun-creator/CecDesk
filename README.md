@@ -1,7 +1,8 @@
-# HDMI-CEC Studio & Hardware Emulator
+# CecDesk — Мост между пультом ТВ и ПК / SteamOS
 
-> **Устройство:** `CEC-EMU dev/r.1 by Dimitryi Garutt`  
-> **Архитектура ПО:** HDMI-CEC Studio (Tauri v2 + Модульный Rust Backend + Чистый Vanilla WebUI)  
+> **Программно-аппаратный комплекс:** `CecDesk`  
+> **Аппаратный модуль:** `CecDesk Dongle` (`dev/r.1 by Dimitryi Garutt`)  
+> **Десктопное ПО:** `CecDesk App` (Tauri v2 + Модульный Rust Backend + Чистый Vanilla WebUI)  
 > **Микроконтроллеры:** RP2040-Zero (PIO State Machine) / ESP32-S3 (Open-Drain CEC GPIO4, USB CDC)  
 > **Целевые ТВ:** Универсальный профиль HDMI-CEC 1.4/2.0, Philips EasyLink, LG SimpLink, Samsung Anynet+, Sony Bravia Sync, Panasonic VIERA Link, TCL, Hisense VIDAA, Xiaomi, Toshiba, Sharp
 
@@ -9,7 +10,7 @@
 
 ## Возможности проекта
 
-1. **Аппаратный эмулятор HDMI-CEC (`CEC-EMU`)**:
+1. **Аппаратный мост HDMI-CEC (`CecDesk Dongle`)**:
    - Автоматически считывает физический адрес HDMI порта и производителя ТВ из EDID (Windows Registry / DRM EDID в Linux).
    - Прописывает экранное имя устройства в ТВ (**GAMING PC**).
    - Единая интеллектуальная кнопка питания («Включить ТВ» / «Выключить ТВ»), синхронизированная с реальным состоянием экрана по протоколу CEC (`0x90` / `0x36`).
@@ -43,13 +44,13 @@
 ## Архитектура проекта
 
 ```text
-HDMI_CEC_Emulator/
+CecDesk/
 ├── LICENSE                         <-- Лицензия PolyForm Noncommercial License 1.0.0
 ├── THIRD_PARTY_NOTICES.md          <-- Сторонние компоненты и GPLv2-уведомление для firmware
 ├── version.json                    <-- Манифест актуальной версии, ссылок и SHA-256 пакета
 ├── build_release.bat               <-- Сборка релиза + упаковка .zip + обновление SHA-256
 ├── install_steamos.sh              <-- Автоустановщик для SteamOS (Steam Deck) / Linux
-├── cec_studio_config.default.json  <-- Базовый шаблон конфигурации (universal_hdmi_cec)
+├── cecdesk_config.default.json     <-- Базовый шаблон конфигурации (universal_hdmi_cec)
 │
 ├── bin/                            <-- Внешние бинарные ресурсы
 │   ├── AudioTool.exe               <-- Утилита переключения аудиовыхода Windows (WASAPI)
@@ -58,9 +59,9 @@ HDMI_CEC_Emulator/
 │       └── esp32_s3_firmware.bin
 │
 ├── (артефакты сборки, не коммитятся в Git и публикуются в GitHub Releases)
-│   ├── HDMI_CEC_Studio.exe             <-- Исполняемый файл для Windows x64 (Tauri v2)
-│   ├── HDMI_CEC_Studio_Windows_x64.zip <-- Полный дистрибутив Windows для релиза и самообновления
-│   └── WebView2Loader.dll              <-- Загрузчик WebView2 рядом с .exe
+│   ├── CecDesk.exe                 <-- Исполняемый файл для Windows x64 (Tauri v2)
+│   ├── CecDesk_Windows_x64.zip     <-- Полный дистрибутив Windows для релиза и самообновления
+│   └── WebView2Loader.dll          <-- Загрузчик WebView2 рядом с .exe
 ```
 │
 ├── tauri_app/                      <-- Исходный код приложения
@@ -129,30 +130,30 @@ HDMI_CEC_Emulator/
 - Подробные схемы, распиновка, нюанс с дорожкой пина 13 у видеокарт и прошивка: см. [`docs/HARDWARE_AND_FLASHING.md`](docs/HARDWARE_AND_FLASHING.md).
 
 ### 2. Установка и запуск на Windows 10 / 11 (x64)
-1. Скачайте архив **`HDMI_CEC_Studio_Windows_x64.zip`** со страницы [Releases](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases).
-2. Распакуйте архив целиком в **папку с правами записи текущего пользователя** — например, `C:\Tools\HDMI_CEC_Studio\` или `Documents\HDMI_CEC_Studio\`.
+1. Скачайте архив **`CecDesk_Windows_x64.zip`** со страницы [Releases](https://github.com/mitrafun-creator/CecDesk/releases).
+2. Распакуйте архив целиком в **папку с правами записи текущего пользователя** — например, `C:\Tools\CecDesk\` или `Documents\CecDesk\`.
    > Важно: не распаковывайте только один `.exe` без `WebView2Loader.dll`, `tv_profiles/` и `bin/`. Также не рекомендуется помещать программу в системную папку `C:\Program Files`, чтобы встроенное автообновление в 1 клик могло заменять файлы без запроса прав администратора.
-3. Запустите `HDMI_CEC_Studio.exe`.
+3. Запустите `CecDesk.exe`.
    - Если появится предупреждение **Windows Defender SmartScreen** («Система Windows защитила ваш компьютер»): так как бета-сборки ещё не подписаны коммерческим EV-сертификатом, нажмите **«Подробнее» -> «Выполнить в любом случае»**. Программа не требует доступа администратора; обновления с GitHub проверяются по SHA-256, целостности ZIP CRC-32 и заголовку PE.
-4. *(По желанию)* Для полностью портативного режима (чтобы конфигурация, скрипты и логи хранились рядом с `.exe`, а не в `%LOCALAPPDATA%\HDMI-CEC Studio\`) создайте пустой файл `portable.txt` рядом с `HDMI_CEC_Studio.exe` или запускайте с флагом `--portable`.
+4. *(По желанию)* Для полностью портативного режима (чтобы конфигурация, скрипты и логи хранились рядом с `.exe`, а не в `%LOCALAPPDATA%\CecDesk\`) создайте пустой файл `portable.txt` рядом с `CecDesk.exe` или запускайте с флагом `--portable`.
 
 ### 3. Установка на SteamOS (Steam Deck) / Linux
 Выполните одну команду в терминале (Konsole в Desktop Mode или по SSH):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/install_steamos.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/install_steamos.sh | bash
 ```
 Или через клонирование репозитория:
 ```bash
-git clone https://github.com/mitrafun-creator/HDMI_CEC_Emulator.git && cd HDMI_CEC_Emulator && chmod +x install_steamos.sh && ./install_steamos.sh
+git clone https://github.com/mitrafun-creator/CecDesk.git && cd CecDesk && chmod +x install_steamos.sh && ./install_steamos.sh
 ```
-Установщик скачает готовый бинарник (или соберёт проект из исходников через Rust/Cargo), настроит правила `udev` (USB Serial и виртуальный ввод `uinput` для Gamescope), создаст ярлык и запустит фоновый пользовательский сервис `systemd` (`hdmi-cec-studio.service`).
+Установщик скачает готовый бинарник (или соберёт проект из исходников через Rust/Cargo), настроит правила `udev` (USB Serial и виртуальный ввод `uinput` для Gamescope), создаст ярлык и запустит фоновый пользовательский сервис `systemd` (`cecdesk.service`).
 
 ### 4. Сборка из исходников (Windows)
 При наличии настроенного окружения Rust/MinGW запустите из корня репозитория:
 ```cmd
 build_release.bat
 ```
-Скрипт скомпилирует релизный бинарник Rust, обновит `HDMI_CEC_Studio.exe` и `WebView2Loader.dll`, пересоберёт `HDMI_CEC_Studio_Windows_x64.zip` и синхронизирует хэш `windows_sha256` в `version.json`.
+Скрипт скомпилирует релизный бинарник Rust, обновит `CecDesk.exe` и `WebView2Loader.dll`, пересоберёт `CecDesk_Windows_x64.zip` и синхронизирует хэш `windows_sha256` в `version.json`.
 
 ---
 
@@ -162,7 +163,7 @@ build_release.bat
 
 | Компонент | Статус в бета-версии | Примечания |
 | --- | --- | --- |
-| Windows 10 / 11 (x64) | Основная целевая сборка | Доступна в [`HDMI_CEC_Studio_Windows_x64.zip`](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases) (требует WebView2 Runtime, по умолчанию есть в Windows 11/актуальной Windows 10) |
+| Windows 10 / 11 (x64) | Основная целевая сборка | Доступна в [`CecDesk_Windows_x64.zip`](https://github.com/mitrafun-creator/CecDesk/releases) (требует WebView2 Runtime, по умолчанию есть в Windows 11/актуальной Windows 10) |
 | SteamOS / Linux (x64) | Сборка из исходников | Готовый бинарник в Releases ещё не опубликован; [`install_steamos.sh`](install_steamos.sh) собирает проект локально через `cargo` |
 | RP2040-Zero / ESP32-S3 | Прошивки в комплекте | Готовые образы в `bin/firmware/`, схемы и распиновка в [`docs/HARDWARE_AND_FLASHING.md`](docs/HARDWARE_AND_FLASHING.md) |
 
@@ -191,9 +192,9 @@ build_release.bat
 
 Если во время тестирования возникла ошибка, интерфейс закрылся некорректно или телевизор/пульт ведёт себя неожиданно:
 1. Откройте **Настройки -> Диагностика, отчёты и телеметрия** (или нажмите «Создать отчёт (.zip)» на баннере восстановления после сбоя).
-2. Нажмите **«Создать отчёт (.zip)»** — приложение сформирует локальный архив `hdmi_cec_support_<timestamp>.zip` в папке `reports/`.
+2. Нажмите **«Создать отчёт (.zip)»** — приложение сформирует локальный архив `cecdesk_support_<timestamp>.zip` в папке `reports/`.
    - Персональные пути (`C:\Users\<USER>\...`, `/home/<USER>/...`) и токены автоматически заменяются на маски перед сохранением архива (подробнее: [`docs/TELEMETRY_AND_REPORTS.md`](docs/TELEMETRY_AND_REPORTS.md)).
-3. Опишите шаги воспроизведения и приложите созданный `.zip` в [GitHub Issues](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/issues) (удобная кнопка «Сообщить об ошибке» открывает форму с уже подставленной сводкой версии, ОС, контроллера и EDID).
+3. Опишите шаги воспроизведения и приложите созданный `.zip` в [GitHub Issues](https://github.com/mitrafun-creator/CecDesk/issues) (удобная кнопка «Сообщить об ошибке» открывает форму с уже подставленной сводкой версии, ОС, контроллера и EDID).
 
 *(Опциональная анонимная телеметрия по умолчанию выключена и срабатывает только при явном согласии пользователя и указании собственного HTTPS Webhook-приёмника.)*
 
@@ -201,5 +202,5 @@ build_release.bat
 
 ## Лицензия
 
-- Основной код **HDMI-CEC Studio** (`tauri_app/`, профили `tv_profiles/`, скрипты и документация) распространяется под лицензией **PolyForm Noncommercial License 1.0.0** ([`LICENSE`](LICENSE)): вы можете свободно использовать, изучать, модифицировать и форкать проект для личных, образовательных, исследовательских и иных некоммерческих задач; коммерческое использование, продажа и выпуск коммерческих продуктов на основе проекта или его форков запрещены.
+- Основной код **CecDesk** (`CecDesk App`, профили `tv_profiles/`, скрипты и документация) распространяется под лицензией **PolyForm Noncommercial License 1.0.0** ([`LICENSE`](LICENSE)): вы можете свободно использовать, изучать, модифицировать и форкать проект для личных, образовательных, исследовательских и иных некоммерческих задач; коммерческое использование, продажа и выпуск коммерческих продуктов на основе проекта или его форков запрещены.
 - Прошивка микроконтроллера (`firmware/`) использует библиотеку [`firmware/lib/CEC-master`](firmware/lib/CEC-master) под лицензией **GNU GPL v2.0**. Полный перечень лицензий сторонних компонентов и зависимостей приведён в [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

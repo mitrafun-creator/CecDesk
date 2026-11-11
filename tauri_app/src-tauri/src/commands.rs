@@ -123,6 +123,7 @@ pub async fn list_serial_ports() -> Vec<PortInfoDto> {
 
                 let mut is_pref = desc.to_uppercase().contains("E8:3D:C1:F2:DE:08")
                     || (matched_vid == "303A" && !desc.to_uppercase().contains("D0:CF:13:07:AC:C0"))
+                    || desc.to_uppercase().contains("CECDESK")
                     || desc.to_uppercase().contains("CEC-EMU")
                     || matched_vid == "2E8A";
 
@@ -166,9 +167,9 @@ pub async fn list_serial_ports() -> Vec<PortInfoDto> {
 
                 let final_desc = if is_pref {
                     if matched_vid == "2E8A" || desc.contains("2E8A") || desc.contains("RP2040") || port_upper == "COM10" {
-                        format!("CEC-EMU RP2040-Zero ({})", p.port_name)
+                        format!("CecDesk Dongle RP2040-Zero ({})", p.port_name)
                     } else {
-                        format!("CEC-EMU ESP32-S3 ({})", p.port_name)
+                        format!("CecDesk Dongle ESP32-S3 ({})", p.port_name)
                     }
                 } else {
                     desc

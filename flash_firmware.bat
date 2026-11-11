@@ -1,11 +1,12 @@
 @echo off
 chcp 65001 >nul
-title Прошивка CEC-EMU dev/r.1 (ESP32-S3)
+title Прошивка CecDesk Dongle dev/r.1 (ESP32-S3)
 echo ==============================================================
-echo        Прошивка контроллера CEC-EMU dev/r.1 (Dimitryi Garutt)
+echo        Прошивка контроллера CecDesk Dongle (Dimitryi Garutt)
 echo ==============================================================
 echo.
-echo [1/3] Завершение запущенного процесса HDMI-CEC Studio...
+echo [1/3] Завершение запущенного процесса CecDesk App...
+taskkill /f /im CecDesk.exe >nul 2>&1
 taskkill /f /im HDMI_CEC_Studio.exe >nul 2>&1
 timeout /t 1 /nobreak >nul
 
@@ -26,7 +27,7 @@ if %ERRORLEVEL% EQU 0 (
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo ==============================================================
-    echo [УСПЕХ] Контроллер CEC-EMU успешно прошит!
+    echo [УСПЕХ] Контроллер CecDesk Dongle успешно прошит!
     echo ==============================================================
 ) else (
     echo.
