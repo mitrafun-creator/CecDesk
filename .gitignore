@@ -38,6 +38,11 @@ trace.log
 cec_studio_config.json
 !cec_studio_config.default.json
 
+# Release binaries & distribution archives (hosted on GitHub Releases, built via build_release.bat)
+/HDMI_CEC_Studio.exe
+/HDMI_CEC_Studio_Windows_x64.zip
+/WebView2Loader.dll
+
 # Auto-generated Tauri schemas
 tauri_app/src-tauri/gen/
 

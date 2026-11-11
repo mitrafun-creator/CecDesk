@@ -2,8 +2,8 @@
   "version": "1.1.0-beta.1",
   "published_at": "2026-11-11",
   "notes": "HDMI-CEC Studio v1.1.0-beta.1 Pre-Beta Release:\n- Разделение ресурсов и пользовательских данных (AppData / XDG Data / Portable режим по portable.txt)\n- Полная сборка Windows в одном архиве HDMI_CEC_Studio_Windows_x64.zip и самообновление в 1 клик через GitHub (SHA-256 + проверка PE + безопасная распаковка)\n- Структурированное логирование с ротацией, захватом ошибок WebView и детектором прошлого падения\n- Экспорт диагностического архива (.zip) в 1 клик с маскированием персональных путей и токенов\n- Чистые дефолты для новых пользователей (Universal HDMI-CEC, активное определение EDID, честная проверка AudioTool.exe)\n- Улучшения безопасности и совместимости SteamOS (CSP, валидация манифестов, udev uaccess)",
-  "download_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases",
-  "windows_package_url": "https://raw.githubusercontent.com/mitrafun-creator/HDMI_CEC_Emulator/main/HDMI_CEC_Studio_Windows_x64.zip",
+  "download_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/tag/v1.1.0-beta.1",
+  "windows_package_url": "https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases/download/v1.1.0-beta.1/HDMI_CEC_Studio_Windows_x64.zip",
   "windows_package_kind": "zip",
-  "windows_sha256": "29c36c1ffca1370c9dde8985c87f51ce33c8d6f8606f3f97b8c0f86b2ad62bcc"
+  "windows_sha256": "717e494e22ffdee69763104cdd43542ea0a97a64562273726cbaad32d72121d6"
 }

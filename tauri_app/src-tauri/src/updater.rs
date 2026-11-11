@@ -651,6 +651,8 @@ fn normalize_allowed_update_rel_path(segments: &[String], exe_name: &str) -> Opt
         }
         if f.eq_ignore_ascii_case("WebView2Loader.dll")
             || f.eq_ignore_ascii_case("README.md")
+            || f.eq_ignore_ascii_case("LICENSE")
+            || f.eq_ignore_ascii_case("THIRD_PARTY_NOTICES.md")
             || f.eq_ignore_ascii_case("version.json")
         {
             return Some(PathBuf::from(f));
@@ -1920,11 +1922,13 @@ mod tests {
             assert!(verify_windows_pe_binary(&stage.join("HDMI_CEC_Studio.exe")).is_ok());
             assert!(stage.join("WebView2Loader.dll").is_file());
             assert!(stage.join("README.md").is_file());
+            assert!(stage.join("LICENSE").is_file());
+            assert!(stage.join("THIRD_PARTY_NOTICES.md").is_file());
             assert!(stage.join("bin/AudioTool.exe").is_file());
             assert!(stage.join("bin/firmware/rp2040_zero_firmware.uf2").is_file());
             assert!(stage.join("bin/firmware/esp32_s3_firmware.bin").is_file());
             assert!(stage.join("tv_profiles/universal_hdmi_cec.json").is_file());
-            assert!(extracted.len() >= 18);
+            assert!(extracted.len() >= 20);
 
             let _ = fs::remove_dir_all(&stage);
         }

@@ -44,9 +44,8 @@
 
 ```text
 HDMI_CEC_Emulator/
-├── HDMI_CEC_Studio.exe             <-- Исполняемый файл для Windows x64 (Tauri v2)
-├── HDMI_CEC_Studio_Windows_x64.zip <-- Полный дистрибутив Windows для релиза и самообновления
-├── WebView2Loader.dll              <-- Загрузчик WebView2 (должен лежать рядом с .exe)
+├── LICENSE                         <-- Лицензия PolyForm Noncommercial License 1.0.0
+├── THIRD_PARTY_NOTICES.md          <-- Сторонние компоненты и GPLv2-уведомление для firmware
 ├── version.json                    <-- Манифест актуальной версии, ссылок и SHA-256 пакета
 ├── build_release.bat               <-- Сборка релиза + упаковка .zip + обновление SHA-256
 ├── install_steamos.sh              <-- Автоустановщик для SteamOS (Steam Deck) / Linux
@@ -57,6 +56,12 @@ HDMI_CEC_Emulator/
 │   └── firmware/                   <-- Встроенные прошивки для обновления из UI
 │       ├── rp2040_zero_firmware.uf2
 │       └── esp32_s3_firmware.bin
+│
+├── (артефакты сборки, не коммитятся в Git и публикуются в GitHub Releases)
+│   ├── HDMI_CEC_Studio.exe             <-- Исполняемый файл для Windows x64 (Tauri v2)
+│   ├── HDMI_CEC_Studio_Windows_x64.zip <-- Полный дистрибутив Windows для релиза и самообновления
+│   └── WebView2Loader.dll              <-- Загрузчик WebView2 рядом с .exe
+```
 │
 ├── tauri_app/                      <-- Исходный код приложения
 │   ├── src-tauri/                  <-- Бэкенд на Rust
@@ -101,10 +106,11 @@ HDMI_CEC_Emulator/
 ├── tv_profiles/                    <-- База профилей телевизоров (12 JSON файлов + catalog.json)
 ├── scripts/                        <-- Каталог пользовательских скриптов и scripts/README.md
 └── docs/                           <-- Документация и спецификации
-    ├── DEVELOPMENT_HISTORY.md      # История разработки и аппаратный анализ
-    ├── HARDWARE_AND_FLASHING.md    # Схемы пайки RP2040-Zero / ESP32-S3 и прошивка
-    ├── TELEMETRY_AND_REPORTS.md    # Контракт диагностического .zip, маскирование и privacy
-    └── UNIVERSAL_API_SPEC.md       # Спецификация протокола CBP v1.0
+│   ├── DEVELOPMENT_HISTORY.md      # История разработки и аппаратный анализ
+│   ├── BETA_TESTING.md             # Чеклист бета-тестера и правила отправки отчётов
+│   ├── HARDWARE_AND_FLASHING.md    # Схемы пайки RP2040-Zero / ESP32-S3 и прошивка
+│   ├── TELEMETRY_AND_REPORTS.md    # Контракт диагностического .zip, маскирование и privacy
+│   └── UNIVERSAL_API_SPEC.md       # Спецификация протокола CBP v1.0
 ```
 
 ---
@@ -123,7 +129,7 @@ HDMI_CEC_Emulator/
 - Подробные схемы, распиновка, нюанс с дорожкой пина 13 у видеокарт и прошивка: см. [`docs/HARDWARE_AND_FLASHING.md`](docs/HARDWARE_AND_FLASHING.md).
 
 ### 2. Установка и запуск на Windows 10 / 11 (x64)
-1. Скачайте архив **`HDMI_CEC_Studio_Windows_x64.zip`** со страницы [Releases](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases) (или из корня репозитория).
+1. Скачайте архив **`HDMI_CEC_Studio_Windows_x64.zip`** со страницы [Releases](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases).
 2. Распакуйте архив целиком в **папку с правами записи текущего пользователя** — например, `C:\Tools\HDMI_CEC_Studio\` или `Documents\HDMI_CEC_Studio\`.
    > Важно: не распаковывайте только один `.exe` без `WebView2Loader.dll`, `tv_profiles/` и `bin/`. Также не рекомендуется помещать программу в системную папку `C:\Program Files`, чтобы встроенное автообновление в 1 клик могло заменять файлы без запроса прав администратора.
 3. Запустите `HDMI_CEC_Studio.exe`.
@@ -150,7 +156,38 @@ build_release.bat
 
 ---
 
+## Матрица совместимости (бета-статус)
+
+### Платформы и контроллеры
+
+| Компонент | Статус в бета-версии | Примечания |
+| --- | --- | --- |
+| Windows 10 / 11 (x64) | Основная целевая сборка | Доступна в [`HDMI_CEC_Studio_Windows_x64.zip`](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/releases) (требует WebView2 Runtime, по умолчанию есть в Windows 11/актуальной Windows 10) |
+| SteamOS / Linux (x64) | Сборка из исходников | Готовый бинарник в Releases ещё не опубликован; [`install_steamos.sh`](install_steamos.sh) собирает проект локально через `cargo` |
+| RP2040-Zero / ESP32-S3 | Прошивки в комплекте | Готовые образы в `bin/firmware/`, схемы и распиновка в [`docs/HARDWARE_AND_FLASHING.md`](docs/HARDWARE_AND_FLASHING.md) |
+
+### Профили телевизоров (`tv_profiles/`)
+
+| Профиль / Бренд | Файл | Статус проверки |
+| --- | --- | --- |
+| Philips 32PFL9705H (EasyLink) | `philips_32pfl9705h.json` | Проверен на реальном ТВ в ходе разработки |
+| Универсальный HDMI-CEC 1.4/2.0 | `universal_hdmi_cec.json` | Базовый шаблон по умолчанию (ожидает широкой проверки в бете) |
+| Philips Ambilight (Android / Google TV) | `philips_ambilight_android.json` | Не подтверждён на реальном ТВ (по спецификации CEC, ждёт тестов) |
+| LG SimpLink (webOS) | `lg_simplink_webos.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Samsung Anynet+ (Tizen OS) | `samsung_anynet_tizen.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Sony BRAVIA Sync (Google TV) | `sony_bravia_sync.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Panasonic VIERA Link | `panasonic_viera_link.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Hisense VIDAA Smart TV | `hisense_vidaa_cec.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| TCL Mini-LED / QLED (T-Link) | `tcl_google_tv.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Toshiba REGZA (CE-Link) | `toshiba_regza_link.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Sharp AQUOS Link | `sharp_aquos_link.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+| Xiaomi TV / PatchWall | `xiaomi_mi_tv.json` | Не подтверждён на реальном ТВ (ждёт тестов сообщества) |
+
+---
+
 ## Тестирование бета-версии и отчёты об ошибках
+
+Подробный чеклист проверки для участников тестирования находится в [`docs/BETA_TESTING.md`](docs/BETA_TESTING.md).
 
 Если во время тестирования возникла ошибка, интерфейс закрылся некорректно или телевизор/пульт ведёт себя неожиданно:
 1. Откройте **Настройки -> Диагностика, отчёты и телеметрия** (или нажмите «Создать отчёт (.zip)» на баннере восстановления после сбоя).
@@ -159,3 +196,10 @@ build_release.bat
 3. Опишите шаги воспроизведения и приложите созданный `.zip` в [GitHub Issues](https://github.com/mitrafun-creator/HDMI_CEC_Emulator/issues) (удобная кнопка «Сообщить об ошибке» открывает форму с уже подставленной сводкой версии, ОС, контроллера и EDID).
 
 *(Опциональная анонимная телеметрия по умолчанию выключена и срабатывает только при явном согласии пользователя и указании собственного HTTPS Webhook-приёмника.)*
+
+---
+
+## Лицензия
+
+- Основной код **HDMI-CEC Studio** (`tauri_app/`, профили `tv_profiles/`, скрипты и документация) распространяется под лицензией **PolyForm Noncommercial License 1.0.0** ([`LICENSE`](LICENSE)): вы можете свободно использовать, изучать, модифицировать и форкать проект для личных, образовательных, исследовательских и иных некоммерческих задач; коммерческое использование, продажа и выпуск коммерческих продуктов на основе проекта или его форков запрещены.
+- Прошивка микроконтроллера (`firmware/`) использует библиотеку [`firmware/lib/CEC-master`](firmware/lib/CEC-master) под лицензией **GNU GPL v2.0**. Полный перечень лицензий сторонних компонентов и зависимостей приведён в [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

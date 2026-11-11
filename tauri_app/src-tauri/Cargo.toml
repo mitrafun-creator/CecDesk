@@ -3,7 +3,16 @@ name = "hdmi_cec_studio"
 version = "1.1.0-beta.1"
 description = "HDMI-CEC Studio (Windows & Linux / SteamOS)"
 authors = ["HDMI-CEC Studio Contributors"]
+license = "PolyForm-Noncommercial-1.0.0"
+repository = "https://github.com/mitrafun-creator/HDMI_CEC_Emulator"
 edition = "2021"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
