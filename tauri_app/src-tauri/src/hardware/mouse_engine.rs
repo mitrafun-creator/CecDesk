@@ -6,11 +6,12 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
-/// Расчет нелинейного ускорения курсора мыши для 4K/FullHD экранов
-pub fn handle_mouse_movement(
+/// Чистый расчет направления, шага ускорения и подписи без вызова ОС.
+pub fn compute_mouse_movement(
     key_code: u8,
     streak_lock: &mut Option<(u8, Instant, u32)>,
-) -> String {
+    now: Instant,
+) -> (i32, i32, &'static str, i32) {
     let (dx, dy, dir_str) = match key_code {
         0x01 => (0, -1, "Курсор ↑"),
         0x02 => (0, 1, "Курсор ↓"),
@@ -19,9 +20,8 @@ pub fn handle_mouse_movement(
         _ => (0, 0, ""),
     };
 
-    let now = Instant::now();
     let count = if let Some((last_k, last_t, c)) = *streak_lock {
-        if last_k == key_code && now.duration_since(last_t) < Duration::from_millis(650) {
+        if last_k == key_code && now.saturating_duration_since(last_t) < Duration::from_millis(650) {
             c + 1
         } else {
             1
@@ -46,6 +46,15 @@ pub fn handle_mouse_movement(
         150 // Максимальная скорость для 4K телевизоров
     };
 
+    (dx, dy, dir_str, step)
+}
+
+/// Расчет нелинейного ускорения курсора мыши для 4K/FullHD экранов
+pub fn handle_mouse_movement(
+    key_code: u8,
+    streak_lock: &mut Option<(u8, Instant, u32)>,
+) -> String {
+    let (dx, dy, dir_str, step) = compute_mouse_movement(key_code, streak_lock, Instant::now());
     move_mouse_cursor(dx * step, dy * step);
     format!("{} ({}px)", dir_str, step)
 }
@@ -76,4 +85,35 @@ pub fn spawn_mouse_revert_watchdog(
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mouse_acceleration_curve_and_reset() {
+        let base = Instant::now();
+        let mut streak = None;
+
+        // First press: 4px up
+        let (dx, dy, _, step1) = compute_mouse_movement(0x01, &mut streak, base);
+        assert_eq!((dx, dy, step1), (0, -1, 4));
+
+        // Second press within 650ms: 10px
+        let (_, _, _, step2) = compute_mouse_movement(0x01, &mut streak, base + Duration::from_millis(100));
+        assert_eq!(step2, 10);
+
+        // Press 3..4: 24px
+        let (_, _, _, step3) = compute_mouse_movement(0x01, &mut streak, base + Duration::from_millis(200));
+        assert_eq!(step3, 24);
+
+        // Direction change resets streak back to 4px
+        let (dx_r, dy_r, _, step_reset) = compute_mouse_movement(0x04, &mut streak, base + Duration::from_millis(250));
+        assert_eq!((dx_r, dy_r, step_reset), (1, 0, 4));
+
+        // Expiry (>650ms) resets streak back to 4px
+        let (_, _, _, step_timeout) = compute_mouse_movement(0x04, &mut streak, base + Duration::from_millis(1200));
+        assert_eq!(step_timeout, 4);
+    }
 }

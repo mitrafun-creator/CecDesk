@@ -17,6 +17,36 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub type KeyStreakRef = Arc<Mutex<Option<(u8, Instant, u32)>>>;
 
+/// Определяет команду навигации OSK по CEC-коду клавиши (`None`, если клавиша не навигирует OSK).
+pub fn osk_nav_for_key(key_code: u8) -> Option<(&'static str, &'static str)> {
+    match key_code {
+        0x01 => Some(("UP", "Вверх ↑")),
+        0x02 => Some(("DOWN", "Вниз ↓")),
+        0x03 => Some(("LEFT", "Влево ←")),
+        0x04 => Some(("RIGHT", "Вправо →")),
+        0x00 => Some(("SELECT", "Выбор")),
+        0x72 => Some(("LANG", "Смена языка (Красная)")),
+        0x73 => Some(("SPACE", "Пробел (Зеленая)")),
+        0x74 => Some(("BACKSPACE", "Стереть (Желтая)")),
+        0x71 => Some(("ENTER", "Ввод Enter (Синяя)")),
+        _ => None,
+    }
+}
+
+/// Подбирает иконку и заголовок HUD для громкости и медиа-команд.
+pub fn hud_meta_for_action(os_act: &str) -> Option<(&'static str, &'static str)> {
+    match os_act {
+        "VOL_UP" => Some(("volume-up", "Громкость +")),
+        "VOL_DOWN" => Some(("volume-down", "Громкость −")),
+        "VOL_MUTE" => Some(("volume-mute", "Без звука")),
+        "MEDIA_PLAY" => Some(("play-pause", "Play / Pause")),
+        "MEDIA_STOP" => Some(("stop", "Стоп")),
+        "MEDIA_NEXT" => Some(("next", "След. трек")),
+        "MEDIA_PREV" => Some(("prev", "Пред. трек")),
+        _ => None,
+    }
+}
+
 /// Обработка нажатия клавиши пульта (CEC Opcode 0x44: User Control Pressed)
 #[allow(clippy::too_many_arguments)]
 pub fn dispatch_user_control_pressed(
@@ -106,19 +136,7 @@ pub fn dispatch_user_control_pressed(
             return;
         }
 
-        let (osk_cmd, osk_desc): (&str, &str) = match key_code {
-            0x01 => ("UP", "Вверх ↑"),
-            0x02 => ("DOWN", "Вниз ↓"),
-            0x03 => ("LEFT", "Влево ←"),
-            0x04 => ("RIGHT", "Вправо →"),
-            0x00 => ("SELECT", "Выбор"),
-            0x72 => ("LANG", "Смена языка (Красная)"),
-            0x73 => ("SPACE", "Пробел (Зеленая)"),
-            0x74 => ("BACKSPACE", "Стереть (Желтая)"),
-            0x71 => ("ENTER", "Ввод Enter (Синяя)"),
-            _ => ("", ""),
-        };
-        if !osk_cmd.is_empty() {
+        if let Some((osk_cmd, osk_desc)) = osk_nav_for_key(key_code) {
             if let Some(osk_w) = app.get_webview_window("osk") {
                 let _ = osk_w.emit("osk-nav", osk_cmd);
             }
@@ -389,16 +407,7 @@ pub fn dispatch_user_control_pressed(
         // 7. Стандартное выполнение действия ОС
         let os_desc = trigger_os_key_internal(&os_act);
         if cfg.hud_enabled && (os_act.starts_with("VOL_") || os_act.starts_with("MEDIA_")) {
-            let (icon, title) = match os_act.as_str() {
-                "VOL_UP" => ("volume-up", "Громкость +"),
-                "VOL_DOWN" => ("volume-down", "Громкость −"),
-                "VOL_MUTE" => ("volume-mute", "Без звука"),
-                "MEDIA_PLAY" => ("play-pause", "Play / Pause"),
-                "MEDIA_STOP" => ("stop", "Стоп"),
-                "MEDIA_NEXT" => ("next", "След. трек"),
-                "MEDIA_PREV" => ("prev", "Пред. трек"),
-                _ => ("command", os_desc.as_str()),
-            };
+            let (icon, title) = hud_meta_for_action(&os_act).unwrap_or(("command", os_desc.as_str()));
             crate::window_manager::emit_and_show_hud(
                 app,
                 Some(serde_json::json!({
@@ -450,4 +459,24 @@ pub fn dispatch_deck_control(opcode: u8, app: &AppHandle) {
             "os_action": os_desc
         }),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_osk_nav_for_key() {
+        assert_eq!(osk_nav_for_key(0x01), Some(("UP", "Вверх ↑")));
+        assert_eq!(osk_nav_for_key(0x00), Some(("SELECT", "Выбор")));
+        assert_eq!(osk_nav_for_key(0x71), Some(("ENTER", "Ввод Enter (Синяя)")));
+        assert_eq!(osk_nav_for_key(0x99), None);
+    }
+
+    #[test]
+    fn test_hud_meta_for_action() {
+        assert_eq!(hud_meta_for_action("VOL_UP"), Some(("volume-up", "Громкость +")));
+        assert_eq!(hud_meta_for_action("MEDIA_PLAY"), Some(("play-pause", "Play / Pause")));
+        assert_eq!(hud_meta_for_action("NONE"), None);
+    }
 }

@@ -10,7 +10,12 @@
 #define DEFAULT_PC_RST_PIN 6   // GPIO6 на ESP32-S3 (Оптопара RESET_BTN материнской платы)
 #define DEFAULT_PC_SENSE_PIN 7 // GPIO7 на ESP32-S3 (Вход контроля питания PWR_LED+)
 #elif defined(ARDUINO_ARCH_RP2040)
+#include <USB.h>
 #include <pico/bootrom.h>
+void initVariant() {
+  USB.setManufacturer("Dimitryi Garutt");
+  USB.setProduct("CecDesk Dongle dev/r.1 by Dimitryi Garutt");
+}
 #define CEC_PIN 0              // GP0 (Вывод 1) на RP2040-Zero (Шина HDMI CEC, Pin 13)
 #define DEFAULT_PC_PWR_PIN 1   // GP1 (Вывод 4) на RP2040-Zero (Оптопара PWR_BTN материнской платы)
 #define DEFAULT_PC_RST_PIN 2   // GP2 (Вывод 5) на RP2040-Zero (Оптопара RESET_BTN материнской платы)

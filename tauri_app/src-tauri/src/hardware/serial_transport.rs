@@ -13,6 +13,51 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
+/// Парсит строку состояния линии CEC (`OK:LINE_...`) -> `(line_high, tv_connected)`.
+pub fn parse_line_status(trimmed: &str) -> Option<(bool, bool)> {
+    if !trimmed.starts_with("OK:LINE_") {
+        return None;
+    }
+    Some((
+        trimmed.contains("LINE_HIGH"),
+        trimmed.contains("EXT_PULLUP_YES"),
+    ))
+}
+
+/// Парсит входящий CEC-пакет формата `RX 0->4: 44 01` в вектор байтов.
+pub fn parse_rx_cec_bytes(trimmed: &str) -> Option<Vec<u8>> {
+    let rx_body = trimmed.strip_prefix("RX ")?;
+    let (_hdr, hex_part) = rx_body.split_once(':')?;
+    let bytes: Vec<u8> = hex_part
+        .split_whitespace()
+        .filter_map(|b| u8::from_str_radix(b, 16).ok())
+        .collect();
+    if bytes.is_empty() {
+        None
+    } else {
+        Some(bytes)
+    }
+}
+
+/// Определяет событие питания ТВ (`Some(true)` = включен, `Some(false)` = выключен/standby, `None` = не относится к питанию).
+pub fn parse_tv_power_event(trimmed: &str) -> Option<(bool, bool)> {
+    let is_from_tv = trimmed.starts_with("RX 0->") || trimmed.starts_with("RX 0 ");
+    if !is_from_tv {
+        return None;
+    }
+    let is_power_rep = trimmed.contains(": 90 ");
+    let is_standby_cmd = trimmed.contains(": 36");
+    if is_power_rep && trimmed.contains(": 90 00") {
+        Some((true, false))
+    } else if (is_power_rep && (trimmed.contains(": 90 01") || trimmed.contains(": 90 03")))
+        || is_standby_cmd
+    {
+        Some((false, is_standby_cmd))
+    } else {
+        None
+    }
+}
+
 /// Фоновый поток непрерывного чтения данных из последовательного порта ESP32-S3 / RP2040
 pub fn spawn_serial_reader_thread(
     reader_port: Box<dyn SerialPort>,
@@ -64,9 +109,7 @@ pub fn spawn_serial_reader_thread(
                         let _ = app.emit("cec-rx-line", &trimmed);
 
                         // Проверка аппаратного статуса линии CEC
-                        if trimmed.starts_with("OK:LINE_") {
-                            let is_high = trimmed.contains("LINE_HIGH");
-                            let tv_conn = trimmed.contains("EXT_PULLUP_YES");
+                        if let Some((is_high, tv_conn)) = parse_line_status(&trimmed) {
                             let _ = app.emit(
                                 "cec-hardware-status",
                                 serde_json::json!({
@@ -78,13 +121,9 @@ pub fn spawn_serial_reader_thread(
                         }
 
                         // Проверка статуса питания телевизора (0x90 Power Status или 0x36 Standby)
-                        let is_power_rep = trimmed.contains(": 90 ");
-                        let is_standby_cmd = trimmed.contains(": 36");
-                        let is_from_tv = trimmed.starts_with("RX 0->") || trimmed.starts_with("RX 0 ");
-
-                        if is_from_tv && (is_power_rep || is_standby_cmd) {
+                        if let Some((is_on, is_standby_cmd)) = parse_tv_power_event(&trimmed) {
                             let cfg = safe_lock(&cfg_arc).clone();
-                            if is_power_rep && trimmed.contains(": 90 00") {
+                            if is_on {
                                 // ТВ ВКЛЮЧЕН
                                 was_tv_on = true;
                                 let audio_dev = if cfg.auto_audio_switch && !cfg.tv_audio_device.is_empty() {
@@ -105,10 +144,7 @@ pub fn spawn_serial_reader_thread(
                                         }
                                     });
                                 }
-                            } else if (is_power_rep
-                                && (trimmed.contains(": 90 01") || trimmed.contains(": 90 03")))
-                                || is_standby_cmd
-                            {
+                            } else {
                                 let transitioned_to_off = is_standby_cmd || was_tv_on;
                                 was_tv_on = false;
                                 // ТВ В СПЯЩЕМ РЕЖИМЕ (по команде Standby или статусу 0x90 01/03)
@@ -164,15 +200,10 @@ pub fn spawn_serial_reader_thread(
                         }
 
                         // Обработка входящих CEC пакетов
-                        if let Some(rx_body) = trimmed.strip_prefix("RX ") {
+                        if let Some(bytes) = parse_rx_cec_bytes(&trimmed) {
                             let cfg = safe_lock(&cfg_arc).clone();
                             if cfg.remote_to_os_enabled {
-                                if let Some((_hdr, hex_part)) = rx_body.split_once(':') {
-                                    let bytes: Vec<u8> = hex_part
-                                        .split_whitespace()
-                                        .filter_map(|b| u8::from_str_radix(b, 16).ok())
-                                        .collect();
-
+                                {
                                     if bytes.len() >= 2 && bytes[0] == 0x44 {
                                         let key_hex = format!("0x{:02X}", bytes[1]);
                                         if cfg.key_mappings.get(&key_hex).map(|s| s.as_str())
@@ -243,4 +274,32 @@ pub fn spawn_serial_reader_thread(
             let _ = app.emit("cec-disconnected", ());
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_line_status() {
+        assert_eq!(parse_line_status("OK:LINE_HIGH|EXT_PULLUP_YES"), Some((true, true)));
+        assert_eq!(parse_line_status("OK:LINE_LOW|EXT_PULLUP_NO"), Some((false, false)));
+        assert_eq!(parse_line_status("READY"), None);
+    }
+
+    #[test]
+    fn test_parse_rx_cec_bytes() {
+        assert_eq!(parse_rx_cec_bytes("RX 0->4: 44 01"), Some(vec![0x44, 0x01]));
+        assert_eq!(parse_rx_cec_bytes("RX 0->F: 36"), Some(vec![0x36]));
+        assert_eq!(parse_rx_cec_bytes("TX OK"), None);
+        assert_eq!(parse_rx_cec_bytes("RX 0->4: "), None);
+    }
+
+    #[test]
+    fn test_parse_tv_power_event() {
+        assert_eq!(parse_tv_power_event("RX 0->4: 90 00"), Some((true, false)));
+        assert_eq!(parse_tv_power_event("RX 0 4: 90 01"), Some((false, false)));
+        assert_eq!(parse_tv_power_event("RX 0->F: 36"), Some((false, true)));
+        assert_eq!(parse_tv_power_event("RX 4->0: 90 00"), None);
+    }
 }

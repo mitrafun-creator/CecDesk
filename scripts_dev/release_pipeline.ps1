@@ -220,7 +220,11 @@ function Invoke-Gate {
     Write-Host "=== Step 1/6: Checking version & CHANGELOG parity ==="
     Invoke-Check
 
-    Write-Host "=== Step 2/6: Running WebUI Node unit tests ==="
+    Write-Host "=== Step 2/6: Checking UI JS syntax & WebUI Node unit tests ==="
+    foreach ($jsFile in (Get-ChildItem (Join-Path $RepoRoot "tauri_app\ui\js") -Filter "*.js")) {
+        & node --check $jsFile.FullName
+        if ($LASTEXITCODE -ne 0) { throw "JS syntax check failed for $($jsFile.Name)" }
+    }
     & node --test (Join-Path $RepoRoot "tauri_app\ui\js\catalog.test.js")
     if ($LASTEXITCODE -ne 0) { throw "Node tests failed" }
 
