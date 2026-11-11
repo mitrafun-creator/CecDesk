@@ -158,7 +158,7 @@ impl Default for AppConfig {
         map.insert("0x74".to_string(), "SPACE".to_string());
 
         Self {
-            active_profile_id: "philips_32pfl9705h".to_string(),
+            active_profile_id: "universal_hdmi_cec".to_string(),
             osd_name: "GAMING PC".to_string(),
             pa_override: "1000".to_string(),
             remote_to_os_enabled: true,

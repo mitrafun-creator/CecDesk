@@ -180,7 +180,7 @@ fn main() {
             }
 
             // ==================== СИСТЕМНЫЙ ТРЕЙ (ФОНОВЫЙ РЕЖИМ + STEAM BIG PICTURE) ====================
-            let show_i = MenuItem::with_id(app, "show", "Открыть Перехват пульта", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Открыть HDMI-CEC Studio", true, None::<&str>)?;
             let hide_i = MenuItem::with_id(app, "hide", "Свернуть в трей", true, None::<&str>)?;
             let mouse_i = MenuItem::with_id(
                 app,
@@ -229,7 +229,7 @@ fn main() {
             let initial_show_click = Arc::clone(&initial_show_setup);
             let tray_builder = TrayIconBuilder::new()
                 .menu(&tray_menu)
-                .tooltip("Перехват пульта — Управление ПК и SteamOS пультом ТВ")
+                .tooltip("HDMI-CEC Studio — Управление ПК и SteamOS пультом ТВ")
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| {
                     match event.id.as_ref() {

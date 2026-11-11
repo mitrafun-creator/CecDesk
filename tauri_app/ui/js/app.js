@@ -73,7 +73,7 @@ let tvProfiles = [];
 let currentProfile = null;
 let appConfig = null;
 let selectedPort = "";
-let selectedPa = "3000";
+let selectedPa = "1000";
 
 /**
  * Управление кастомным окном (Titlebar controls)
@@ -528,7 +528,7 @@ async function toggleAutostart(enabled) {
 }
 
 let availablePortsList = [];
-let detectedHardwareModel = "ESP32-S3";
+let detectedHardwareModel = "";
 let detectedFirmwareVersion = "1.1.0";
 let connectedPort = "";
 let hasAutoWokenTvOnce = false;
@@ -541,7 +541,7 @@ function getAdapterModelDisplay() {
     if (curPortObj.desc.includes("dev/r.1")) return "CEC-EMU dev/r.1";
     if (curPortObj.desc.includes("ESP32")) return "ESP32-S3";
   }
-  return detectedHardwareModel || "ESP32-S3";
+  return detectedHardwareModel || "USB CEC";
 }
 
 function populatePortsSelect(ports) {
@@ -582,7 +582,7 @@ function populateProfiles(profiles, options = {}) {
   const profCount = document.getElementById("prof-count");
   if (profCount) profCount.textContent = tvProfiles.length;
 
-  const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "philips_32pfl9705h";
+  const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "universal_hdmi_cec";
   if (tvProfiles.length > 0 && !currentProfile) {
     const def = tvProfiles.find(p => p.id === targetId) || tvProfiles[0];
     selectProfileById(def.id, options);
@@ -754,7 +754,7 @@ async function autoSetupTv(options = {}) {
     const matched = tvProfiles.find(p => p.edid_pnp_ids.includes(edid.pnp_id));
     if (matched) selectProfileById(matched.id, { skipMapper });
   } else if (!currentProfile && tvProfiles.length > 0) {
-    const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "philips_32pfl9705h";
+    const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "universal_hdmi_cec";
     const fallbackProf = tvProfiles.find(p => p.id === targetId) || tvProfiles[0];
     if (fallbackProf) selectProfileById(fallbackProf.id, { skipMapper });
   }
@@ -1405,7 +1405,7 @@ function updateDynamicWindowTitle() {
   }
 
   const model = getAdapterModelDisplay();
-  const port = selectedPort || (lastHwStatus && lastHwStatus.port) || "COM6";
+  const port = selectedPort || (lastHwStatus && lastHwStatus.port) || "";
   const statusConnecting = typeof t === "function" ? t("remote.connecting", "Подключение...") : "Подключение...";
   const statusDisc = typeof t === "function" ? t("remote.status_disconnected", "Отключен") : "Отключен";
 
@@ -1415,7 +1415,7 @@ function updateDynamicWindowTitle() {
   }
 
   const adapterStatus = isConnected
-    ? `${model} (${port})`
+    ? `${model} (${port || "USB"})`
     : `${model} (${selectedPort ? statusConnecting : statusDisc})`;
 
   const dynamicTitle = `HDMI-CEC Studio — ${tvModel} • ${adapterStatus}`;
@@ -1644,7 +1644,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         savedOsdName = osdInp.value.trim();
         checkOsdDirtyState();
       }
-      selectedPa = appConfig.pa_override || "3000";
+      selectedPa = appConfig.pa_override || "1000";
       const chkRem = document.getElementById("chk-remote-os");
       if (chkRem) chkRem.checked = appConfig.remote_to_os_enabled;
 

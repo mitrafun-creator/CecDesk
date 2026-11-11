@@ -22,8 +22,12 @@ for %%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
 )
 
 echo Triggering 1200bps USB reset into BOOTSEL mode...
-mode COM10 BAUD=1200 PARITY=N DATA=8 >nul 2>&1
-ping 127.0.0.1 -n 4 >nul
+if not "%~1"=="" (
+    mode %~1 BAUD=1200 PARITY=N DATA=8 >nul 2>&1
+    ping 127.0.0.1 -n 4 >nul
+) else (
+    echo Note: pass COM port as argument if board is not already in BOOTSEL ^(e.g. flash_rp2040.bat COM5^)
+)
 
 :found_drive
 echo [3/3] Searching for RPI-RP2 drive...

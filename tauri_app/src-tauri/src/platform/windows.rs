@@ -518,13 +518,66 @@ pub fn exit_steam_big_picture_to_desktop() -> String {
 
 // ==================== EDID & ДИСПЛЕЙ & ЗВУК ====================
 
+fn collect_active_display_ids() -> Vec<String> {
+    use windows_sys::Win32::Graphics::Gdi::{EnumDisplayDevicesW, DISPLAY_DEVICEW};
+
+    const DISPLAY_DEVICE_ACTIVE: u32 = 0x0000_0001;
+    const EDD_GET_DEVICE_INTERFACE_NAME: u32 = 0x0000_0001;
+
+    fn utf16_z_to_upper(buf: &[u16]) -> String {
+        let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        String::from_utf16_lossy(&buf[..len]).to_ascii_uppercase()
+    }
+
+    let mut ids = Vec::new();
+    let mut i = 0u32;
+    loop {
+        let mut adapter: DISPLAY_DEVICEW = unsafe { std::mem::zeroed() };
+        adapter.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as u32;
+        if unsafe { EnumDisplayDevicesW(std::ptr::null(), i, &mut adapter, 0) } == 0 {
+            break;
+        }
+        i += 1;
+        if (adapter.StateFlags & DISPLAY_DEVICE_ACTIVE) == 0 {
+            continue;
+        }
+
+        let mut j = 0u32;
+        loop {
+            let mut mon: DISPLAY_DEVICEW = unsafe { std::mem::zeroed() };
+            mon.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as u32;
+            if unsafe {
+                EnumDisplayDevicesW(
+                    adapter.DeviceName.as_ptr(),
+                    j,
+                    &mut mon,
+                    EDD_GET_DEVICE_INTERFACE_NAME,
+                )
+            } == 0
+            {
+                break;
+            }
+            j += 1;
+            if (mon.StateFlags & DISPLAY_DEVICE_ACTIVE) != 0 {
+                let dev_id = utf16_z_to_upper(&mon.DeviceID);
+                if !dev_id.is_empty() {
+                    ids.push(dev_id);
+                }
+            }
+        }
+    }
+    ids
+}
+
 pub fn detect_edid_os() -> EdidInfoDto {
     use winreg::enums::*;
     use winreg::RegKey;
 
+    let active_ids = collect_active_display_ids();
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let display_path = r"SYSTEM\CurrentControlSet\Enum\DISPLAY";
-    let mut found: Vec<EdidInfoDto> = Vec::new();
+    let mut active_found: Vec<EdidInfoDto> = Vec::new();
+    let mut fallback_found: Vec<EdidInfoDto> = Vec::new();
 
     if let Ok(display_key) = hklm.open_subkey(display_path) {
         for mon_id in display_key.enum_keys().flatten() {
@@ -534,7 +587,16 @@ pub fn detect_edid_os() -> EdidInfoDto {
                     if let Ok(param_key) = mon_key.open_subkey(&param_path) {
                         if let Ok(reg_val) = param_key.get_raw_value("EDID") {
                             if let Some(dto) = parse_edid_bytes(&reg_val.bytes, &mon_id) {
-                                found.push(dto);
+                                let needle = format!(
+                                    "#{}#{}#",
+                                    mon_id.to_ascii_uppercase(),
+                                    inst_id.to_ascii_uppercase()
+                                );
+                                if active_ids.iter().any(|id| id.contains(&needle)) {
+                                    active_found.push(dto);
+                                } else {
+                                    fallback_found.push(dto);
+                                }
                             }
                         }
                     }
@@ -543,14 +605,17 @@ pub fn detect_edid_os() -> EdidInfoDto {
         }
     }
 
-    if let Some(phl) = found
+    if let Some(best_active) = active_found
         .iter()
-        .find(|d| d.pnp_id == "PHL" || d.monitor_id.to_uppercase().contains("PHL"))
+        .find(|d| d.physical_address != "0000" && d.hdmi_port_num > 0)
     {
-        return phl.clone();
+        return best_active.clone();
     }
-    if let Some(first) = found.into_iter().next() {
-        return first;
+    if let Some(first_active) = active_found.into_iter().next() {
+        return first_active;
+    }
+    if let Some(first_fallback) = fallback_found.into_iter().next() {
+        return first_fallback;
     }
     EdidInfoDto {
         pnp_id: "UNK".to_string(),
@@ -560,25 +625,53 @@ pub fn detect_edid_os() -> EdidInfoDto {
     }
 }
 
-pub fn switch_audio_endpoint(target: &str) -> Result<String, String> {
-    let tool_path = find_resource_dir().join("bin").join("AudioTool.exe");
-    if tool_path.exists() {
-        let output = create_hidden_command(&tool_path)
-            .args(["set", target])
-            .output()
-            .map_err(|e| {
-                log_warn("audio", &format!("AudioTool.exe invocation failed: {}", e));
-                e.to_string()
-            })?;
-        let res = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !output.status.success() {
-            let err_txt = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            log_warn("audio", &format!("AudioTool.exe exited {}: {}", output.status, err_txt));
-        }
-        return Ok(res);
+fn switch_audio_endpoint_in_dir(resource_dir: &Path, target: &str) -> Result<String, String> {
+    let tool_path = resource_dir.join("bin").join("AudioTool.exe");
+    if !tool_path.exists() {
+        log_warn(
+            "audio",
+            &format!(
+                "bin/AudioTool.exe not found in resource directory: {}",
+                resource_dir.display()
+            ),
+        );
+        return Err(
+            "Не найдена утилита bin/AudioTool.exe рядом с приложением. Автопереключение звука недоступно."
+                .to_string(),
+        );
     }
-    log_warn("audio", "bin/AudioTool.exe not found in resource directory");
-    Ok(format!("Переключен на {}", target))
+
+    let output = create_hidden_command(&tool_path)
+        .args(["set", target])
+        .output()
+        .map_err(|e| {
+            log_warn("audio", &format!("AudioTool.exe invocation failed: {}", e));
+            e.to_string()
+        })?;
+    let res = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if !output.status.success() {
+        let err_txt = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        log_warn(
+            "audio",
+            &format!("AudioTool.exe exited {}: {}", output.status, err_txt),
+        );
+        return Err(if !err_txt.is_empty() {
+            err_txt
+        } else if !res.is_empty() {
+            res
+        } else {
+            format!("AudioTool.exe завершилась с ошибкой ({})", output.status)
+        });
+    }
+    Ok(if res.is_empty() {
+        format!("Переключен на {}", target)
+    } else {
+        res
+    })
+}
+
+pub fn switch_audio_endpoint(target: &str) -> Result<String, String> {
+    switch_audio_endpoint_in_dir(&find_resource_dir(), target)
 }
 
 pub fn list_audio_endpoints() -> Vec<String> {
@@ -979,5 +1072,22 @@ pub fn get_autostart_os() -> bool {
         run_key.get_value::<String, _>("HDMI_CEC_Studio").is_ok()
     } else {
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_switch_audio_endpoint_missing_binary_returns_err() {
+        let tmp = std::env::temp_dir().join(format!("hdmi_cec_audio_missing_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let res = switch_audio_endpoint_in_dir(&tmp, "Speakers");
+        assert!(res.is_err());
+
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

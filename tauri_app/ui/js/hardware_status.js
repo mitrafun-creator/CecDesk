@@ -27,7 +27,7 @@ function finishStartupGrace() {
   if (!isStartupGrace) return;
   isStartupGrace = false;
   const isTvOnline = lastHwStatus.usbConnected && lastHwStatus.lineHigh && lastHwStatus.tvConnected;
-  const curPort = lastHwStatus.port || (typeof selectedPort !== "undefined" ? selectedPort : "") || "COM10";
+  const curPort = lastHwStatus.port || (typeof selectedPort !== "undefined" ? selectedPort : "") || "";
   updateRemoteOfflineOverlay(isTvOnline, false, curPort);
 }
 
@@ -166,7 +166,7 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
   }
 
   const _t = typeof t === "function" ? t : (_k, fb) => fb;
-  const curPort = lastHwStatus.port || selectedPort || "COM10";
+  const curPort = lastHwStatus.port || selectedPort || "";
 
   // 1. USB-контроллер (лампочка #lamp-usb)
   const lampUsb = document.getElementById("lamp-usb");
@@ -174,7 +174,8 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
 
   if (lastHwStatus.usbConnected) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(true);
-    const tipText = `${_t("status.usb_connected_port", "Подключен")} (${curPort})`;
+    const baseTip = _t("status.usb_connected_port", "Подключен");
+    const tipText = curPort ? `${baseTip} (${curPort})` : baseTip;
     if (lampUsb) {
       lampUsb.className = "status-lamp lamp-green";
       lampUsb.setAttribute("data-tooltip", tipText);
@@ -389,7 +390,7 @@ function updateSystemDiagnostics() {
   const elRemKeys = document.getElementById("diag-remote-keys-cnt");
   const elRemSubsys = document.getElementById("diag-remote-subsys");
 
-  const curPort = lastHwStatus.port || (typeof selectedPort !== "undefined" ? selectedPort : "") || "COM10";
+  const curPort = lastHwStatus.port || (typeof selectedPort !== "undefined" ? selectedPort : "") || "";
 
   if (elTvTitle) {
     const sysName = (typeof currentProfile !== "undefined" && currentProfile && currentProfile.cec_system_name)
@@ -398,7 +399,7 @@ function updateSystemDiagnostics() {
     elTvTitle.textContent = `${_t("sys.card_tv_prefix", "Телевизор")} (${sysName})`;
   }
 
-  if (elPort) elPort.textContent = lastHwStatus.usbConnected ? curPort : _t("remote.status_disconnected", "Отключен");
+  if (elPort) elPort.textContent = lastHwStatus.usbConnected ? (curPort || "USB") : _t("remote.status_disconnected", "Отключен");
   if (elConn) {
     elConn.textContent = lastHwStatus.usbConnected
       ? _t("diag.val_connected_baud", "Активен (115200 bps)")
@@ -406,7 +407,7 @@ function updateSystemDiagnostics() {
     elConn.style.color = lastHwStatus.usbConnected ? "var(--apple-green)" : "var(--apple-red)";
   }
   if (elChip) {
-    const model = typeof getAdapterModelDisplay === "function" ? getAdapterModelDisplay() : "RP2040-Zero";
+    const model = typeof getAdapterModelDisplay === "function" ? getAdapterModelDisplay() : "USB CEC";
     elChip.textContent = `${model} (USB CDC)`;
   }
 
@@ -455,7 +456,7 @@ function updateSystemDiagnostics() {
   if (elPhys) {
     elPhys.textContent = (typeof selectedPa !== "undefined" && selectedPa && selectedPa.length >= 4)
       ? `${selectedPa[0]}.${selectedPa[1]}.${selectedPa[2]}.${selectedPa[3]} (HDMI ${selectedPa[0]})`
-      : "3.0.0.0 (HDMI 3)";
+      : "1.0.0.0 (HDMI 1)";
   }
   if (elLa) elLa.textContent = "0x04 (Playback 1)";
 
@@ -515,7 +516,11 @@ function updateRemoteOfflineOverlay(isTvOnline, isReconnecting, curPort) {
     if (!lastHwStatus.usbConnected) {
       if (isReconnecting) {
         if (titleEl) titleEl.textContent = _t("remote.searching_ctrl", "Поиск контроллера...");
-        if (descEl) descEl.textContent = `${_t("remote.searching_desc", "Попытка переподключения к адаптеру на порту")} ${curPort || "COM"}...`;
+        if (descEl) {
+          descEl.textContent = curPort
+            ? `${_t("remote.searching_desc", "Попытка переподключения к адаптеру на порту")} ${curPort}...`
+            : _t("remote.offline_reason_reconnecting", "Поиск и переподключение к USB-модулю...");
+        }
         if (reasonEl) reasonEl.textContent = _t("remote.searching_port", "Поиск COM-порта...");
         if (dotEl) { dotEl.style.background = "var(--apple-amber)"; }
         if (lblEl) lblEl.textContent = _t("remote.searching_btn", "Поиск...");
@@ -661,7 +666,7 @@ function decodeCecLine(line) {
     );
     return isHigh && hasPull
       ? "Замер: 3.3V (ТВ в сети, контакт надежен)"
-      : (isHigh ? "Замер: Шина свободна (3.3V RP2040, ТВ не обнаружен)" : "Замер: КЗ на шине CEC (0V)");
+      : (isHigh ? "Замер: Шина свободна (3.3V MCU, ТВ не обнаружен)" : "Замер: КЗ на шине CEC (0V)");
   }
 
   if (line.startsWith("OK:REMOTE_CAPTURE_ON")) {

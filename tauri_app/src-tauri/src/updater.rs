@@ -1883,4 +1883,50 @@ mod tests {
 
         let _ = fs::remove_dir_all(&root);
     }
+
+    #[test]
+    fn test_repo_manifest_and_windows_zip_bundle_compatibility() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..");
+        let version_txt = fs::read_to_string(repo_root.join("version.json"))
+            .expect("version.json must exist in repo root");
+        let parsed = parse_version_manifest(&version_txt, "1.1.0-beta.0", true)
+            .expect("version.json must parse cleanly");
+        assert!(parsed.has_update);
+        assert!(parsed.can_self_update);
+        assert_eq!(parsed.package_kind.as_deref(), Some("zip"));
+
+        let sha = parsed.package_sha256.expect("windows_sha256 must be present");
+        assert!(
+            sha.chars().any(|c| c != '0'),
+            "windows_sha256 in version.json must not remain all-zeros"
+        );
+
+        let zip_path = repo_root.join("HDMI_CEC_Studio_Windows_x64.zip");
+        if zip_path.is_file() {
+            let actual_sha = compute_file_sha256_hex(&zip_path).unwrap();
+            assert_eq!(
+                actual_sha, sha,
+                "version.json windows_sha256 must match HDMI_CEC_Studio_Windows_x64.zip"
+            );
+
+            let stage = std::env::temp_dir()
+                .join(format!("hdmi_cec_real_zip_verify_{}", std::process::id()));
+            let _ = fs::remove_dir_all(&stage);
+            let extracted = extract_safe_update_zip(&zip_path, &stage, "HDMI_CEC_Studio.exe")
+                .expect("HDMI_CEC_Studio_Windows_x64.zip must unpack via extract_safe_update_zip");
+
+            assert!(verify_windows_pe_binary(&stage.join("HDMI_CEC_Studio.exe")).is_ok());
+            assert!(stage.join("WebView2Loader.dll").is_file());
+            assert!(stage.join("README.md").is_file());
+            assert!(stage.join("bin/AudioTool.exe").is_file());
+            assert!(stage.join("bin/firmware/rp2040_zero_firmware.uf2").is_file());
+            assert!(stage.join("bin/firmware/esp32_s3_firmware.bin").is_file());
+            assert!(stage.join("tv_profiles/universal_hdmi_cec.json").is_file());
+            assert!(extracted.len() >= 18);
+
+            let _ = fs::remove_dir_all(&stage);
+        }
+    }
 }

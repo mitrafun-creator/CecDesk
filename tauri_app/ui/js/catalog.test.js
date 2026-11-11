@@ -104,3 +104,19 @@ test("UI HTML/CSS avoids Tauri CSP nonce/hash invalidation and hides modals by d
   assert.match(css, /\.bug-result-banner\s*\{[^}]*display:\s*none\s*;/s);
   assert.match(css, /\.bug-result-banner\.is-visible\s*\{[^}]*display:\s*block\s*;/s);
 });
+
+test("Beta readiness defaults exclude hardcoded dev COM ports and personal TV profile", () => {
+  const uiDir = path.join(__dirname, "..");
+  const repoDir = path.join(uiDir, "..", "..");
+  const appJs = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+  const hwJs = fs.readFileSync(path.join(__dirname, "hardware_status.js"), "utf8");
+  const html = fs.readFileSync(path.join(uiDir, "index.html"), "utf8");
+  const defaultCfg = JSON.parse(fs.readFileSync(path.join(repoDir, "cec_studio_config.default.json"), "utf8"));
+
+  assert.strictEqual(defaultCfg.active_profile_id, "universal_hdmi_cec");
+  assert.ok(!/"COM(?:6|10)"/.test(appJs), "app.js must not hardcode COM6 or COM10 fallback");
+  assert.ok(!/"COM(?:6|10)"/.test(hwJs), "hardware_status.js must not hardcode COM6 or COM10 fallback");
+  assert.ok(!appJs.includes("philips_32pfl9705h"), "app.js must default to universal_hdmi_cec");
+  assert.ok(!html.includes(">Philips<"), "index.html initial brand placeholder must be neutral");
+  assert.ok(!html.includes("HDMI 3 (3000)"), "index.html initial HDMI address placeholder must be HDMI 1 (1000)");
+});
