@@ -1,4 +1,27 @@
-# CecDesk — Мост между пультом ТВ и ПК / SteamOS
+<p align="center">
+  <img src="docs/app_icon.png" alt="CecDesk" width="120" />
+</p>
+
+<h1 align="center">CecDesk</h1>
+
+<p align="center">
+  Аппаратно-программный мост между пультом ДУ телевизора (HDMI-CEC) и ПК / SteamOS (Steam Deck)
+</p>
+
+<p align="center">
+  <a href="https://github.com/mitrafun-creator/CecDesk/releases/tag/v1.1.0-beta.1"><img src="https://img.shields.io/badge/release-v1.1.0--beta.1-blue" alt="Release v1.1.0-beta.1" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-orange" alt="PolyForm Noncommercial 1.0.0" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20SteamOS%20%2F%20Linux-lightgrey" alt="Platforms" />
+  <img src="https://img.shields.io/badge/dongle-RP2040--Zero%20%7C%20ESP32--S3-informational" alt="Hardware" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/mitrafun-creator/CecDesk/releases">Скачать релиз</a> •
+  <a href="#быстрый-старт">Быстрый старт</a> •
+  <a href="docs/HARDWARE_AND_FLASHING.md">Железо и прошивка</a> •
+  <a href="CHANGELOG.md">Changelog</a> •
+  <a href="docs/BETA_TESTING.md">Бета-тестирование</a>
+</p>
 
 > **Программно-аппаратный комплекс:** `CecDesk`  
 > **Аппаратный модуль:** `CecDesk Dongle` (`dev/r.1 by Dimitryi Garutt`)  
@@ -47,8 +70,11 @@
 CecDesk/
 ├── LICENSE                         <-- Лицензия PolyForm Noncommercial License 1.0.0
 ├── THIRD_PARTY_NOTICES.md          <-- Сторонние компоненты и GPLv2-уведомление для firmware
+├── CHANGELOG.md                    <-- История версий и патч-ноуты (Keep a Changelog)
+├── AGENTS.md                       <-- Правила ролевого процесса разработки (Workspace Rules)
 ├── version.json                    <-- Манифест актуальной версии, ссылок и SHA-256 пакета
 ├── build_release.bat               <-- Сборка релиза + упаковка .zip + обновление SHA-256
+├── release_tool.bat                <-- CLI пайплайн версий и патч-ноутов (check / bump / notes / gate)
 ├── install_steamos.sh              <-- Автоустановщик для SteamOS (Steam Deck) / Linux
 ├── cecdesk_config.default.json     <-- Базовый шаблон конфигурации (universal_hdmi_cec)
 │
@@ -62,7 +88,6 @@ CecDesk/
 │   ├── CecDesk.exe                 <-- Исполняемый файл для Windows x64 (Tauri v2)
 │   ├── CecDesk_Windows_x64.zip     <-- Полный дистрибутив Windows для релиза и самообновления
 │   └── WebView2Loader.dll          <-- Загрузчик WebView2 рядом с .exe
-```
 │
 ├── tauri_app/                      <-- Исходный код приложения
 │   ├── src-tauri/                  <-- Бэкенд на Rust
@@ -106,12 +131,16 @@ CecDesk/
 │
 ├── tv_profiles/                    <-- База профилей телевизоров (12 JSON файлов + catalog.json)
 ├── scripts/                        <-- Каталог пользовательских скриптов и scripts/README.md
+├── scripts_dev/                    <-- Скрипты пайплайна сборки, версий и патч-ноутов
+├── pm/                             <-- Локальный трекер задач и шаблоны карточек (`TASKS.md`)
 └── docs/                           <-- Документация и спецификации
-│   ├── DEVELOPMENT_HISTORY.md      # История разработки и аппаратный анализ
-│   ├── BETA_TESTING.md             # Чеклист бета-тестера и правила отправки отчётов
-│   ├── HARDWARE_AND_FLASHING.md    # Схемы пайки RP2040-Zero / ESP32-S3 и прошивка
-│   ├── TELEMETRY_AND_REPORTS.md    # Контракт диагностического .zip, маскирование и privacy
-│   └── UNIVERSAL_API_SPEC.md       # Спецификация протокола CBP v1.0
+    ├── DEVELOPMENT_HISTORY.md      # История разработки и аппаратный анализ
+    ├── PROCESS_AND_ROLES.md        # Бизнес-процесс и роли разработки
+    ├── RELEASE_AND_VERSIONING.md   # Контроль версий и пайплайн патч-ноутов
+    ├── BETA_TESTING.md             # Чеклист бета-тестера и правила отправки отчётов
+    ├── HARDWARE_AND_FLASHING.md    # Схемы пайки RP2040-Zero / ESP32-S3 и прошивка
+    ├── TELEMETRY_AND_REPORTS.md    # Контракт диагностического .zip, маскирование и privacy
+    └── UNIVERSAL_API_SPEC.md       # Спецификация протокола CBP v1.0
 ```
 
 ---
