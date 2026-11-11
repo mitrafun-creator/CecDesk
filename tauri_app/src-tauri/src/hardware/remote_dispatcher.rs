@@ -53,6 +53,7 @@ pub fn dispatch_user_control_pressed(
     key_code: u8,
     app: &AppHandle,
     cfg: &AppConfig,
+    cfg_arc: &Arc<Mutex<AppConfig>>,
     calib_mode_ref: &Arc<AtomicBool>,
     osk_visible_ref: &Arc<AtomicBool>,
     mouse_mode_ref: &Arc<Mutex<bool>>,
@@ -404,20 +405,25 @@ pub fn dispatch_user_control_pressed(
             return;
         }
 
-        // 7. Стандартное выполнение действия ОС
-        let os_desc = trigger_os_key_internal(&os_act);
-        if cfg.hud_enabled && (os_act.starts_with("VOL_") || os_act.starts_with("MEDIA_")) {
-            let (icon, title) = hud_meta_for_action(&os_act).unwrap_or(("command", os_desc.as_str()));
-            crate::window_manager::emit_and_show_hud(
-                app,
-                Some(serde_json::json!({
-                    "icon": icon,
-                    "title": title,
-                    "desc": btn_name
-                })),
-                None,
-            );
-        }
+        // 7. Переключение профиля кнопок пульта или стандартное выполнение действия ОС
+        let os_desc = if crate::key_profiles::is_profile_switch_action(&os_act) {
+            crate::key_profiles::execute_profile_switch_action(&os_act, app, cfg_arc)
+        } else {
+            let desc = trigger_os_key_internal(&os_act);
+            if cfg.hud_enabled && (os_act.starts_with("VOL_") || os_act.starts_with("MEDIA_")) {
+                let (icon, title) = hud_meta_for_action(&os_act).unwrap_or(("command", desc.as_str()));
+                crate::window_manager::emit_and_show_hud(
+                    app,
+                    Some(serde_json::json!({
+                        "icon": icon,
+                        "title": title,
+                        "desc": btn_name
+                    })),
+                    None,
+                );
+            }
+            desc
+        };
         write_log_to_disk(
             sess_log,
             lat_log,

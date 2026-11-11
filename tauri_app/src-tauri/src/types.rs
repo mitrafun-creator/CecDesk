@@ -60,6 +60,53 @@ fn default_update_channel() -> String {
     "beta".to_string()
 }
 
+fn default_active_key_profile() -> String {
+    "balanced".to_string()
+}
+
+fn default_custom_key_profile_name() -> String {
+    "Пользовательский".to_string()
+}
+
+fn default_key_mappings() -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    map.insert("0x00".to_string(), "ENTER".to_string());
+    map.insert("0x01".to_string(), "UP".to_string());
+    map.insert("0x02".to_string(), "DOWN".to_string());
+    map.insert("0x03".to_string(), "LEFT".to_string());
+    map.insert("0x04".to_string(), "RIGHT".to_string());
+    map.insert("0x09".to_string(), "STEAM_BIG_PICTURE".to_string());
+    map.insert("0x0A".to_string(), "SHOW_KEYBOARD".to_string());
+    map.insert("0x0D".to_string(), "BACKSPACE".to_string());
+    map.insert("0x20".to_string(), "NUM_0".to_string());
+    map.insert("0x21".to_string(), "NUM_1".to_string());
+    map.insert("0x22".to_string(), "NUM_2".to_string());
+    map.insert("0x23".to_string(), "NUM_3".to_string());
+    map.insert("0x24".to_string(), "NUM_4".to_string());
+    map.insert("0x25".to_string(), "NUM_5".to_string());
+    map.insert("0x26".to_string(), "NUM_6".to_string());
+    map.insert("0x27".to_string(), "NUM_7".to_string());
+    map.insert("0x28".to_string(), "NUM_8".to_string());
+    map.insert("0x29".to_string(), "NUM_9".to_string());
+    map.insert("0x30".to_string(), "PGUP".to_string());
+    map.insert("0x31".to_string(), "PGDN".to_string());
+    map.insert("0x41".to_string(), "VOL_UP".to_string());
+    map.insert("0x42".to_string(), "VOL_DOWN".to_string());
+    map.insert("0x43".to_string(), "VOL_MUTE".to_string());
+    map.insert("0x44".to_string(), "MEDIA_PLAY".to_string());
+    map.insert("0x45".to_string(), "MEDIA_STOP".to_string());
+    map.insert("0x46".to_string(), "MEDIA_PLAY".to_string());
+    map.insert("0x48".to_string(), "LEFT".to_string());
+    map.insert("0x49".to_string(), "RIGHT".to_string());
+    map.insert("0x4B".to_string(), "MEDIA_NEXT".to_string());
+    map.insert("0x4C".to_string(), "MEDIA_PREV".to_string());
+    map.insert("0x71".to_string(), "MOUSE_TOGGLE".to_string());
+    map.insert("0x72".to_string(), "MEDIA_PLAY".to_string());
+    map.insert("0x73".to_string(), "VOL_MUTE".to_string());
+    map.insert("0x74".to_string(), "SPACE".to_string());
+    map
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default)]
 pub struct AppConfig {
@@ -70,6 +117,12 @@ pub struct AppConfig {
     pub auto_wake_tv_on_start: bool,
     pub auto_standby_tv_on_exit: bool,
     pub key_mappings: HashMap<String, String>,
+    #[serde(default = "default_active_key_profile")]
+    pub active_key_profile: String,
+    #[serde(default = "default_custom_key_profile_name")]
+    pub custom_key_profile_name: String,
+    #[serde(default = "default_key_mappings")]
+    pub custom_key_mappings: HashMap<String, String>,
 
     // Сценарии синхронизации питания ПК <-> ТВ и управления оптопарой (PWR_BTN)
     #[serde(default = "default_true")]
@@ -121,41 +174,7 @@ pub struct AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        let mut map = HashMap::new();
-        map.insert("0x00".to_string(), "ENTER".to_string());
-        map.insert("0x01".to_string(), "UP".to_string());
-        map.insert("0x02".to_string(), "DOWN".to_string());
-        map.insert("0x03".to_string(), "LEFT".to_string());
-        map.insert("0x04".to_string(), "RIGHT".to_string());
-        map.insert("0x09".to_string(), "STEAM_BIG_PICTURE".to_string()); // #3 Steam Big Picture
-        map.insert("0x0A".to_string(), "SHOW_KEYBOARD".to_string());     // #10 Экранная клавиатура
-        map.insert("0x0D".to_string(), "BACKSPACE".to_string());
-        map.insert("0x20".to_string(), "NUM_0".to_string());
-        map.insert("0x21".to_string(), "NUM_1".to_string());
-        map.insert("0x22".to_string(), "NUM_2".to_string());
-        map.insert("0x23".to_string(), "NUM_3".to_string());
-        map.insert("0x24".to_string(), "NUM_4".to_string());
-        map.insert("0x25".to_string(), "NUM_5".to_string());
-        map.insert("0x26".to_string(), "NUM_6".to_string());
-        map.insert("0x27".to_string(), "NUM_7".to_string());
-        map.insert("0x28".to_string(), "NUM_8".to_string());
-        map.insert("0x29".to_string(), "NUM_9".to_string());
-        map.insert("0x30".to_string(), "PGUP".to_string());
-        map.insert("0x31".to_string(), "PGDN".to_string());
-        map.insert("0x41".to_string(), "VOL_UP".to_string());
-        map.insert("0x42".to_string(), "VOL_DOWN".to_string());
-        map.insert("0x43".to_string(), "VOL_MUTE".to_string());
-        map.insert("0x44".to_string(), "MEDIA_PLAY".to_string());
-        map.insert("0x45".to_string(), "MEDIA_STOP".to_string());
-        map.insert("0x46".to_string(), "MEDIA_PLAY".to_string());
-        map.insert("0x48".to_string(), "LEFT".to_string());
-        map.insert("0x49".to_string(), "RIGHT".to_string());
-        map.insert("0x4B".to_string(), "MEDIA_NEXT".to_string());
-        map.insert("0x4C".to_string(), "MEDIA_PREV".to_string());
-        map.insert("0x71".to_string(), "MOUSE_TOGGLE".to_string());
-        map.insert("0x72".to_string(), "MEDIA_PLAY".to_string());
-        map.insert("0x73".to_string(), "VOL_MUTE".to_string());
-        map.insert("0x74".to_string(), "SPACE".to_string());
+        let map = default_key_mappings();
 
         Self {
             active_profile_id: "universal_hdmi_cec".to_string(),
@@ -164,7 +183,10 @@ impl Default for AppConfig {
             remote_to_os_enabled: true,
             auto_wake_tv_on_start: false,
             auto_standby_tv_on_exit: false,
-            key_mappings: map,
+            key_mappings: map.clone(),
+            active_key_profile: default_active_key_profile(),
+            custom_key_profile_name: default_custom_key_profile_name(),
+            custom_key_mappings: map,
             wake_pc_on_tv_on: true,
             power_off_pc_on_tv_off: false,
             pc_off_action: "SLEEP".to_string(),

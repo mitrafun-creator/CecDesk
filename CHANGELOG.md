@@ -5,12 +5,15 @@
 ## [Unreleased]
 
 ### Added
+- Пользовательский профиль кнопок пульта (`custom`, по умолчанию «Пользовательский») с инлайн-переименованием по двойному клику на его ярлык в шапке конструктора без возможности переименования встроенных пресетов (`TASK-016`).
+- Действия переключения профиля кнопок в списке действий пульта: `Следующий профиль`, `Предыдущий профиль` и прямое переключение на каждый из 5 встроенных профилей и пользовательский профиль с обновлением конфигурации на лету, событием `key-profile-changed` и HUD-уведомлением (`TASK-017`).
 - Конфигурации единого форматирования кода `.editorconfig` и `rustfmt.toml` (`TASK-014`).
 - Новые unit-тесты для критических модулей Rust: `edid.rs`, `hardware/mouse_engine.rs`, `hardware/serial_transport.rs`, `hardware/remote_dispatcher.rs` и классификация портов в `commands/hardware.rs`, а также проверка синтаксиса `node --check` всех файлов `tauri_app/ui/js/*.js` в `scripts_dev/release_pipeline.ps1` (`TASK-011`).
 - Единый бизнес-процесс разработки с ролевой моделью (`Бизнес`, `Аналитик/Поддержка`, `Тимлид`, `Разработчик`, `QA`, `Релиз-инженер`) в `AGENTS.md`, `docs/PROCESS_AND_ROLES.md` и локальный трекер задач `pm/TASKS.md`.
 - Локальный пайплайн контроля версий и патч-ноутов (`scripts_dev/release_pipeline.ps1`, `release_tool.bat`, `docs/RELEASE_AND_VERSIONING.md`, `CHANGELOG.md`).
 
 ### Changed
+- Убраны текстовые приписки-бейджи «На пульте» / «Не обнаружена» из списка кнопок в маппере, дублирующие подсветку активных клавиш (`TASK-015`).
 - Декомпозированы монолиты без изменения публичного API и IPC-контрактов (`TASK-012`):
   - `commands.rs` разбит на доменный модуль `tauri_app/src-tauri/src/commands/` (`mod.rs`, `hardware.rs`, `system.rs`, `updates.rs`).
   - `updater.rs` разбит на доменный модуль `tauri_app/src-tauri/src/updater/` (`mod.rs`, `catalog.rs`, `manifest.rs`, `archive.rs`, `self_update.rs`, `firmware_flasher.rs`, `tests.rs`).

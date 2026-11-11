@@ -477,6 +477,9 @@ pub async fn trigger_os_key(
             }
             return "Импульс кнопки Power (Оптопара 350 мс)".to_string();
         }
+        if crate::key_profiles::is_profile_switch_action(&action) {
+            return crate::key_profiles::execute_profile_switch_action(&action, &app, &st.config);
+        }
         trigger_os_key_internal(&action)
     })
     .await

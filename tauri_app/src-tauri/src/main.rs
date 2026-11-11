@@ -8,6 +8,7 @@ mod custom_scripts;
 mod edid;
 mod hardware;
 mod input_simulator;
+mod key_profiles;
 mod logger;
 mod osk;
 mod platform;

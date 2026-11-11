@@ -62,39 +62,168 @@ function markMapperClean() {
   }
 }
 
-function applyKeyPreset(presetKey, btnEl) {
-  const p = KEY_PRESETS[presetKey];
-  if (!p || !appConfig) return;
+function getCustomKeyProfileName() {
+  const customRaw = (appConfig && typeof appConfig.custom_key_profile_name === "string")
+    ? appConfig.custom_key_profile_name.trim()
+    : "";
+  const lang = typeof currentLang === "string" ? currentLang : "ru";
+  if (customRaw && (lang === "ru" || customRaw !== "Пользовательский")) {
+    return customRaw;
+  }
+  return typeof t === "function" ? t("keys.preset_custom", "Пользовательский") : "Пользовательский";
+}
 
-  const presetI18nMap = {
-    balanced: "keys.preset_base",
-    cinema: "keys.preset_cinema",
-    steam: "keys.preset_steam",
-    desktop: "keys.preset_surf",
-    numpad: "keys.preset_numpad"
-  };
-  const localizedName = (typeof t === "function" && presetI18nMap[presetKey])
-    ? t(presetI18nMap[presetKey], p.name)
-    : p.name;
-  const hudTitle = typeof t === "function" ? t("keys.preset_hud_title", "Пресет кнопок") : "Пресет кнопок";
-
-  document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
-  if (btnEl) btnEl.classList.add("active");
-
-  appConfig.key_mappings = Object.assign({}, p.mappings);
-  renderMapperTable(true);
-  if (typeof renderDynamicRemote === "function") renderDynamicRemote();
-  checkMapperDirtyState();
-  addLog(`[Пресет] Применен: ${p.name}`, "log-ok");
-
-  if (window.__TAURI__ && (!appConfig || appConfig.hud_enabled !== false)) {
-    window.__TAURI__.event.emit("show-hud", {
-      icon: p.icon,
-      title: hudTitle,
-      desc: localizedName
-    });
+function syncKeyProfileStripUi() {
+  const activeId = (appConfig && appConfig.active_key_profile) ? appConfig.active_key_profile : "balanced";
+  document.querySelectorAll(".preset-btn[data-preset]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.preset === activeId);
+  });
+  const customLbl = document.getElementById("lbl-preset-custom");
+  if (customLbl) {
+    customLbl.textContent = getCustomKeyProfileName();
   }
 }
+window.syncKeyProfileStripUi = syncKeyProfileStripUi;
+
+function applyKeyPreset(presetKey, btnEl) {
+  if (!appConfig) return;
+
+  if (appConfig.active_key_profile === "custom" && presetKey !== "custom" && !mapperNeedsRender) {
+    const liveCustom = getCurrentMapperState();
+    if (Object.keys(liveCustom).length > 0) {
+      appConfig.custom_key_mappings = liveCustom;
+    }
+  }
+
+  let targetMappings = null;
+  let localizedName = "";
+  let hudIcon = "spark";
+
+  if (presetKey === "custom") {
+    if (!appConfig.custom_key_mappings || Object.keys(appConfig.custom_key_mappings).length === 0) {
+      appConfig.custom_key_mappings = Object.assign(
+        {},
+        (appConfig.key_mappings && Object.keys(appConfig.key_mappings).length > 0)
+          ? appConfig.key_mappings
+          : KEY_PRESETS.balanced.mappings
+      );
+    }
+    targetMappings = Object.assign({}, appConfig.custom_key_mappings);
+    localizedName = getCustomKeyProfileName();
+  } else {
+    const p = KEY_PRESETS[presetKey];
+    if (!p) return;
+    const presetI18nMap = {
+      balanced: "keys.preset_base",
+      cinema: "keys.preset_cinema",
+      steam: "keys.preset_steam",
+      desktop: "keys.preset_surf",
+      numpad: "keys.preset_numpad"
+    };
+    localizedName = (typeof t === "function" && presetI18nMap[presetKey])
+      ? t(presetI18nMap[presetKey], p.name)
+      : p.name;
+    hudIcon = p.icon;
+    targetMappings = Object.assign({}, p.mappings);
+  }
+
+  const hudTitle = typeof t === "function" ? t("keys.preset_hud_title", "Профиль кнопок") : "Профиль кнопок";
+  const changedProfile = appConfig.active_key_profile !== presetKey;
+  appConfig.active_key_profile = presetKey;
+  appConfig.key_mappings = targetMappings;
+
+  syncKeyProfileStripUi();
+  if (btnEl) btnEl.classList.add("active");
+
+  if (changedProfile) {
+    renderMapperTable(true);
+    if (typeof renderDynamicRemote === "function") renderDynamicRemote();
+    captureSavedState();
+    addLog(`[Профиль кнопок] Активирован: ${localizedName}`, "log-ok");
+
+    if (invoke) {
+      invoke("save_app_config", { newCfg: appConfig }).catch(e => {
+        console.error("Ошибка сохранения выбранного профиля:", e);
+      });
+    }
+
+    if (window.__TAURI__ && (!appConfig || appConfig.hud_enabled !== false)) {
+      window.__TAURI__.event.emit("show-hud", {
+        icon: hudIcon,
+        title: hudTitle,
+        desc: localizedName
+      });
+    }
+  }
+}
+
+function startCustomProfileInlineRename() {
+  const btn = document.getElementById("pbtn-custom");
+  if (!btn || btn.classList.contains("is-editing")) return;
+
+  const lbl = document.getElementById("lbl-preset-custom");
+  const prevName = getCustomKeyProfileName();
+
+  btn.classList.add("is-editing");
+  if (lbl) lbl.style.display = "none";
+
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "preset-rename-input";
+  inp.maxLength = 32;
+  inp.value = prevName;
+  btn.appendChild(inp);
+
+  let finished = false;
+  const finishEdit = async (commit) => {
+    if (finished) return;
+    finished = true;
+    const raw = inp.value.trim();
+    inp.remove();
+    btn.classList.remove("is-editing");
+    if (lbl) lbl.style.display = "";
+
+    if (!commit || !raw || raw === prevName) {
+      syncKeyProfileStripUi();
+      return;
+    }
+
+    if (!appConfig) appConfig = {};
+    appConfig.custom_key_profile_name = raw;
+    syncKeyProfileStripUi();
+    if (!mapperNeedsRender) {
+      const wasDirty = document.getElementById("btn-save-keys") && !document.getElementById("btn-save-keys").disabled;
+      renderMapperTable(true);
+      if (wasDirty) checkMapperDirtyState();
+      else captureSavedState();
+    }
+    if (invoke) {
+      try {
+        await invoke("save_app_config", { newCfg: appConfig });
+        addLog(`[Профиль кнопок] Переименован: "${raw}"`, "log-ok");
+      } catch (e) {
+        addLog(`[Ошибка сохранения профиля] ${e}`, "log-err");
+      }
+    }
+  };
+
+  inp.addEventListener("click", (e) => e.stopPropagation());
+  inp.addEventListener("dblclick", (e) => e.stopPropagation());
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finishEdit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      finishEdit(false);
+    }
+  });
+  inp.addEventListener("blur", () => finishEdit(true));
+
+  inp.focus();
+  inp.select();
+}
+window.startCustomProfileInlineRename = startCustomProfileInlineRename;
 
 async function loadCustomScripts() {
   if (!invoke) return;
@@ -107,7 +236,11 @@ async function loadCustomScripts() {
 
 function getFullActionList() {
   const scriptPrefix = typeof t === "function" ? t("action.script_prefix", "Сценарий") : "Сценарий";
+  const switchPrefix = typeof t === "function" ? t("action.profile_switch_prefix", "Смена профиля") : "Смена профиля";
   const list = OS_ACTIONS.map(a => {
+    if (a.value === "PROFILE_SWITCH:custom") {
+      return { value: a.value, label: `${switchPrefix}: ${getCustomKeyProfileName()}` };
+    }
     const key = "action." + a.value.toLowerCase();
     const label = typeof t === "function" ? t(key, a.label) : a.label;
     return { value: a.value, label };
@@ -167,8 +300,6 @@ function renderMapperTable(isPresetChange = false) {
   const allDisplayKeys = [...sortedActive, ...unavailableKeys];
   const frag = document.createDocumentFragment();
   const scriptPrefix = typeof t === "function" ? t("action.script_prefix", "Сценарий") : "Сценарий";
-  const availBadgeText = typeof t === "function" ? t("keys.badge_on_remote") : "На пульте";
-  const unavailBadgeText = typeof t === "function" ? t("keys.badge_not_detected") : "Не обнаружена";
   const testText = typeof t === "function" ? t("keys.test") : "Тест";
 
   allDisplayKeys.forEach((code, idx) => {
@@ -199,13 +330,8 @@ function renderMapperTable(isPresetChange = false) {
     nameSpan.style.color = isAvail ? "var(--text-primary)" : "var(--text-secondary)";
     nameSpan.textContent = typeof getKeyDisplayName === "function" ? getKeyDisplayName(code, def) : def.name;
 
-    const badgeSpan = document.createElement("span");
-    badgeSpan.className = isAvail ? "badge-remote-avail" : "badge-remote-unavail";
-    badgeSpan.textContent = isAvail ? availBadgeText : unavailBadgeText;
-
     rowDiv.appendChild(symSpan);
     rowDiv.appendChild(nameSpan);
-    rowDiv.appendChild(badgeSpan);
     tdKey.appendChild(rowDiv);
 
     const tdSel = document.createElement("td");
@@ -299,6 +425,9 @@ async function saveMapperConfig() {
       const k = el.getAttribute("data-key");
       appConfig.key_mappings[k] = el.getAttribute("data-value");
     });
+  }
+  if (appConfig.active_key_profile === "custom") {
+    appConfig.custom_key_mappings = Object.assign({}, appConfig.key_mappings);
   }
   appConfig.osd_name = document.getElementById("inp-osd").value.trim();
   appConfig.pa_override = selectedPa;

@@ -8,6 +8,9 @@
 
 | ID | Приоритет | Компонент | Задача | Статус | Краткое ТЗ и критерии |
 | --- | --- | --- | --- | --- | --- |
+| `TASK-015` | P1 | `ui` | Убрать дублирующие плашки «На пульте» / «Не обнаружена» в таблице кнопок (`key_mapper.js`) | `READY` | Подсветка строки и иконки остаётся единственным индикатором |
+| `TASK-016` | P1 | `backend`, `ui` | Добавить пользовательский профиль кнопок (`Пользовательский`) и переименование по двойному клику на его ярлык (встроенные профили не переименовываются) | `READY` | Двойной клик на ярлык `custom` сохраняет новое имя; встроенные 5 профилей защищены |
+| `TASK-017` | P1 | `backend`, `ui` | Добавить в список действий пульта «Следующий/Предыдущий профиль» и прямой выбор каждого профиля (включая пользовательский) | `READY` | Работает как с физического пульта (`remote_dispatcher.rs`), так и по кнопке «Тест», обновляя UI и HUD |
 | `TASK-010` | P1 | `firmware` | Исправить USB-дескрипторы (`CecDesk Dongle`), убрать `COM6`/`Antigravity` в `platformio.ini`, пересобрать `bin/firmware/` | `READY` | `pio run` RP2040/ESP32-S3 `SUCCESS`, строка `CecDesk Dongle dev/r.1 by Dimitryi Garutt` в `.uf2` |
 | `TASK-011` | P1 | `backend`, `ui` | Покрыть unit-тестами `edid.rs`, `mouse_engine.rs`, `serial_transport.rs`, `remote_dispatcher.rs`, `commands/hardware.rs` + `node --check` всех JS в `gate` | `READY` | `31 passed` (Rust) + `6 passed` (JS) + `node --check` всех 14 JS-файлов |
 | `TASK-012` | P2 | `backend`, `ui` | Декомпозиция монолитов `updater.rs`, `commands.rs` и `app.js` без изменения публичного API и IPC | `READY` | `updater/`, `commands/`, `updater_ui.js`, `telemetry_ui.js`, Clippy 0 warn, тесты `PASS` |

@@ -195,6 +195,15 @@ function initUiBindings() {
   document.querySelectorAll(".preset-btn[data-preset]").forEach((btn) => {
     btn.addEventListener("click", () => applyKeyPreset(btn.dataset.preset, btn));
   });
+  const customPresetBtn = document.getElementById("pbtn-custom");
+  if (customPresetBtn) {
+    customPresetBtn.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      if (typeof startCustomProfileInlineRename === "function") {
+        startCustomProfileInlineRename();
+      }
+    });
+  }
   const inpProfName = document.getElementById("inp-profile-name");
   if (inpProfName) {
     inpProfName.addEventListener("keydown", (e) => {
@@ -1267,6 +1276,18 @@ window.addEventListener("DOMContentLoaded", async () => {
       addLog(`[Система] ${msg}`, "log-ok");
     }),
 
+    listen("key-profile-changed", (ev) => {
+      const newCfg = ev.payload;
+      if (!newCfg) return;
+      appConfig = newCfg;
+      if (typeof syncKeyProfileStripUi === "function") syncKeyProfileStripUi();
+      if (typeof renderMapperTable === "function") renderMapperTable(true);
+      if (typeof renderDynamicRemote === "function") renderDynamicRemote();
+      if (typeof captureSavedState === "function") captureSavedState();
+      const activeId = appConfig.active_key_profile || "balanced";
+      addLog(`[Профиль кнопок] Переключен с пульта: ${activeId}`, "log-ok");
+    }),
+
     listen("fw-flash-progress", (ev) => {
       const p = ev.payload;
       if (!p) return;
@@ -1350,6 +1371,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       appConfig = cfg;
       if (typeof applyLocalization === "function") {
         applyLocalization(appConfig.language || "ru");
+      }
+      if (typeof syncKeyProfileStripUi === "function") {
+        syncKeyProfileStripUi();
       }
       const osdInp = document.getElementById("inp-osd");
       if (osdInp) {

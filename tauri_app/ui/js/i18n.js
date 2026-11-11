@@ -86,11 +86,11 @@ const I18N_DICTIONARY = {
     "keys.preset_steam": "Игры",
     "keys.preset_surf": "Браузер",
     "keys.preset_numpad": "Цифры",
+    "keys.preset_custom": "Пользовательский",
+    "keys.custom_rename_tip": "Свой профиль (двойной клик для переименования)",
     "keys.col_tv_btn": "Кнопка ТВ",
     "keys.col_pc_act": "Действие на ПК",
     "keys.test": "Тест",
-    "keys.badge_on_remote": "На пульте",
-    "keys.badge_not_detected": "Не обнаружена",
     "keys.profile_title": "Профиль телевизора",
     "keys.current_profile": "Текущий профиль ТВ",
     "keys.profile_name": "Название профиля",
@@ -337,6 +337,15 @@ const I18N_DICTIONARY = {
     "action.pc_hibernate": "Гибернация ПК (Hibernate)",
     "action.pc_shutdown": "Выключение ПК (Shutdown)",
     "action.opto_power": "Оптопара: Кнопка Power (350 мс)",
+    "action.profile_next": "Профиль: Следующий профиль",
+    "action.profile_prev": "Профиль: Предыдущий профиль",
+    "action.profile_switch:balanced": "Смена профиля: Универсальный",
+    "action.profile_switch:cinema": "Смена профиля: Кино",
+    "action.profile_switch:steam": "Смена профиля: Игры",
+    "action.profile_switch:desktop": "Смена профиля: Браузер",
+    "action.profile_switch:numpad": "Смена профиля: Цифры",
+    "action.profile_switch:custom": "Смена профиля: Пользовательский",
+    "action.profile_switch_prefix": "Смена профиля",
     "action.num_1": "Ввод: 1",
     "action.num_2": "Ввод: 2",
     "action.num_3": "Ввод: 3",
@@ -486,11 +495,11 @@ const I18N_DICTIONARY = {
     "keys.preset_steam": "Games",
     "keys.preset_surf": "Browser",
     "keys.preset_numpad": "Numpad",
+    "keys.preset_custom": "Custom",
+    "keys.custom_rename_tip": "Custom profile (double-click to rename)",
     "keys.col_tv_btn": "TV Button",
     "keys.col_pc_act": "Action on PC",
     "keys.test": "Test",
-    "keys.badge_on_remote": "On Remote",
-    "keys.badge_not_detected": "Not Detected",
     "keys.profile_title": "TV Profile",
     "keys.current_profile": "Current TV Profile",
     "keys.profile_name": "Profile Name",
@@ -737,6 +746,15 @@ const I18N_DICTIONARY = {
     "action.pc_hibernate": "PC Hibernate",
     "action.pc_shutdown": "PC Shutdown",
     "action.opto_power": "Optocoupler: Power Button (350ms)",
+    "action.profile_next": "Profile: Next Profile",
+    "action.profile_prev": "Profile: Previous Profile",
+    "action.profile_switch:balanced": "Switch Profile: Universal",
+    "action.profile_switch:cinema": "Switch Profile: Cinema",
+    "action.profile_switch:steam": "Switch Profile: Games",
+    "action.profile_switch:desktop": "Switch Profile: Browser",
+    "action.profile_switch:numpad": "Switch Profile: Numpad",
+    "action.profile_switch:custom": "Switch Profile: Custom",
+    "action.profile_switch_prefix": "Switch Profile",
     "action.num_1": "Input: 1",
     "action.num_2": "Input: 2",
     "action.num_3": "Input: 3",
@@ -880,6 +898,9 @@ function applyLocalization(lang) {
   }
   if (typeof renderPaSelect === "function" && typeof currentProfile !== "undefined" && currentProfile) {
     renderPaSelect();
+  }
+  if (typeof syncKeyProfileStripUi === "function") {
+    syncKeyProfileStripUi();
   }
 }
 

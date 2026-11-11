@@ -220,6 +220,7 @@ pub fn spawn_serial_reader_thread(
                                             bytes[1],
                                             &app,
                                             &cfg,
+                                            &cfg_arc,
                                             &calib_mode_ref,
                                             &osk_visible_ref,
                                             &mouse_mode_ref,

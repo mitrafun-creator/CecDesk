@@ -120,3 +120,25 @@ test("Beta readiness defaults exclude hardcoded dev COM ports and personal TV pr
   assert.ok(!html.includes(">Philips<"), "index.html initial brand placeholder must be neutral");
   assert.ok(!html.includes("HDMI 3 (3000)"), "index.html initial HDMI address placeholder must be HDMI 1 (1000)");
 });
+
+test("Key profile switching actions exist and duplicate remote availability badges are removed", () => {
+  const constantsCode = fs.readFileSync(path.join(__dirname, "constants.js"), "utf8");
+  const mapperCode = fs.readFileSync(path.join(__dirname, "key_mapper.js"), "utf8");
+  const { OS_ACTIONS } = new Function(constantsCode + "\n return { OS_ACTIONS };")();
+
+  const values = new Set(OS_ACTIONS.map(a => a.value));
+  for (const req of [
+    "PROFILE_NEXT",
+    "PROFILE_PREV",
+    "PROFILE_SWITCH:balanced",
+    "PROFILE_SWITCH:cinema",
+    "PROFILE_SWITCH:steam",
+    "PROFILE_SWITCH:desktop",
+    "PROFILE_SWITCH:numpad",
+    "PROFILE_SWITCH:custom"
+  ]) {
+    assert.ok(values.has(req), `OS_ACTIONS must contain ${req}`);
+  }
+  assert.ok(!mapperCode.includes("badge-remote-avail"), "key_mapper.js must not render duplicate 'On Remote' pill badges");
+  assert.ok(!mapperCode.includes("badge-remote-unavail"), "key_mapper.js must not render duplicate 'Not Detected' pill badges");
+});
