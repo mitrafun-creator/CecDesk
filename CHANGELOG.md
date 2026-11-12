@@ -22,6 +22,10 @@
 - Улучшено оформление репозитория GitHub и `README.md` (логотип, бейджи, исправлено отображение дерева архитектуры, актуальный About/Topics и разметка релизов).
 
 ### Fixed
+- Исправлено оформление и геометрия иконок и бейджей клавиш в WebUI, HUD и экранной клавиатуре OSK (`TASK-018`):
+  - В маппере кнопок удалены остаточные CSS-классы `.badge-remote-avail` / `.badge-remote-unavail` и расширены/выровнены бейджи `.key-symbol-badge` (`min-width: 48px`, корректный шрифт/отступы и `overflow: hidden`), чтобы `VOL+`, `VOL−`, `MUTE`, `CH+`, `CH−`, `INFO`, `GUIDE`, `OPT`, `FAV` не выходили за рамки; сужена минимальная ширина `.c-select` в таблице для исключения горизонтальной прокрутки.
+  - Заменены все Unicode-символы медиа, навигации и системные эмодзи (`⏪`, `⏩`, `▶`, `⏸`, `⏹`, `⏭`, `⏮`, `◀`, `⌫`, `↵`, `⇧`, `⤓`) на единые монохромные векторные SVG-иконки в `catalog.js` (`KEY_ICON_SVGS`), `key_mapper.js`, `remote_builder.js`, `calibration.js`, `hud.html` и `osk.js`.
+  - Добавлен автотест в `tauri_app/ui/js/catalog.test.js`, гарантирующий отсутствие эмодзи и пиктограмм в исходниках UI.
 - Исправлены USB-дескрипторы прошивки RP2040-Zero (`initVariant()` в `firmware/src/main.cpp` задаёт `Dimitryi Garutt` / `CecDesk Dongle dev/r.1 by Dimitryi Garutt`) и очищен `firmware/platformio.ini` от `upload_port = COM6`, `monitor_port = COM6` и `-DUSBD_MANUFACTURER='"Antigravity"'`; пересобраны и обновлены бинарники `bin/firmware/rp2040_zero_firmware.uf2` и `bin/firmware/esp32_s3_firmware.bin` (`TASK-010`).
 
 ---

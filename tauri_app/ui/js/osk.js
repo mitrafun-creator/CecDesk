@@ -33,28 +33,37 @@ let isShift = false;
 let focusRow = 2;
 let focusCol = 4;
 
+const OSK_ICONS = {
+  backspace: '<svg class="osk-ico" viewBox="0 0 24 24"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>',
+  enter: '<svg class="osk-ico" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>',
+  shift: '<svg class="osk-ico" viewBox="0 0 24 24"><polyline points="17 11 12 6 7 11"></polyline><line x1="12" y1="18" x2="12" y2="6"></line></svg>',
+  left: '<svg class="osk-ico" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>',
+  right: '<svg class="osk-ico" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+  hide: '<svg class="osk-ico" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline><line x1="5" y1="19" x2="19" y2="19"></line></svg>'
+};
+
 const LAYOUT_RU = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", { k: "BACKSPACE", label: "⌫", w: "key-w-15 key-special" }],
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", { k: "BACKSPACE", label: "", icon: "backspace", w: "key-w-15 key-special" }],
   [{ k: "TAB", label: "Tab", w: "key-w-15 key-special" }, "й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ"],
-  [{ k: "CAPS", label: "Caps", w: "key-w-17 key-special", id: "key-caps" }, "ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э", { k: "ENTER", label: "Ввод ↵", w: "key-w-17 key-accent" }],
-  [{ k: "SHIFT", label: "Shift ⇧", w: "key-w-17 key-special", id: "key-shift" }, "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", ".", { k: "ESC", label: "Esc", w: "key-w-15 key-special" }],
-  [{ k: "MODE_SYM", label: "?123", w: "key-w-15 key-special" }, { k: "MODE_LANG", label: "EN", w: "key-w-15 key-special", id: "btn-lang" }, { k: "SPACE", label: "Пробел", w: "key-w-space" }, { k: "LEFT", label: "◀", w: "key-special" }, { k: "RIGHT", label: "▶", w: "key-special" }, { k: "HIDE", label: "Свернуть ⤓", w: "key-w-15 key-red" }]
+  [{ k: "CAPS", label: "Caps", w: "key-w-17 key-special", id: "key-caps" }, "ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э", { k: "ENTER", label: "Ввод", icon: "enter", w: "key-w-17 key-accent" }],
+  [{ k: "SHIFT", label: "Shift", icon: "shift", w: "key-w-17 key-special", id: "key-shift" }, "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", ".", { k: "ESC", label: "Esc", w: "key-w-15 key-special" }],
+  [{ k: "MODE_SYM", label: "?123", w: "key-w-15 key-special" }, { k: "MODE_LANG", label: "EN", w: "key-w-15 key-special", id: "btn-lang" }, { k: "SPACE", label: "Пробел", w: "key-w-space" }, { k: "LEFT", label: "", icon: "left", w: "key-special" }, { k: "RIGHT", label: "", icon: "right", w: "key-special" }, { k: "HIDE", label: "Свернуть", icon: "hide", w: "key-w-15 key-red" }]
 ];
 
 const LAYOUT_EN = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", { k: "BACKSPACE", label: "⌫", w: "key-w-15 key-special" }],
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", { k: "BACKSPACE", label: "", icon: "backspace", w: "key-w-15 key-special" }],
   [{ k: "TAB", label: "Tab", w: "key-w-15 key-special" }, "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]"],
-  [{ k: "CAPS", label: "Caps", w: "key-w-17 key-special", id: "key-caps" }, "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", { k: "ENTER", label: "Enter ↵", w: "key-w-17 key-accent" }],
-  [{ k: "SHIFT", label: "Shift ⇧", w: "key-w-17 key-special", id: "key-shift" }, "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", { k: "ESC", label: "Esc", w: "key-w-15 key-special" }],
-  [{ k: "MODE_SYM", label: "?123", w: "key-w-15 key-special" }, { k: "MODE_LANG", label: "RU", w: "key-w-15 key-special", id: "btn-lang" }, { k: "SPACE", label: "Space", w: "key-w-space" }, { k: "LEFT", label: "◀", w: "key-special" }, { k: "RIGHT", label: "▶", w: "key-special" }, { k: "HIDE", label: "Свернуть ⤓", w: "key-w-15 key-red" }]
+  [{ k: "CAPS", label: "Caps", w: "key-w-17 key-special", id: "key-caps" }, "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", { k: "ENTER", label: "Enter", icon: "enter", w: "key-w-17 key-accent" }],
+  [{ k: "SHIFT", label: "Shift", icon: "shift", w: "key-w-17 key-special", id: "key-shift" }, "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", { k: "ESC", label: "Esc", w: "key-w-15 key-special" }],
+  [{ k: "MODE_SYM", label: "?123", w: "key-w-15 key-special" }, { k: "MODE_LANG", label: "RU", w: "key-w-15 key-special", id: "btn-lang" }, { k: "SPACE", label: "Space", w: "key-w-space" }, { k: "LEFT", label: "", icon: "left", w: "key-special" }, { k: "RIGHT", label: "", icon: "right", w: "key-special" }, { k: "HIDE", label: "Свернуть", icon: "hide", w: "key-w-15 key-red" }]
 ];
 
 const LAYOUT_SYM = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", { k: "BACKSPACE", label: "⌫", w: "key-w-15 key-special" }],
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", { k: "BACKSPACE", label: "", icon: "backspace", w: "key-w-15 key-special" }],
   [{ k: "TAB", label: "Tab", w: "key-w-15 key-special" }, "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+"],
-  [{ k: "MODE_ABC", label: "ABC", w: "key-w-17 key-special" }, "~", "`", "{", "}", ":", "\"", ";", "'", "<", ">", "?", { k: "ENTER", label: "Enter ↵", w: "key-w-17 key-accent" }],
+  [{ k: "MODE_ABC", label: "ABC", w: "key-w-17 key-special" }, "~", "`", "{", "}", ":", "\"", ";", "'", "<", ">", "?", { k: "ENTER", label: "Enter", icon: "enter", w: "key-w-17 key-accent" }],
   [{ k: "MODE_ABC", label: "ABC", w: "key-w-17 key-special" }, "[", "]", "\\", "|", "/", ",", ".", "=", "*", "#", { k: "ESC", label: "Esc", w: "key-w-15 key-special" }],
-  [{ k: "MODE_ABC", label: "ABC", w: "key-w-15 key-special" }, { k: "MODE_LANG", label: "Язык", w: "key-w-15 key-special" }, { k: "SPACE", label: "Space", w: "key-w-space" }, { k: "LEFT", label: "◀", w: "key-special" }, { k: "RIGHT", label: "▶", w: "key-special" }, { k: "HIDE", label: "Свернуть ⤓", w: "key-w-15 key-red" }]
+  [{ k: "MODE_ABC", label: "ABC", w: "key-w-15 key-special" }, { k: "MODE_LANG", label: "Язык", w: "key-w-15 key-special" }, { k: "SPACE", label: "Space", w: "key-w-space" }, { k: "LEFT", label: "", icon: "left", w: "key-special" }, { k: "RIGHT", label: "", icon: "right", w: "key-special" }, { k: "HIDE", label: "Свернуть", icon: "hide", w: "key-w-15 key-red" }]
 ];
 
 // Аудиокликер (Web Audio API)
@@ -98,6 +107,7 @@ function renderKeyboard() {
       const btn = document.createElement("div");
       let keyAction = "";
       let label = "";
+      let iconName = "";
       let extraClass = "";
       let customId = "";
 
@@ -111,13 +121,28 @@ function renderKeyboard() {
         label = displayChar;
       } else {
         keyAction = item.k;
-        label = item.label;
+        label = item.label || "";
+        iconName = item.icon || "";
         extraClass = item.w || "";
         customId = item.id || "";
       }
 
       btn.className = `key ${extraClass}`;
-      btn.textContent = label;
+      if (iconName && OSK_ICONS[iconName]) {
+        if (label) {
+          const textSpan = document.createElement("span");
+          textSpan.textContent = label;
+          btn.appendChild(textSpan);
+          const icoWrap = document.createElement("span");
+          icoWrap.className = "osk-ico-wrap";
+          icoWrap.innerHTML = OSK_ICONS[iconName];
+          btn.appendChild(icoWrap);
+        } else {
+          btn.innerHTML = OSK_ICONS[iconName];
+        }
+      } else {
+        btn.textContent = label;
+      }
       if (customId) btn.id = customId;
 
       if (rIdx === focusRow && cIdx === focusCol) {
@@ -315,11 +340,11 @@ async function setupListener() {
         currentMode = (currentMode === "RU") ? "EN" : "RU";
         renderKeyboard();
       } else if (cmd === "BACKSPACE") {
-        handleKeyPress("BACKSPACE", "⌫");
+        handleKeyPress("BACKSPACE", "");
       } else if (cmd === "SPACE") {
         handleKeyPress("SPACE", " ");
       } else if (cmd === "ENTER") {
-        handleKeyPress("ENTER", "↵");
+        handleKeyPress("ENTER", "");
       }
     });
   } catch (err) {

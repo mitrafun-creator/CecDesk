@@ -125,17 +125,15 @@ function renderDynamicRemote() {
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
 
+      const svgMarkup = typeof getKeyIconSvg === "function" ? getKeyIconSvg(k) : null;
       if (k === "0x0D") {
-        btn.innerHTML = '<svg class="ico ico-lg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+        btn.innerHTML = '<svg class="ico ico-18" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>';
         btn.onclick = () => uiRemoteOrOsClick(k);
-      } else if (k === "0x09") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"></rect><line x1="8" y1="20" x2="16" y2="20"></line></svg>';
-        btn.onclick = () => uiRemoteOrOsClick(k);
-      } else if (k === "0x0A") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"></path></svg>';
+      } else if (svgMarkup) {
+        btn.innerHTML = svgMarkup;
         btn.onclick = () => uiRemoteOrOsClick(k);
       } else {
-        if (def.sym && def.sym.length >= 4) {
+        if (def.sym && def.sym.length >= 3) {
           btn.classList.add("btn-text-sm");
         }
         btn.textContent = def.sym;
@@ -302,11 +300,13 @@ function renderDynamicRemote() {
       btn.className = "rem-round-btn";
       applyButtonTooltip(btn, k);
 
-      if (k === "0x45") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>';
-      } else if (k === "0x46") {
-        btn.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><line x1="10" y1="4" x2="10" y2="20"></line><line x1="14" y1="4" x2="14" y2="20"></line></svg>';
+      const svgMarkup = typeof getKeyIconSvg === "function" ? getKeyIconSvg(k) : null;
+      if (svgMarkup) {
+        btn.innerHTML = svgMarkup;
       } else {
+        if (def.sym && def.sym.length >= 3) {
+          btn.classList.add("btn-text-sm");
+        }
         btn.textContent = def.sym;
       }
 

@@ -323,7 +323,11 @@ function renderMapperTable(isPresetChange = false) {
 
     const symSpan = document.createElement("span");
     symSpan.className = "key-symbol-badge" + (isAvail ? " badge-active-key" : "");
-    symSpan.textContent = def.sym;
+    if (typeof renderKeySymbolContent === "function") {
+      renderKeySymbolContent(symSpan, code, def.sym);
+    } else {
+      symSpan.textContent = def.sym;
+    }
 
     const nameSpan = document.createElement("span");
     nameSpan.style.fontWeight = isAvail ? "600" : "400";

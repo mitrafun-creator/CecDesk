@@ -123,7 +123,12 @@ function handleCalibrationKeyCapture(codeHex) {
     pill.className = "calib-key-pill";
     pill.id = `calib-pill-${norm}`;
     const symSpan = document.createElement("span");
-    symSpan.textContent = symText;
+    symSpan.className = "calib-pill-sym";
+    if (typeof renderKeySymbolContent === "function") {
+      renderKeySymbolContent(symSpan, norm, symText);
+    } else {
+      symSpan.textContent = symText;
+    }
     const nameSpan = document.createElement("span");
     nameSpan.style.opacity = "0.75";
     nameSpan.style.fontWeight = "400";

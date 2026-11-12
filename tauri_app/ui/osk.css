@@ -143,9 +143,28 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
+  overflow: hidden;
+  padding: 0 6px;
   cursor: pointer;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   transition: transform 0.12s var(--spring), background 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.osk-ico-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.key svg.osk-ico {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex-shrink: 0;
+  display: block;
 }
 
 .key:hover {

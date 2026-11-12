@@ -29,13 +29,13 @@ const KEY_DEFINITIONS = {
   "0x43": { code: "0x43", sym: "MUTE", name: "Без звука", group: "vol" },
 
   // Медиа
-  "0x44": { code: "0x44", sym: "▶", name: "Воспроизведение", group: "media" },
-  "0x46": { code: "0x46", sym: "⏸", name: "Пауза", group: "media" },
-  "0x45": { code: "0x45", sym: "⏹", name: "Стоп", group: "media" },
-  "0x4B": { code: "0x4B", sym: "⏭", name: "Следующий", group: "media" },
-  "0x4C": { code: "0x4C", sym: "⏮", name: "Предыдущий", group: "media" },
-  "0x48": { code: "0x48", sym: "⏪", name: "Перемотка назад", group: "media" },
-  "0x49": { code: "0x49", sym: "⏩", name: "Перемотка вперед", group: "media" },
+  "0x44": { code: "0x44", sym: "PLAY", name: "Воспроизведение", group: "media" },
+  "0x46": { code: "0x46", sym: "II", name: "Пауза", group: "media" },
+  "0x45": { code: "0x45", sym: "STOP", name: "Стоп", group: "media" },
+  "0x4B": { code: "0x4B", sym: ">|", name: "Следующий", group: "media" },
+  "0x4C": { code: "0x4C", sym: "|<", name: "Предыдущий", group: "media" },
+  "0x48": { code: "0x48", sym: "<<", name: "Перемотка назад", group: "media" },
+  "0x49": { code: "0x49", sym: ">>", name: "Перемотка вперед", group: "media" },
 
   // Каналы
   "0x30": { code: "0x30", sym: "CH+", name: "Канал +", group: "channels" },
@@ -109,6 +109,46 @@ function getButtonDefinition(code, letterMap) {
     name: `Кнопка ${letter}`,
     isExtra: true
   };
+}
+
+// Монохромные векторные иконки (без системных эмодзи и шрифтовых подмен)
+const KEY_ICON_SVGS = {
+  "0x01": '<svg class="ico" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>',
+  "0x02": '<svg class="ico" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>',
+  "0x03": '<svg class="ico" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>',
+  "0x04": '<svg class="ico" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+  "0x0D": '<svg class="ico" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>',
+  "0x09": '<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"></rect><line x1="8" y1="20" x2="16" y2="20"></line></svg>',
+  "0x0A": '<svg class="ico" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"></path></svg>',
+  "0x44": '<svg class="ico" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>',
+  "0x46": '<svg class="ico" viewBox="0 0 24 24"><line x1="10" y1="4" x2="10" y2="20"></line><line x1="14" y1="4" x2="14" y2="20"></line></svg>',
+  "0x45": '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>',
+  "0x4B": '<svg class="ico" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>',
+  "0x4C": '<svg class="ico" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>',
+  "0x48": '<svg class="ico" viewBox="0 0 24 24"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>',
+  "0x49": '<svg class="ico" viewBox="0 0 24 24"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>'
+};
+
+function getKeyIconSvg(codeHex) {
+  if (!codeHex) return null;
+  const raw = String(codeHex).trim();
+  const norm = raw.toUpperCase().startsWith("0X")
+    ? "0x" + raw.substring(2).toUpperCase()
+    : "0x" + raw.toUpperCase();
+  return KEY_ICON_SVGS[norm] || null;
+}
+
+function renderKeySymbolContent(el, codeHex, fallbackSym) {
+  if (!el) return;
+  const svg = getKeyIconSvg(codeHex);
+  if (svg) {
+    el.innerHTML = svg;
+    el.classList.remove("is-long-sym");
+    return;
+  }
+  const txt = String(fallbackSym || "");
+  el.textContent = txt;
+  el.classList.toggle("is-long-sym", txt.length >= 4);
 }
 
 /**

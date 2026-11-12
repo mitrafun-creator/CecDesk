@@ -141,4 +141,21 @@ test("Key profile switching actions exist and duplicate remote availability badg
   }
   assert.ok(!mapperCode.includes("badge-remote-avail"), "key_mapper.js must not render duplicate 'On Remote' pill badges");
   assert.ok(!mapperCode.includes("badge-remote-unavail"), "key_mapper.js must not render duplicate 'Not Detected' pill badges");
+  const cssCode = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
+  assert.ok(!cssCode.includes(".badge-remote-avail"), "style.css must not keep dead badge-remote-avail rule");
+  assert.ok(!cssCode.includes(".badge-remote-unavail"), "style.css must not keep dead badge-remote-unavail rule");
+});
+
+test("UI sources contain zero emojis or pictographic emoji fallbacks", () => {
+  const uiRoot = path.join(__dirname, "..");
+  const uiFiles = [
+    "index.html", "hud.html", "osk.html", "style.css", "hud.css", "osk.css",
+    ...fs.readdirSync(__dirname).filter(f => f.endsWith(".js")).map(f => path.join("js", f))
+  ];
+  const emojiRe = /[\u{1F300}-\u{1FAFF}\u23E9-\u23FA\u25B6\u25C0\u2600-\u27BF\uFE0F]/u;
+  for (const rel of uiFiles) {
+    if (rel.endsWith("catalog.test.js")) continue;
+    const text = fs.readFileSync(path.join(uiRoot, rel), "utf8");
+    assert.ok(!emojiRe.test(text), `UI file ${rel} must not contain emojis or emoji-rendered pictographs`);
+  }
 });
