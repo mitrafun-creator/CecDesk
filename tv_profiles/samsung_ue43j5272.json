@@ -1,0 +1,21 @@
+{
+  "id": "samsung_ue43j5272",
+  "brand": "Samsung",
+  "name": "Samsung UE43J5272 (Orsay Anynet+)",
+  "display_name": null,
+  "cec_system_name": "Anynet+ (HDMI-CEC)",
+  "edid_pnp_ids": ["SAM"],
+  "vendor_oui": "00-00-F0",
+  "cec_version": "1.4",
+  "wake_sequence": ["RAW 00 0D", "ON", "ACTIVE"],
+  "standby_command": "OFF",
+  "remote_passthrough_init": "RAW 00 8E 00",
+  "supports_tv_ui_keys_tx": true,
+  "supports_remote_rx_to_pc": true,
+  "hdmi_ports": [
+    {"label": "HDMI 1", "pa": "1000"},
+    {"label": "HDMI 2", "pa": "2000"}
+  ],
+  "notes": "Модель 2015 года (серия J52xx, платформа Orsay, прошивка T-N14MJDEUC-1150.0, 2 порта HDMI). Для передачи нажатий пульта в ПК включите в меню ТВ: Система -> Anynet+ (HDMI-CEC) -> Вкл.",
+  "supported_keys": []
+}

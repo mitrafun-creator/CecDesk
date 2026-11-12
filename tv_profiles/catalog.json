@@ -51,6 +51,14 @@
       "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/samsung_anynet_tizen.json"
     },
     {
+      "id": "samsung_ue43j5272",
+      "brand": "Samsung",
+      "name": "Samsung UE43J5272 (Orsay Anynet+)",
+      "cec_system_name": "Anynet+ (HDMI-CEC)",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/samsung_ue43j5272.json"
+    },
+    {
       "id": "sharp_aquos_link",
       "brand": "Sharp",
       "name": "Sharp AQUOS Series",
