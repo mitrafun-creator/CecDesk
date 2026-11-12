@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
 #include <CEC_Device.h>
 #include <EEPROM.h>
 
@@ -9,6 +10,7 @@
 #define DEFAULT_PC_PWR_PIN 5   // GPIO5 на ESP32-S3 (Оптопара PWR_BTN материнской платы)
 #define DEFAULT_PC_RST_PIN 6   // GPIO6 на ESP32-S3 (Оптопара RESET_BTN материнской платы)
 #define DEFAULT_PC_SENSE_PIN 7 // GPIO7 на ESP32-S3 (Вход контроля питания PWR_LED+)
+#define STATUS_LED_PIN 48      // GPIO48 на ESP32-S3 (Встроенный адресный RGB светодиод WS2812)
 #elif defined(ARDUINO_ARCH_RP2040)
 #include <USB.h>
 #include <pico/bootrom.h>
@@ -20,11 +22,13 @@ void initVariant() {
 #define DEFAULT_PC_PWR_PIN 1   // GP1 (Вывод 4) на RP2040-Zero (Оптопара PWR_BTN материнской платы)
 #define DEFAULT_PC_RST_PIN 2   // GP2 (Вывод 5) на RP2040-Zero (Оптопара RESET_BTN материнской платы)
 #define DEFAULT_PC_SENSE_PIN 3 // GP3 (Вывод 6) на RP2040-Zero (Вход контроля питания PWR_LED+)
+#define STATUS_LED_PIN 16      // GP16 на RP2040-Zero (Встроенный адресный RGB светодиод WS2812)
 #else
 #define CEC_PIN 4
 #define DEFAULT_PC_PWR_PIN 5
 #define DEFAULT_PC_RST_PIN 6
 #define DEFAULT_PC_SENSE_PIN 7
+#define STATUS_LED_PIN 16
 #endif
 
 #define EEPROM_MAGIC 0xC6
@@ -80,11 +84,42 @@ void loadSettingsFromEeprom() {
   }
 }
 
+#define STATUS_LED_BRIGHTNESS 22
+
+Adafruit_NeoPixel statusLed(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
+bool cachedLineHigh = true;
+bool cachedTvConnected = false;
+unsigned long lastLineCheckMs = 0;
+unsigned long ledFlashUntilMs = 0;
+uint8_t lastLedR = 255;
+uint8_t lastLedG = 255;
+uint8_t lastLedB = 255;
+bool ledInitialized = false;
+
+void triggerLedFlash(unsigned long durationMs = 80) {
+  ledFlashUntilMs = millis() + durationMs;
+}
+
+void probeCecLine(bool* outLineHigh, bool* outExtPullup) {
+  pinMode(CEC_PIN, INPUT_PULLDOWN);
+  delayMicroseconds(200);
+  bool extPullup = (digitalRead(CEC_PIN) == HIGH);
+  pinMode(CEC_PIN, INPUT_PULLUP);
+  delayMicroseconds(50);
+  bool lineHigh = (digitalRead(CEC_PIN) == HIGH);
+  cachedLineHigh = lineHigh;
+  cachedTvConnected = extPullup;
+  lastLineCheckMs = millis();
+  if (outLineHigh) *outLineHigh = lineHigh;
+  if (outExtPullup) *outExtPullup = extPullup;
+}
+
 void startOptoPulse(uint8_t pin, unsigned long durationMs) {
   pinMode(pin, OUTPUT);
   digitalWrite(pin, HIGH);
   activeOptoPin = (int)pin;
   optoPulseEndMs = millis() + durationMs;
+  triggerLedFlash(80);
 }
 
 void updateOptoPulse() {
@@ -150,6 +185,10 @@ public:
 
   bool isReadyAndAssigned() const {
     return _primaryState == CEC_IDLE && _logicalAddress != 15;
+  }
+
+  bool isBusIdle() const {
+    return _primaryState == CEC_IDLE;
   }
 
   int getLogicalAddr() const {
@@ -267,6 +306,10 @@ public:
 
   virtual void OnReceive(int source, int dest, unsigned char* buffer, int count) override {
     lastRxOrTxEndMs = millis();
+    cachedLineHigh = true;
+    cachedTvConnected = true;
+    lastLineCheckMs = lastRxOrTxEndMs;
+    triggerLedFlash(80);
 #if defined(ARDUINO_ARCH_ESP32)
     if (tud_suspended()) {
       tud_remote_wakeup(); // Пробуждение ПК из спящего режима по USB при нажатии кнопок пульта
@@ -615,14 +658,12 @@ void processCommand(String cmd) {
   }
 #endif
   else if (cmd == "STATE") {
-    pinMode(CEC_PIN, INPUT_PULLDOWN);
-    delayMicroseconds(200);
-    bool extPullup = (digitalRead(CEC_PIN) == HIGH);
-    pinMode(CEC_PIN, INPUT_PULLUP);
-    delayMicroseconds(50);
+    bool lineHigh = true;
+    bool extPullup = false;
+    probeCecLine(&lineHigh, &extPullup);
     char buf[140];
     snprintf(buf, sizeof(buf), "OK:LINE_%s EXT_PULLUP_%s PA_%04X LA_%d OPTO_PIN_%d WAKE_PC_%d NAME_%s",
-             cec->LineState() ? "HIGH" : "LOW",
+             lineHigh ? "HIGH" : "LOW",
              extPullup ? "YES(TV_CONNECTED)" : "NO(FLOATING)",
              cec->myPhysicalAddr, cec->getLogicalAddr(),
              (int)pcPwrPin, wakePcOnTvOn ? 1 : 0,
@@ -693,11 +734,58 @@ void processCommand(String cmd) {
   }
 }
 
+void updateStatusLed() {
+  uint8_t r = 0;
+  uint8_t g = 0;
+  uint8_t b = 0;
+  unsigned long now = millis();
+
+  if (ledFlashUntilMs > 0 && (long)(ledFlashUntilMs - now) > 0) {
+    // Краткая белая вспышка на событие (RX кадра с ТВ или импульс оптопары)
+    r = 255;
+    g = 255;
+    b = 255;
+  } else if (!cachedLineHigh) {
+    // Критическая ошибка: линия CEC замкнута на 0V (быстрое мигание красным, без полного гашения)
+    bool phase = (now % 500) < 250;
+    r = phase ? 255 : 30;
+    g = 0;
+    b = 0;
+  } else if (!cachedTvConnected) {
+    // Нет сигнала от ТВ: нет внешней подтяжки 3.3V на шине CEC (медленное мигание оранжевым, без полного гашения)
+    bool phase = (now % 1400) < 700;
+    r = phase ? 255 : 35;
+    g = phase ? 130 : 15;
+    b = 0;
+  } else if (!isPcHostActive()) {
+    // ТВ подключен, но нет активной связи с софтом на ПК (автономный режим / режим сна): ровный синий
+    r = 0;
+    g = 110;
+    b = 255;
+  } else {
+    // Все в норме: ПК и софт активны, ТВ на шине CEC обнаружен: ровный зеленый
+    r = 0;
+    g = 220;
+    b = 80;
+  }
+
+  if (!ledInitialized || r != lastLedR || g != lastLedG || b != lastLedB) {
+    statusLed.setPixelColor(0, statusLed.Color(r, g, b));
+    statusLed.show();
+    lastLedR = r;
+    lastLedG = g;
+    lastLedB = b;
+    ledInitialized = true;
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 #if defined(ARDUINO_ARCH_ESP32)
   Serial0.begin(115200);
 #endif
+  statusLed.begin();
+  statusLed.setBrightness(STATUS_LED_BRIGHTNESS);
   loadSettingsFromEeprom();
   pinMode(pcPwrPin, OUTPUT);
   digitalWrite(pcPwrPin, LOW);
@@ -709,11 +797,17 @@ void setup() {
   cec = new MyCEC(CEC_PIN);
   cec->Promiscuous = true;
   cec->Initialize(CEC_LogicalDevice::CDT_PLAYBACK_DEVICE);
+  probeCecLine(nullptr, nullptr);
+  updateStatusLed();
   sendReply("READY");
 }
 
 void loop() {
   updateOptoPulse();
+  if ((millis() - lastLineCheckMs >= 2000) && (!cec || (cec->isBusIdle() && cec->LineState()))) {
+    probeCecLine(nullptr, nullptr);
+  }
+  updateStatusLed();
 
   // Если программа на ПК закрылась или ПК перешел в спящий режим / выключился (прекратились пинги от приложения),
   // автоматически отключаем перехват кнопок пульта, чтобы ТВ управлялся своим пультом напрямую
