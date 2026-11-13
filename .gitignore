@@ -52,3 +52,14 @@ tauri_app/src-tauri/gen/
 # GitHub workflows (requires workflow token scope)
 .github/
 
+# Proprietary hardware, firmware & schematics (kept local, not published)
+firmware/
+bin/firmware/
+flash_firmware.bat
+flash_rp2040.bat
+docs/HARDWARE_AND_FLASHING.md
+docs/esp32_s3_pinout.png
+docs/hdmi_breakout_board.jpg
+docs/DEVELOPMENT_HISTORY.md
+DEVELOPMENT_HISTORY.md
+
