@@ -20,11 +20,23 @@ pub fn create_hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
 }
 
 fn has_command(cmd: &str) -> bool {
-    Command::new("sh")
+    use std::collections::HashMap;
+    static CMD_CACHE: OnceLock<Mutex<HashMap<String, bool>>> = OnceLock::new();
+    let cache = CMD_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(guard) = cache.lock() {
+        if let Some(&cached) = guard.get(cmd) {
+            return cached;
+        }
+    }
+    let found = Command::new("sh")
         .args(["-c", &format!("command -v {} >/dev/null 2>&1", cmd)])
         .status()
         .map(|s| s.success())
-        .unwrap_or(false)
+        .unwrap_or(false);
+    if let Ok(mut guard) = cache.lock() {
+        guard.insert(cmd.to_string(), found);
+    }
+    found
 }
 
 /// Проверяет, запущена ли сессия внутри композитора SteamOS Gaming Mode (Gamescope)
@@ -141,9 +153,12 @@ pub fn check_single_instance_or_focus(_window_title: &str) -> bool {
         if rc != 0 {
             let err = std::io::Error::last_os_error();
             if matches!(err.raw_os_error(), Some(libc::EWOULDBLOCK) | Some(libc::EAGAIN)) {
-                let _ = Command::new("xdotool")
-                    .args(["search", "--name", "CecDesk", "windowactivate"])
-                    .spawn();
+                let minimized = env::args().any(|a| a == "--minimized");
+                if !minimized {
+                    let _ = Command::new("xdotool")
+                        .args(["search", "--name", "CecDesk", "windowactivate"])
+                        .spawn();
+                }
                 return false;
             }
             log_warn("instance", &format!("flock unexpected error: {}", err));
@@ -463,7 +478,7 @@ pub fn detect_edid_os() -> EdidInfoDto {
     if let Ok(entries) = fs::read_dir("/sys/class/drm") {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
-            if name.contains("HDMI") {
+            if name.contains("HDMI") || name.contains("-DP-") {
                 let edid_path = entry.path().join("edid");
                 if let Ok(bytes) = fs::read(&edid_path) {
                     if let Some(dto) = parse_edid_bytes(&bytes, &name) {

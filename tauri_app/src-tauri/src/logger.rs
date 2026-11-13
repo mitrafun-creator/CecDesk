@@ -130,7 +130,6 @@ pub fn redact_sensitive(input: &str) -> String {
 }
 
 fn mask_user_segments(input: &str) -> String {
-    let lower = input.to_lowercase();
     let patterns: &[(&str, &str)] = &[
         (":\\users\\", ":\\Users\\"),
         (":/users/", ":/Users/"),
@@ -146,7 +145,10 @@ fn mask_user_segments(input: &str) -> String {
     while idx < len {
         let mut matched: Option<(&str, &str)> = None;
         for &(pat_lower, pat_repl) in patterns {
-            if lower[idx..].starts_with(pat_lower) {
+            if input[idx..]
+                .get(..pat_lower.len())
+                .is_some_and(|s| s.eq_ignore_ascii_case(pat_lower))
+            {
                 if (pat_lower == ":\\users\\" || pat_lower == ":/users/")
                     && idx > 0
                     && input.as_bytes()[idx - 1].is_ascii_alphabetic()
@@ -196,7 +198,6 @@ fn mask_user_segments(input: &str) -> String {
 
 fn mask_auth_secrets(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
-    let lower = input.to_lowercase();
     let secret_keys = [
         "token=",
         "key=",
@@ -211,7 +212,10 @@ fn mask_auth_secrets(input: &str) -> String {
 
     let mut i = 0usize;
     while i < input.len() {
-        if lower[i..].starts_with("bearer ") {
+        if input[i..]
+            .get(.."bearer ".len())
+            .is_some_and(|s| s.eq_ignore_ascii_case("bearer "))
+        {
             let prev_ok = i == 0 || !input.as_bytes()[i - 1].is_ascii_alphanumeric();
             if prev_ok {
                 out.push_str("Bearer [REDACTED]");
@@ -226,7 +230,10 @@ fn mask_auth_secrets(input: &str) -> String {
 
         let mut matched_key: Option<&str> = None;
         for &k in &secret_keys {
-            if lower[i..].starts_with(k) {
+            if input[i..]
+                .get(..k.len())
+                .is_some_and(|s| s.eq_ignore_ascii_case(k))
+            {
                 let prev_ok = i == 0
                     || matches!(
                         input.as_bytes()[i - 1],
@@ -601,5 +608,13 @@ mod tests {
         assert!(fs::read_to_string(&file).unwrap().starts_with('B'));
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_redact_non_ascii_case_change_no_panic() {
+        let input = "İK /home/alice/secret.txt token=abc123 İK";
+        let out = redact_sensitive(input);
+        assert!(out.contains("/home/<USER>/secret.txt"));
+        assert!(out.contains("token=[REDACTED]"));
     }
 }

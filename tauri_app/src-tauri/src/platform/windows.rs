@@ -49,8 +49,8 @@ pub fn run_script(path: &Path, ext: &str, dir: &Path) -> Result<(), String> {
         }
         "exe" => create_hidden_command(&script_str),
         _ => {
-            let mut c = create_hidden_command("cmd");
-            c.args(["/c", "start", "", &script_str]);
+            let mut c = create_hidden_command("explorer.exe");
+            c.arg(&script_str);
             c
         }
     };
@@ -162,8 +162,12 @@ pub fn check_single_instance_or_focus(window_title_prefix: &str) -> bool {
         // Только если процесс завис или остался зомби без окна — принудительно завершаем старую копию
         CloseHandle(handle);
         let filter = format!("PID ne {}", my_pid);
+        let exe_name = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+            .unwrap_or_else(|| "CecDesk.exe".to_string());
         let _ = create_hidden_command("taskkill")
-            .args(["/F", "/IM", "CecDesk.exe", "/FI", &filter])
+            .args(["/F", "/IM", &exe_name, "/FI", &filter])
             .output();
         std::thread::sleep(Duration::from_millis(120));
 
@@ -291,26 +295,47 @@ pub fn jump_cursor_to_sector(sector: u8) -> (i32, i32) {
     }
 }
 
+#[inline]
+fn is_extended_vk(vk: u8) -> bool {
+    matches!(
+        vk,
+        0x21..=0x28 | 0x2D..=0x2E | 0x5B..=0x5C | 0x6F | 0x90 | 0xA3 | 0xA5 | 0xA6..=0xB7
+    )
+}
+
+#[inline]
+fn vk_down_flags(vk: u8) -> u32 {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::KEYEVENTF_EXTENDEDKEY;
+    if is_extended_vk(vk) {
+        KEYEVENTF_EXTENDEDKEY
+    } else {
+        0
+    }
+}
+
 pub fn trigger_combo_key(mod_vk: u8, vk: u8) {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{keybd_event, KEYEVENTF_KEYUP};
+    let m_down = vk_down_flags(mod_vk);
+    let k_down = vk_down_flags(vk);
     unsafe {
-        keybd_event(mod_vk, 0, 0, 0);
+        keybd_event(mod_vk, 0, m_down, 0);
         std::thread::sleep(Duration::from_millis(10));
-        keybd_event(vk, 0, 0, 0);
+        keybd_event(vk, 0, k_down, 0);
         std::thread::sleep(Duration::from_millis(15));
-        keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
+        keybd_event(vk, 0, k_down | KEYEVENTF_KEYUP, 0);
         std::thread::sleep(Duration::from_millis(10));
-        keybd_event(mod_vk, 0, KEYEVENTF_KEYUP, 0);
+        keybd_event(mod_vk, 0, m_down | KEYEVENTF_KEYUP, 0);
     }
 }
 
 pub fn trigger_repeated_key(vk: u8, count: usize) {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{keybd_event, KEYEVENTF_KEYUP};
+    let k_down = vk_down_flags(vk);
     unsafe {
         for i in 0..count {
-            keybd_event(vk, 0, 0, 0);
+            keybd_event(vk, 0, k_down, 0);
             std::thread::sleep(Duration::from_millis(12));
-            keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
+            keybd_event(vk, 0, k_down | KEYEVENTF_KEYUP, 0);
             if i + 1 < count {
                 std::thread::sleep(Duration::from_millis(18));
             }
@@ -402,10 +427,11 @@ pub fn trigger_os_key(action: &str) -> String {
         "NUM_9" => (0x39, "9"),
         _ => return "—".to_string(),
     };
+    let k_down = vk_down_flags(vk);
     unsafe {
-        keybd_event(vk, 0, 0, 0);
+        keybd_event(vk, 0, k_down, 0);
         std::thread::sleep(Duration::from_millis(15));
-        keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
+        keybd_event(vk, 0, k_down | KEYEVENTF_KEYUP, 0);
     }
     desc.to_string()
 }
@@ -832,10 +858,13 @@ pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
         unsafe {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
 
-            if PREV_OSK_WNDPROC.load(Ordering::SeqCst) == 0 {
+            static PREV_OSK_HWND: AtomicIsize = AtomicIsize::new(0);
+            let hwnd_val = hwnd as isize;
+            if PREV_OSK_HWND.load(Ordering::SeqCst) != hwnd_val {
                 let old_proc =
                     SetWindowLongPtrW(hwnd, GWL_WNDPROC, osk_subclass_proc as *const () as isize);
                 PREV_OSK_WNDPROC.store(old_proc, Ordering::SeqCst);
+                PREV_OSK_HWND.store(hwnd_val, Ordering::SeqCst);
             }
 
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
@@ -934,10 +963,11 @@ pub fn type_special_key(key: &str) {
         _ => return,
     };
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{keybd_event, KEYEVENTF_KEYUP};
+    let k_down = vk_down_flags(vk);
     unsafe {
-        keybd_event(vk, 0, 0, 0);
+        keybd_event(vk, 0, k_down, 0);
         std::thread::sleep(Duration::from_millis(15));
-        keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
+        keybd_event(vk, 0, k_down | KEYEVENTF_KEYUP, 0);
     }
 }
 

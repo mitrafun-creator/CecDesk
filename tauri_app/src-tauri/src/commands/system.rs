@@ -16,7 +16,7 @@ use crate::types::{AppConfig, CustomScriptInfo};
 use std::io::Write;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 
 #[tauri::command]
@@ -66,6 +66,7 @@ pub fn get_app_config(state: State<'_, AppState>) -> AppConfig {
 #[tauri::command]
 pub async fn save_app_config(
     mut new_cfg: AppConfig,
+    app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let st = state.inner().clone();
@@ -93,17 +94,29 @@ pub async fn save_app_config(
         let wake_changed = prev_cfg.wake_pc_on_tv_on != new_cfg.wake_pc_on_tv_on;
         let stby_changed = prev_cfg.auto_standby_tv_on_exit != new_cfg.auto_standby_tv_on_exit;
         let polite_changed = prev_cfg.non_intrusive_cec != new_cfg.non_intrusive_cec;
-        let pin_changed = prev_cfg.opto_pwr_pin != new_cfg.opto_pwr_pin && new_cfg.opto_pwr_pin > 0;
+        let pin_changed = prev_cfg.opto_pwr_pin != new_cfg.opto_pwr_pin;
+        let name_changed = prev_cfg.osd_name != new_cfg.osd_name;
+        let pa_changed = prev_cfg.pa_override != new_cfg.pa_override;
 
         let is_remote_enabled = new_cfg.remote_to_os_enabled;
         let wake_pc_on_tv = new_cfg.wake_pc_on_tv_on;
         let tv_off_on_pc_off = new_cfg.auto_standby_tv_on_exit;
         let non_intrusive = new_cfg.non_intrusive_cec;
         let opto_pin = new_cfg.opto_pwr_pin;
+        let osd_name = new_cfg.osd_name.clone();
+        let pa_override = new_cfg.pa_override.clone();
+        let new_language = new_cfg.language.clone();
         *safe_lock(&st.config) = new_cfg;
 
         // Отправляем в порт только те аппаратные параметры, которые действительно изменились
-        if remote_changed || wake_changed || stby_changed || polite_changed || pin_changed {
+        if remote_changed
+            || wake_changed
+            || stby_changed
+            || polite_changed
+            || pin_changed
+            || name_changed
+            || pa_changed
+        {
             if let Ok(mut guard) = st.serial_writer.lock() {
                 if let Some(ref mut port) = *guard {
                     if polite_changed {
@@ -152,9 +165,39 @@ pub async fn save_app_config(
                             log_warn("serial", &format!("Failed writing PC_PWR_PIN: {}", e));
                         }
                     }
+                    if name_changed {
+                        let clean_name: String = osd_name
+                            .chars()
+                            .filter(|c| !matches!(c, '\r' | '\n'))
+                            .take(14)
+                            .collect();
+                        if !clean_name.is_empty() {
+                            let name_cmd = format!("NAME {}\n", clean_name);
+                            if let Err(e) = port.write_all(name_cmd.as_bytes()) {
+                                log_warn("serial", &format!("Failed writing NAME: {}", e));
+                            }
+                        }
+                    }
+                    if pa_changed {
+                        let clean_pa: String = pa_override
+                            .chars()
+                            .filter(|c| c.is_ascii_hexdigit())
+                            .take(4)
+                            .collect();
+                        if clean_pa.len() == 4 {
+                            let pa_cmd = format!("PA {}\n", clean_pa);
+                            if let Err(e) = port.write_all(pa_cmd.as_bytes()) {
+                                log_warn("serial", &format!("Failed writing PA: {}", e));
+                            }
+                        }
+                    }
                     let _ = port.flush();
                 }
             }
+        }
+
+        if prev_cfg.language != new_language {
+            let _ = app.emit("language-changed", &new_language);
         }
 
         Ok(path.to_string_lossy().to_string())

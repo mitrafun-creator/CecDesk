@@ -280,6 +280,7 @@ function importXmlProfileStub() {
         }
         const mappings = xmlDoc.querySelectorAll("KeyMapping");
         let count = 0;
+        if (!appConfig) appConfig = {};
         if (!appConfig.key_mappings) appConfig.key_mappings = {};
         mappings.forEach((m) => {
           const code = m.getAttribute("code");
@@ -289,6 +290,8 @@ function importXmlProfileStub() {
             count++;
           }
         });
+        if (typeof renderMapperTable === "function") renderMapperTable(true);
+        if (typeof renderDynamicRemote === "function") renderDynamicRemote();
         saveMapperConfig();
         addLog(`[XML] Импортировано ${count} назначений клавиш из ${file.name}`, "log-ok");
       } catch (err) {

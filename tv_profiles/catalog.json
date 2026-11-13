@@ -92,9 +92,9 @@
     },
     {
       "id": "universal_hdmi_cec",
-      "brand": "Универсальный",
-      "name": "Универсальный HDMI-CEC профиль",
-      "cec_system_name": "HDMI-CEC 1.4/2.0",
+      "brand": "Universal",
+      "name": "Универсальный стандарт HDMI-CEC 1.4 / 2.0",
+      "cec_system_name": "Standard HDMI-CEC",
       "version": "1.0.0",
       "url": "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/universal_hdmi_cec.json"
     },

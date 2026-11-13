@@ -352,13 +352,22 @@ pub fn generate_install_id() -> String {
     )
 }
 
-/// Атомарное сохранение текстового содержимого через временный файл.
+/// Атомарное сохранение текстового содержимого через уникальный временный файл.
 pub fn save_atomic(target_path: &Path, content: &str) -> Result<(), String> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static TMP_SEQ: AtomicU64 = AtomicU64::new(1);
+
     if let Some(parent) = target_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Не удалось создать каталог {}: {}", parent.display(), e))?;
     }
-    let tmp_path = target_path.with_extension("tmp");
+    let seq = TMP_SEQ.fetch_add(1, Ordering::Relaxed);
+    let pid = std::process::id();
+    let file_name = target_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("config");
+    let tmp_path = target_path.with_file_name(format!("{}.{}.{}.tmp", file_name, pid, seq));
     fs::write(&tmp_path, content)
         .map_err(|e| format!("Не удалось записать временный файл: {}", e))?;
     if let Err(_e) = fs::rename(&tmp_path, target_path) {
@@ -367,6 +376,7 @@ pub fn save_atomic(target_path: &Path, content: &str) -> Result<(), String> {
             .or_else(|_| fs::write(target_path, content))
             .map_err(|e| format!("Не удалось атомарно переименовать файл: {}", e))?;
     }
+    let _ = fs::remove_file(&tmp_path);
     Ok(())
 }
 

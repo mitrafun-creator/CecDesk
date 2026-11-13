@@ -6,7 +6,6 @@ let lastUpdateCheckFailed = false;
 const UPDATE_CHECK_THROTTLE_SECS = 43200; // 12 часов
 
 function renderAppUpdateUiState() {
-  const btn = document.getElementById("btn-check-update");
   const btnSettings = document.getElementById("btn-check-update-settings");
   const btnReleases = document.getElementById("btn-open-releases-settings");
   const lblStatus = document.getElementById("lbl-update-status");

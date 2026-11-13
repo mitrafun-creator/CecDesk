@@ -170,7 +170,6 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
 
   // 1. USB-контроллер (лампочка #lamp-usb)
   const lampUsb = document.getElementById("lamp-usb");
-  const usbBadge = document.getElementById("hw-usb-badge"); // fallback для совместимости
 
   if (lastHwStatus.usbConnected) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(true);
@@ -181,10 +180,6 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampUsb.setAttribute("data-tooltip", tipText);
       lampUsb.removeAttribute("title");
     }
-    if (usbBadge) {
-      usbBadge.className = "hw-badge badge-online";
-      usbBadge.textContent = tipText;
-    }
   } else if (usbState && usbState.reconnecting) {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(false);
     const tipText = _t("remote.searching_ctrl", "Поиск контроллера...");
@@ -192,10 +187,6 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampUsb.className = "status-lamp lamp-yellow";
       lampUsb.setAttribute("data-tooltip", tipText);
       lampUsb.removeAttribute("title");
-    }
-    if (usbBadge) {
-      usbBadge.className = "hw-badge badge-warning";
-      usbBadge.textContent = _t("status.reconnecting", "Поиск...");
     }
   } else {
     if (typeof updateConnectionButtonsState === "function") updateConnectionButtonsState(false);
@@ -205,16 +196,11 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampUsb.setAttribute("data-tooltip", tipText);
       lampUsb.removeAttribute("title");
     }
-    if (usbBadge) {
-      usbBadge.className = "hw-badge badge-error";
-      usbBadge.textContent = tipText;
-    }
     updateTvPowerButtonUi("syncing");
   }
 
   // 2. Связь с ТВ (CEC) (лампочка #lamp-cec)
   const lampCec = document.getElementById("lamp-cec");
-  const cecBadge = document.getElementById("hw-cec-badge");
   const isReconnecting = !!(usbState && usbState.reconnecting);
 
   if (!lastHwStatus.usbConnected && isReconnecting) {
@@ -224,20 +210,12 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampCec.setAttribute("data-tooltip", tipText);
       lampCec.removeAttribute("title");
     }
-    if (cecBadge) {
-      cecBadge.className = "hw-badge badge-warning";
-      cecBadge.textContent = _t("status.bus_polling_short", "Опрос...");
-    }
   } else if (!lastHwStatus.usbConnected) {
     const tipText = _t("status.bus_no_usb", "Нет питания USB");
     if (lampCec) {
       lampCec.className = "status-lamp lamp-gray";
       lampCec.setAttribute("data-tooltip", tipText);
       lampCec.removeAttribute("title");
-    }
-    if (cecBadge) {
-      cecBadge.className = "hw-badge badge-neutral";
-      cecBadge.textContent = tipText;
     }
   } else if (lastHwStatus.lineHigh) {
     if (lastHwStatus.tvConnected) {
@@ -247,20 +225,12 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
         lampCec.setAttribute("data-tooltip", tipText);
         lampCec.removeAttribute("title");
       }
-      if (cecBadge) {
-        cecBadge.className = "hw-badge badge-online";
-        cecBadge.textContent = _t("remote.status_online", "3.3V ТВ в сети");
-      }
     } else {
       const tipText = _t("status.bus_free_no_tv", "Шина свободна (ТВ не отвечает)");
       if (lampCec) {
         lampCec.className = "status-lamp lamp-yellow";
         lampCec.setAttribute("data-tooltip", tipText);
         lampCec.removeAttribute("title");
-      }
-      if (cecBadge) {
-        cecBadge.className = "hw-badge badge-warning";
-        cecBadge.textContent = _t("status.line_free_badge", "Шина свободна");
       }
     }
   } else if (confirmedLineLow) {
@@ -269,10 +239,6 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampCec.className = "status-lamp lamp-red";
       lampCec.setAttribute("data-tooltip", tipText);
       lampCec.removeAttribute("title");
-    }
-    if (cecBadge) {
-      cecBadge.className = "hw-badge badge-error";
-      cecBadge.textContent = _t("status.line_err_badge", "0V / Ошибка");
     }
     if (typeof window.setAmbientMood === "function") {
       window.setAmbientMood("red");
@@ -284,15 +250,10 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampCec.setAttribute("data-tooltip", tipText);
       lampCec.removeAttribute("title");
     }
-    if (cecBadge) {
-      cecBadge.className = "hw-badge badge-warning";
-      cecBadge.textContent = _t("status.bus_polling_short", "Опрос...");
-    }
   }
 
   // 3. Перехват пульта (лампочка #lamp-remote)
   const lampRemote = document.getElementById("lamp-remote");
-  const remBadge = document.getElementById("hw-remote-badge");
   const chkRemote = document.getElementById("chk-remote-os");
   const isPass = remoteState !== undefined ? remoteState : (chkRemote ? chkRemote.checked : true);
 
@@ -303,20 +264,12 @@ function updateHardwareStatusUi(usbState, tvState, remoteState) {
       lampRemote.setAttribute("data-tooltip", tipText);
       lampRemote.removeAttribute("title");
     }
-    if (remBadge) {
-      remBadge.className = "hw-badge badge-online";
-      remBadge.textContent = _t("remote.status_enabled", "Включен");
-    }
   } else {
     const tipText = _t("status.remote_off_tip", "Выключен (пульт освобожден для ТВ)");
     if (lampRemote) {
       lampRemote.className = "status-lamp lamp-gray";
       lampRemote.setAttribute("data-tooltip", tipText);
       lampRemote.removeAttribute("title");
-    }
-    if (remBadge) {
-      remBadge.className = "hw-badge badge-neutral";
-      remBadge.textContent = _t("remote.status_disabled", "Выключен");
     }
   }
 
@@ -458,7 +411,11 @@ function updateSystemDiagnostics() {
       ? `${selectedPa[0]}.${selectedPa[1]}.${selectedPa[2]}.${selectedPa[3]} (HDMI ${selectedPa[0]})`
       : "1.0.0.0 (HDMI 1)";
   }
-  if (elLa) elLa.textContent = "0x04 (Playback 1)";
+  if (elLa) {
+    const la = (typeof lastHwStatus.la === "number") ? lastHwStatus.la : 4;
+    const laHex = "0x" + la.toString(16).toUpperCase().padStart(2, "0");
+    elLa.textContent = la === 4 ? "0x04 (Playback 1)" : (la === 8 ? "0x08 (Playback 2)" : (la === 11 ? "0x0B (Playback 3)" : `${laHex} (Playback)`));
+  }
 
   const chkRemote = document.getElementById("chk-remote-os");
   const isPass = chkRemote ? chkRemote.checked : true;
@@ -475,7 +432,12 @@ function updateSystemDiagnostics() {
     const unit = typeof getKeysPlural === "function" ? getKeysPlural(cnt) : _t("remote.keys_unit", "кнопок");
     elRemKeys.textContent = `${cnt} ${unit}`;
   }
-  if (elRemSubsys) elRemSubsys.textContent = _t("diag.val_input_subsys", "Win SendInput (Enigo)");
+  if (elRemSubsys) {
+    const isLinux = typeof navigator !== "undefined" && /linux/i.test(navigator.platform || navigator.userAgent || "");
+    elRemSubsys.textContent = isLinux
+      ? _t("diag.val_input_subsys_linux", "Linux uinput / xdotool")
+      : _t("diag.val_input_subsys", "Win SendInput (Enigo)");
+  }
 }
 
 /**
@@ -647,7 +609,7 @@ async function checkHardwareLineNow() {
  * Разбор входящей строки протокола CEC и обновление индикаторов UI
  */
 function decodeCecLine(line) {
-  if (line.includes("Logical address assigned: 4") || line.startsWith("OK:READY_LA_4") || line.startsWith("OK:AUTO_ANNOUNCED")) {
+  if (/Logical address assigned:\s*\d+/i.test(line) || line.startsWith("OK:READY_LA_") || line.startsWith("OK:AUTO_ANNOUNCED")) {
     setTimeout(() => sendCmd("RAW 00 8F"), 200);
     return "Канал синхронизирован";
   }
@@ -692,8 +654,14 @@ function decodeCecLine(line) {
   const op = bytes[0];
   const name = CEC_OPCODES[op] || `0x${op.toString(16).toUpperCase()}`;
 
-  // Распознавание нажатий кнопок в режиме калибровки прямо из потока RX
-  if (op === 0x44 && bytes.length >= 2 && typeof isCalibratingRemote !== "undefined" && isCalibratingRemote) {
+  // Распознавание нажатий кнопок в режиме калибровки из потока RX (только если cec-remote-key отключён)
+  if (
+    op === 0x44 &&
+    bytes.length >= 2 &&
+    typeof isCalibratingRemote !== "undefined" &&
+    isCalibratingRemote &&
+    (!appConfig || appConfig.remote_to_os_enabled === false)
+  ) {
     const kHex = "0x" + bytes[1].toString(16).toUpperCase().padStart(2, "0");
     handleCalibrationKeyCapture(kHex);
   }

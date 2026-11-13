@@ -28,6 +28,60 @@ window.addEventListener("securitypolicyviolation", (ev) => {
 let hideTimer = null;
 let isMouseActive = false;
 let activeSector = 5;
+let hudLang = "ru";
+
+const HUD_I18N = {
+  ru: {
+    action_done: "Действие выполнено",
+    mouse_mode: "Режим мыши",
+    mouse_active: "АКТИВЕН",
+    sectors_title: "Секторы (1-9)",
+    lmb: "ЛКМ",
+    menu_btn: "Меню",
+    rmb: "ПКМ",
+    dbl_click: "2x Клик",
+    scroll: "Скролл",
+    red_btn: "Красная",
+    green_btn: "Зеленая",
+    yellow_btn: "Желтая",
+    footer_hint: "0: Центр • Стрелки: Курсор • 1-9: Прыжок в сектор",
+    sector_center: "Сектор 5 (Центр)",
+    sector_n: "Сектор"
+  },
+  en: {
+    action_done: "Action completed",
+    mouse_mode: "Mouse Mode",
+    mouse_active: "ACTIVE",
+    sectors_title: "Sectors (1-9)",
+    lmb: "LMB",
+    menu_btn: "Menu",
+    rmb: "RMB",
+    dbl_click: "2x Click",
+    scroll: "Scroll",
+    red_btn: "Red",
+    green_btn: "Green",
+    yellow_btn: "Yellow",
+    footer_hint: "0: Center • Arrows: Cursor • 1-9: Jump to sector",
+    sector_center: "Sector 5 (Center)",
+    sector_n: "Sector"
+  }
+};
+
+function applyHudLang(lang) {
+  hudLang = lang === "en" ? "en" : "ru";
+  document.documentElement.lang = hudLang;
+  const dict = HUD_I18N[hudLang];
+  document.querySelectorAll("[data-hud-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-hud-i18n");
+    if (dict[key]) el.textContent = dict[key];
+  });
+  const lbl = document.getElementById("cockpit-sector-label");
+  if (lbl) {
+    lbl.textContent = (activeSector === 5 || activeSector === 0)
+      ? dict.sector_center
+      : `${dict.sector_n} ${activeSector}`;
+  }
+}
 
 const HUD_SVGS = {
   "mouse": '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6"></rect><line x1="12" y1="7" x2="12" y2="11"></line></svg>',
@@ -63,11 +117,18 @@ async function initHud() {
       }),
       listen("show-hud", (ev) => {
         handleShowHudPayload(ev.payload);
+      }),
+      listen("language-changed", (ev) => {
+        if (ev && ev.payload) applyHudLang(String(ev.payload));
       })
     ]);
   }
 
   if (invoke) {
+    try {
+      const cfg = await invoke("get_app_config");
+      if (cfg && cfg.language) applyHudLang(cfg.language);
+    } catch (_) {}
     try {
       const st = await invoke("get_initial_hud_state");
       if (st) {
@@ -157,10 +218,11 @@ function highlightSector(sector) {
 
   const lbl = document.getElementById("cockpit-sector-label");
   if (lbl) {
+    const dict = HUD_I18N[hudLang] || HUD_I18N.ru;
     if (sector === 5 || sector === 0) {
-      lbl.textContent = "Сектор 5 (Центр)";
+      lbl.textContent = dict.sector_center;
     } else {
-      lbl.textContent = `Сектор ${sector}`;
+      lbl.textContent = `${dict.sector_n} ${sector}`;
     }
   }
 

@@ -39,22 +39,18 @@ pub fn parse_rx_cec_bytes(trimmed: &str) -> Option<Vec<u8>> {
     }
 }
 
-/// Определяет событие питания ТВ (`Some(true)` = включен, `Some(false)` = выключен/standby, `None` = не относится к питанию).
+/// Определяет событие питания ТВ (`Some((true, false))` = включен, `Some((false, is_standby_cmd))` = выключен/standby, `None` = не относится к питанию).
 pub fn parse_tv_power_event(trimmed: &str) -> Option<(bool, bool)> {
     let is_from_tv = trimmed.starts_with("RX 0->") || trimmed.starts_with("RX 0 ");
     if !is_from_tv {
         return None;
     }
-    let is_power_rep = trimmed.contains(": 90 ");
-    let is_standby_cmd = trimmed.contains(": 36");
-    if is_power_rep && trimmed.contains(": 90 00") {
-        Some((true, false))
-    } else if (is_power_rep && (trimmed.contains(": 90 01") || trimmed.contains(": 90 03")))
-        || is_standby_cmd
-    {
-        Some((false, is_standby_cmd))
-    } else {
-        None
+    let bytes = parse_rx_cec_bytes(trimmed)?;
+    match bytes.as_slice() {
+        [0x90, 0x00, ..] => Some((true, false)),
+        [0x90, 0x01 | 0x03, ..] => Some((false, false)),
+        [0x36, ..] => Some((false, true)),
+        _ => None,
     }
 }
 
@@ -206,8 +202,11 @@ pub fn spawn_serial_reader_thread(
                                 {
                                     if bytes.len() >= 2 && bytes[0] == 0x44 {
                                         let key_hex = format!("0x{:02X}", bytes[1]);
-                                        if cfg.key_mappings.get(&key_hex).map(|s| s.as_str())
-                                            == Some("OPTO_POWER")
+                                        if !calib_mode_ref.load(Ordering::SeqCst)
+                                            && !osk_visible_ref.load(Ordering::SeqCst)
+                                            && !*safe_lock(&mouse_mode_ref)
+                                            && cfg.key_mappings.get(&key_hex).map(|s| s.as_str())
+                                                == Some("OPTO_POWER")
                                         {
                                             if let Ok(mut g) = writer_ref.lock() {
                                                 if let Some(ref mut p) = *g {

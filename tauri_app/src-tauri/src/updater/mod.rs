@@ -168,7 +168,14 @@ pub fn compare_semver(v1: &str, v2: &str) -> Ordering {
 /// Легковесный кроссплатформенный загрузчик через системный curl (без тяжелых внешних TLS библиотек)
 pub fn fetch_url_text(url: &str, timeout_secs: u32) -> Result<String, String> {
     let output = create_hidden_command("curl")
-        .args(["-s", "-L", "--max-time", &timeout_secs.to_string(), url])
+        .args([
+            "-fsSL",
+            "--proto",
+            "=https",
+            "--max-time",
+            &timeout_secs.to_string(),
+            url,
+        ])
         .output()
         .map_err(|e| format!("Не удалось выполнить запрос через curl: {}", e))?;
 

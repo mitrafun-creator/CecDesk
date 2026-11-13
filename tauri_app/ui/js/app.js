@@ -615,7 +615,12 @@ function renderProfilesCatalog() {
   if (!box) return;
   box.innerHTML = "";
   tvProfiles
-    .filter(p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.cec_system_name.toLowerCase().includes(q))
+    .filter(p => {
+      const name = String(p.name || "").toLowerCase();
+      const brand = String(p.brand || "").toLowerCase();
+      const sys = String(p.cec_system_name || "").toLowerCase();
+      return name.includes(q) || brand.includes(q) || sys.includes(q);
+    })
     .forEach(p => {
       const div = document.createElement("div");
       div.className = "prof-card" + (currentProfile && currentProfile.id === p.id ? " selected" : "");
@@ -669,7 +674,8 @@ function selectProfileById(id, options = {}) {
   const strip = document.getElementById("min-hdmi-strip");
   if (strip) {
     strip.innerHTML = "";
-    prof.hdmi_ports.forEach(hp => {
+    const ports = Array.isArray(prof.hdmi_ports) ? prof.hdmi_ports : [];
+    ports.forEach(hp => {
       const chip = document.createElement("div");
       chip.className = "hdmi-chip" + (hp.pa === selectedPa ? " active-input" : "");
       chip.textContent = hp.label;
@@ -757,11 +763,14 @@ async function autoSetupTv(options = {}) {
   const edid = await invoke("detect_tv_edid").catch(() => null);
   const skipMapper = typeof mapperNeedsRender !== "undefined" ? mapperNeedsRender : false;
   if (edid && edid.pnp_id && edid.pnp_id !== "UNK") {
-    if (edid.physical_address) {
+    if (edid.physical_address && (!appConfig || !appConfig.pa_override)) {
       selectedPa = edid.physical_address;
     }
-    const matched = tvProfiles.find(p => p.edid_pnp_ids.includes(edid.pnp_id));
-    if (matched) selectProfileById(matched.id, { skipMapper });
+    const shouldAutoProfile = !currentProfile || !appConfig || !appConfig.active_profile_id || appConfig.active_profile_id === "universal_hdmi_cec";
+    if (shouldAutoProfile) {
+      const matched = tvProfiles.find(p => Array.isArray(p.edid_pnp_ids) && p.edid_pnp_ids.includes(edid.pnp_id));
+      if (matched) selectProfileById(matched.id, { skipMapper });
+    }
   } else if (!currentProfile && tvProfiles.length > 0) {
     const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "universal_hdmi_cec";
     const fallbackProf = tvProfiles.find(p => p.id === targetId) || tvProfiles[0];
@@ -1066,6 +1075,12 @@ window.renderAudioDeviceSelects = renderAudioDeviceSelects;
 
 async function switchHdmi(pa, chipEl) {
   selectedPa = pa;
+  if (appConfig) {
+    appConfig.pa_override = pa;
+    if (invoke) {
+      invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
+    }
+  }
   if (chipEl) {
     document.querySelectorAll(".hdmi-chip").forEach(c => c.classList.remove("active-input"));
     chipEl.classList.add("active-input");
@@ -1074,6 +1089,7 @@ async function switchHdmi(pa, chipEl) {
   if (typeof updateSystemDiagnostics === "function") {
     updateSystemDiagnostics();
   }
+  await sendCmd(`PA ${pa}`);
   const b1 = pa.substring(0, 2);
   const b2 = pa.substring(2, 4);
   await sendCmd(`RAW 0F 86 ${b1} ${b2}`);

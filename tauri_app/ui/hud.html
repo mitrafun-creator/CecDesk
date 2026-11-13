@@ -15,7 +15,7 @@
     </div>
     <div class="hud-content">
       <div class="hud-title" id="hud-title">HDMI-CEC</div>
-      <div class="hud-sub" id="hud-sub">Действие выполнено</div>
+      <div class="hud-sub" id="hud-sub" data-hud-i18n="action_done">Действие выполнено</div>
       <div class="hud-bar-bg" id="hud-bar-bg">
         <div class="hud-bar-fill" id="hud-bar-fill"></div>
       </div>
@@ -29,8 +29,8 @@
         <div class="cockpit-icon-box">
           <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6"></rect><line x1="12" y1="7" x2="12" y2="11"></line></svg>
         </div>
-        <span class="cockpit-title">Режим мыши</span>
-        <span class="mouse-status-pill"><span class="pulse-dot"></span>АКТИВЕН</span>
+        <span class="cockpit-title" data-hud-i18n="mouse_mode">Режим мыши</span>
+        <span class="mouse-status-pill"><span class="pulse-dot"></span><span data-hud-i18n="mouse_active">АКТИВЕН</span></span>
       </div>
       <span class="sector-indicator" id="cockpit-sector-label">Сектор 5 (Центр)</span>
     </div>
@@ -38,7 +38,7 @@
     <div class="cockpit-body">
       <!-- Миникарта экрана 3x3 (адаптивные координаты) -->
       <div class="minimap-wrapper">
-        <div class="minimap-title">Секторы (1-9)</div>
+        <div class="minimap-title" data-hud-i18n="sectors_title">Секторы (1-9)</div>
         <div class="minimap-grid">
           <div class="minimap-cell" id="sector-cell-1">1</div>
           <div class="minimap-cell" id="sector-cell-2">2</div>
@@ -55,18 +55,18 @@
       <!-- Шпаргалка команд пульта -->
       <div class="cheatsheet-wrapper">
         <div class="hint-row">
-          <span class="k-badge">OK</span><span class="k-desc">ЛКМ</span>
-          <span class="k-badge">Меню</span><span class="k-desc">ПКМ</span>
-          <span class="k-badge" aria-label="Play"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></span><span class="k-desc">2x Клик</span>
-          <span class="k-badge">CH±</span><span class="k-desc">Скролл</span>
+          <span class="k-badge">OK</span><span class="k-desc" data-hud-i18n="lmb">ЛКМ</span>
+          <span class="k-badge" data-hud-i18n="menu_btn">Меню</span><span class="k-desc" data-hud-i18n="rmb">ПКМ</span>
+          <span class="k-badge" aria-label="Play"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg></span><span class="k-desc" data-hud-i18n="dbl_click">2x Клик</span>
+          <span class="k-badge">CH±</span><span class="k-desc" data-hud-i18n="scroll">Скролл</span>
         </div>
         <div class="hint-row">
-          <span class="k-badge k-badge-red">Красная</span><span class="k-desc">Ctrl+C</span>
-          <span class="k-badge k-badge-green">Зеленая</span><span class="k-desc">Ctrl+V</span>
-          <span class="k-badge k-badge-yellow">Желтая</span><span class="k-desc">Ctrl+A</span>
+          <span class="k-badge k-badge-red" data-hud-i18n="red_btn">Красная</span><span class="k-desc">Ctrl+C</span>
+          <span class="k-badge k-badge-green" data-hud-i18n="green_btn">Зеленая</span><span class="k-desc">Ctrl+V</span>
+          <span class="k-badge k-badge-yellow" data-hud-i18n="yellow_btn">Желтая</span><span class="k-desc">Ctrl+A</span>
         </div>
         <div class="hint-row">
-          <span class="k-sub-text">0: Центр • Стрелки: Курсор • 1-9: Прыжок в сектор</span>
+          <span class="k-sub-text" data-hud-i18n="footer_hint">0: Центр • Стрелки: Курсор • 1-9: Прыжок в сектор</span>
         </div>
       </div>
     </div>

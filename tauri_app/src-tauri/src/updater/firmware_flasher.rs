@@ -249,9 +249,9 @@ fn flash_rp2040_uf2(port_name: &str, uf2_path: &Path, app: &AppHandle) -> Result
         ),
     );
 
-    fs::copy(uf2_path, &target_uf2).map_err(|e| {
+    fs::write(&target_uf2, &uf2_bytes).map_err(|e| {
         format!(
-            "Ошибка копирования прошивки на накопитель {}: {}",
+            "Ошибка записи прошивки на накопитель {}: {}",
             drive, e
         )
     })?;
@@ -306,10 +306,11 @@ fn flash_esp32_serial_ota(
     );
 
     let mut port = serialport::new(port_name, 115_200)
-        .timeout(Duration::from_millis(4000))
+        .timeout(Duration::from_millis(1500))
         .open()
         .map_err(|e| format!("Не удалось открыть порт {}: {}", port_name, e))?;
     let _ = port.write_data_terminal_ready(true);
+    let _ = port.clear(serialport::ClearBuffer::Input);
     std::thread::sleep(Duration::from_millis(120));
 
     let read_port = port
@@ -323,8 +324,11 @@ fn flash_esp32_serial_ota(
             let mut line = String::new();
             while start.elapsed() < Duration::from_millis(timeout_ms) {
                 line.clear();
-                if let Ok(n) = reader.read_line(&mut line) {
-                    if n > 0 {
+                match reader.read_line(&mut line) {
+                    Ok(0) => {
+                        return Err("Устройство отключилось во время OTA-прошивки (EOF)".to_string());
+                    }
+                    Ok(_) => {
                         let trimmed = line.trim();
                         if trimmed.contains(expected) {
                             return Ok(());
@@ -332,6 +336,17 @@ fn flash_esp32_serial_ota(
                         if trimmed.starts_with("ERR:") {
                             return Err(format!("Контроллер вернул ошибку: {}", trimmed));
                         }
+                    }
+                    Err(e)
+                        if matches!(
+                            e.kind(),
+                            std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                        ) =>
+                    {
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(format!("Ошибка чтения порта во время OTA: {}", e));
                     }
                 }
             }

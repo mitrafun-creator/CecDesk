@@ -28,10 +28,52 @@ window.addEventListener("securitypolicyviolation", (ev) => {
 
 // Раскладки клавиатуры
 let currentMode = "RU"; // "RU", "EN", "SYM"
+let uiLang = "ru";
 let isCaps = false;
 let isShift = false;
 let focusRow = 2;
 let focusCol = 4;
+
+const OSK_I18N = {
+  ru: {
+    hint_red: "Красная: Смена языка",
+    hint_green: "Зеленая: Пробел",
+    hint_yellow: "Желтая: Стереть",
+    hint_blue: "Синяя: Ввод",
+    mode_ru: "Русский (ЙЦУКЕН)",
+    mode_en: "English (QWERTY)",
+    mode_sym: "Символы & Цифры",
+    enter: "Ввод",
+    space: "Пробел",
+    hide: "Свернуть",
+    lang: "Язык"
+  },
+  en: {
+    hint_red: "Red: Switch language",
+    hint_green: "Green: Space",
+    hint_yellow: "Yellow: Backspace",
+    hint_blue: "Blue: Enter",
+    mode_ru: "Russian (JCUKEN)",
+    mode_en: "English (QWERTY)",
+    mode_sym: "Symbols & Digits",
+    enter: "Enter",
+    space: "Space",
+    hide: "Hide",
+    lang: "Lang"
+  }
+};
+
+function applyOskUiLang(lang) {
+  uiLang = lang === "en" ? "en" : "ru";
+  document.documentElement.lang = uiLang;
+  const dict = OSK_I18N[uiLang];
+  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setTxt("osk-hint-red", dict.hint_red);
+  setTxt("osk-hint-green", dict.hint_green);
+  setTxt("osk-hint-yellow", dict.hint_yellow);
+  setTxt("osk-hint-blue", dict.hint_blue);
+  renderKeyboard();
+}
 
 const OSK_ICONS = {
   backspace: '<svg class="osk-ico" viewBox="0 0 24 24"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>',
@@ -95,9 +137,10 @@ function renderKeyboard() {
   const grid = document.getElementById("keyboard-grid");
   grid.innerHTML = "";
   const layout = getCurrentLayout();
+  const dict = OSK_I18N[uiLang] || OSK_I18N.ru;
 
   document.getElementById("osk-lang-badge").textContent =
-    currentMode === "RU" ? "Русский (ЙЦУКЕН)" : (currentMode === "EN" ? "English (QWERTY)" : "Символы & Цифры");
+    currentMode === "RU" ? dict.mode_ru : (currentMode === "EN" ? dict.mode_en : dict.mode_sym);
 
   layout.forEach((row, rIdx) => {
     const rowEl = document.createElement("div");
@@ -122,6 +165,10 @@ function renderKeyboard() {
       } else {
         keyAction = item.k;
         label = item.label || "";
+        if (keyAction === "HIDE") label = dict.hide;
+        else if (keyAction === "ENTER" && currentMode === "RU") label = dict.enter;
+        else if (keyAction === "SPACE" && currentMode === "RU") label = dict.space;
+        else if (keyAction === "MODE_LANG" && currentMode === "SYM") label = dict.lang;
         iconName = item.icon || "";
         extraClass = item.w || "";
         customId = item.id || "";
@@ -347,12 +394,31 @@ async function setupListener() {
         handleKeyPress("ENTER", "");
       }
     });
+
+    await listen("language-changed", (ev) => {
+      if (ev && ev.payload) applyOskUiLang(String(ev.payload));
+    });
   } catch (err) {
     console.error("Failed to register osk listeners:", err);
   }
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-  renderKeyboard();
+  if (invoke) {
+    try {
+      const cfg = await invoke("get_app_config");
+      if (cfg && cfg.language) {
+        uiLang = cfg.language === "en" ? "en" : "ru";
+        currentMode = uiLang === "en" ? "EN" : "RU";
+        applyOskUiLang(uiLang);
+      } else {
+        renderKeyboard();
+      }
+    } catch (_) {
+      renderKeyboard();
+    }
+  } else {
+    renderKeyboard();
+  }
   setupListener();
 });

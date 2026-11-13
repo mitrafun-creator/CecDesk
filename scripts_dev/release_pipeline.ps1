@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("check", "notes", "bump", "gate")]
     [string]$Mode,
@@ -207,7 +207,11 @@ function Invoke-Bump {
     # 5. Refresh Cargo.lock using cargo metadata/check
     Push-Location (Join-Path $RepoRoot "tauri_app\src-tauri")
     try {
-        & "C:\rust\toolchain\bin\cargo.exe" update -p cecdesk --offline 2>$null | Out-Null
+        $cargoCmd = Get-Command cargo -ErrorAction SilentlyContinue
+        $cargoBin = if ($cargoCmd) { $cargoCmd.Source } elseif (Test-Path "C:\rust\toolchain\bin\cargo.exe") { "C:\rust\toolchain\bin\cargo.exe" } else { $null }
+        if ($cargoBin) {
+            & $cargoBin update -p cecdesk --offline 2>$null | Out-Null
+        }
     } finally {
         Pop-Location
     }

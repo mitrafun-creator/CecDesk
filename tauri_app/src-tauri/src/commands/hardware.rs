@@ -261,9 +261,9 @@ pub async fn connect_esp32(
             was_some
         };
 
-        // Даем предыдущему потоку чтения 80 мс на выход из read_line() и освобождение дескриптора COM-порта
+        // Даем предыдущему потоку чтения >100 мс на выход из read_until() и освобождение дескриптора COM-порта
         if had_prev {
-            std::thread::sleep(Duration::from_millis(80));
+            std::thread::sleep(Duration::from_millis(130));
         }
 
         let mut port = serialport::new(&port_name, 115200)
@@ -435,11 +435,11 @@ pub async fn trigger_os_key(
         if action == "SHOW_KEYBOARD" {
             toggle_osk_helper(&app, &st.osk_visible, None);
             let is_open = st.osk_visible.load(Ordering::SeqCst);
-            return if is_open {
+            return Ok(if is_open {
                 "Клавиатура ОТКРЫТА".to_string()
             } else {
                 "Клавиатура СКРЫТА".to_string()
-            };
+            });
         }
         if action == "MOUSE_TOGGLE" {
             let mut is_m = safe_lock(&st.mouse_mode_active);
@@ -467,23 +467,25 @@ pub async fn trigger_os_key(
                 let _ = app.emit("show-hud", &hud_payload);
                 crate::window_manager::hide_hud_if_exists(&app);
             }
-            return msg.to_string();
+            return Ok(msg.to_string());
         }
         if action == "OPTO_POWER" {
-            if let Ok(mut guard) = st.serial_writer.lock() {
-                if let Some(ref mut port) = *guard {
-                    let _ = port.write_all(b"PC_PWR_PULSE\n");
-                }
+            let mut guard = st.serial_writer.lock().map_err(|e| e.to_string())?;
+            if let Some(ref mut port) = *guard {
+                port.write_all(b"PC_PWR_PULSE\n")
+                    .map_err(|e| format!("Ошибка отправки PC_PWR_PULSE: {}", e))?;
+                let _ = port.flush();
+                return Ok("Импульс кнопки Power (Оптопара 350 мс)".to_string());
             }
-            return "Импульс кнопки Power (Оптопара 350 мс)".to_string();
+            return Err("Адаптер HDMI-CEC не подключен".to_string());
         }
         if crate::key_profiles::is_profile_switch_action(&action) {
-            return crate::key_profiles::execute_profile_switch_action(&action, &app, &st.config);
+            return Ok(crate::key_profiles::execute_profile_switch_action(&action, &app, &st.config));
         }
-        trigger_os_key_internal(&action)
+        Ok(trigger_os_key_internal(&action))
     })
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

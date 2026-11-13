@@ -84,10 +84,14 @@ pub fn run_custom_script(identifier: &str) -> String {
     };
 
     // Проверка канонического пути: файл обязан лежать строго внутри каталога scripts
-    if let (Ok(can_target), Ok(can_dir)) = (path.canonicalize(), dir.canonicalize()) {
-        if !can_target.starts_with(&can_dir) {
-            return format!("Доступ запрещен: сценарий '{}' находится за пределами scripts", name);
-        }
+    let Ok(can_target) = path.canonicalize() else {
+        return format!("Доступ запрещен: не удалось проверить путь сценария '{}'", name);
+    };
+    let Ok(can_dir) = dir.canonicalize() else {
+        return format!("Доступ запрещен: не удалось проверить каталог scripts для '{}'", name);
+    };
+    if !can_target.starts_with(&can_dir) {
+        return format!("Доступ запрещен: сценарий '{}' находится за пределами scripts", name);
     }
 
     let dir_clone = dir.clone();

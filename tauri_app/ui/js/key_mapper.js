@@ -135,10 +135,11 @@ function applyKeyPreset(presetKey, btnEl) {
   syncKeyProfileStripUi();
   if (btnEl) btnEl.classList.add("active");
 
+  renderMapperTable(true);
+  if (typeof renderDynamicRemote === "function") renderDynamicRemote();
+  captureSavedState();
+
   if (changedProfile) {
-    renderMapperTable(true);
-    if (typeof renderDynamicRemote === "function") renderDynamicRemote();
-    captureSavedState();
     addLog(`[Профиль кнопок] Активирован: ${localizedName}`, "log-ok");
 
     if (invoke) {
