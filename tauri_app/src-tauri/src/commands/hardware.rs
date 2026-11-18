@@ -59,6 +59,11 @@ pub(crate) fn classify_port_info(
     let mut is_usb = port_upper.starts_with("/DEV/TTYACM") || port_upper.starts_with("/DEV/TTYUSB");
     let desc = match usb_ids {
         Some((vid, pid, serial)) => {
+            // Исключаем встроенный контроллер Steam Deck (Valve Software VID 0x28DE, /dev/ttyACM0),
+            // чтобы приложение не пыталось подключаться к геймпаду вместо CecDesk Dongle.
+            if vid == 0x28DE {
+                return None;
+            }
             is_usb = true;
             matched_vid = format!("{:04X}", vid).to_uppercase();
             format!("USB {:04X}:{:04X} ({})", vid, pid, serial)

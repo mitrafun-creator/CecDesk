@@ -36,6 +36,14 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{Emitter, Manager};
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    {
+        // Обход зависания DMA-BUF рендерера WebKitGTK 2.44+ на AMD RADV / SteamOS (Gamescope / XWayland)
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     let debug_enabled =
         std::env::args().any(|a| a == "--debug" || a == "-d") || std::env::var("CEC_DEBUG").is_ok();
 
@@ -163,6 +171,17 @@ fn main() {
                             let _ = window.hide();
                         }
                         _ => {
+                            static LAST_CLOSE_ASK_MS: AtomicU64 = AtomicU64::new(0);
+                            let now_ms = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_millis() as u64)
+                                .unwrap_or(0);
+                            let prev_ms = LAST_CLOSE_ASK_MS.swap(now_ms, Ordering::SeqCst);
+                            if prev_ms > 0 && now_ms.saturating_sub(prev_ms) <= 2500 {
+                                // Повторное нажатие «Закрыть» за 2.5 с — принудительный выход, даже если WebView не отвечает
+                                window.app_handle().exit(0);
+                                return;
+                            }
                             let _ = window.show();
                             let _ = window.unminimize();
                             let _ = window.set_focus();

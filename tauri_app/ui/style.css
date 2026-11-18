@@ -407,6 +407,7 @@ svg.ico-18 { width: 18px; height: 18px; }
   position: relative;
   overflow: hidden;
   width: 100%;
+  touch-action: pan-y;
 }
 
 .screens-slider {
@@ -424,6 +425,8 @@ svg.ico-18 { width: 18px; height: 18px; }
   flex-shrink: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   display: flex;
   flex-direction: column;
   scrollbar-gutter: stable;

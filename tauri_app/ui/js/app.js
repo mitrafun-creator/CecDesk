@@ -492,7 +492,14 @@ function initBiosPowerHintModal() {
  * Плавное переключение экранов без микрофризов и с анимацией скроллбара
  */
 let slideTimeout = null;
+let currentViewIndex = 0;
 function switchViewIndex(idx, btn) {
+  const clamped = Math.max(0, Math.min(3, Number(idx) || 0));
+  currentViewIndex = clamped;
+  idx = clamped;
+  if (!btn) {
+    btn = document.querySelectorAll(".seg-btn")[idx] || null;
+  }
   closeAllCustomSelects();
   const globalTip = document.getElementById("global-floating-tooltip");
   if (globalTip) globalTip.classList.remove("visible");
@@ -1794,8 +1801,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     populateProfiles(profiles, { skipMapper: true });
     const prefPort = populatePortsSelect(ports);
+    const hasPreferredAdapter = availablePortsList.some(p => p.name === prefPort && p.is_preferred);
 
-    if (prefPort) {
+    if (prefPort && hasPreferredAdapter) {
       if (typeof window.startStartupGrace === "function") window.startStartupGrace(900);
       updateHardwareStatusUi(
         { connected: false, reconnecting: true, port: prefPort },
@@ -1891,7 +1899,99 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (e.target === bugModal) closeBugReportModal();
     });
   }
+
+  initTouchSwipeNavigation();
 });
+
+function initTouchSwipeNavigation() {
+  const viewport = document.querySelector(".viewport");
+  const slider = document.getElementById("screens-slider");
+  if (!viewport || !slider) return;
+
+  let startX = 0;
+  let startY = 0;
+  let startTime = 0;
+  let tracking = false;
+  let horizontalLocked = false;
+  let lastDx = 0;
+
+  const isIgnoredTouchTarget = (el) => {
+    if (!el || !el.closest) return false;
+    return !!el.closest(
+      "input, textarea, select, option, .c-select-menu, .touchpad-surface, .modal-backdrop, [data-no-swipe]"
+    );
+  };
+
+  viewport.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) {
+      tracking = false;
+      return;
+    }
+    if (isIgnoredTouchTarget(e.target)) {
+      tracking = false;
+      return;
+    }
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    startTime = Date.now();
+    lastDx = 0;
+    tracking = true;
+    horizontalLocked = false;
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", (e) => {
+    if (!tracking || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+
+    if (!horizontalLocked) {
+      if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) {
+        tracking = false;
+        return;
+      }
+      if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+        horizontalLocked = true;
+        slider.style.transition = "none";
+      } else {
+        return;
+      }
+    }
+
+    lastDx = dx;
+    const vw = viewport.clientWidth || window.innerWidth || 1;
+    let deltaPct = (dx / vw) * 25;
+    if ((currentViewIndex === 0 && dx > 0) || (currentViewIndex === 3 && dx < 0)) {
+      deltaPct *= 0.25;
+    }
+    const basePct = -(currentViewIndex * 25);
+    slider.style.transform = `translateX(${basePct + deltaPct}%)`;
+  }, { passive: true });
+
+  const finishSwipe = () => {
+    if (!tracking) return;
+    tracking = false;
+    if (!horizontalLocked) return;
+    horizontalLocked = false;
+    slider.style.transition = "";
+
+    const dt = Date.now() - startTime;
+    const vw = viewport.clientWidth || window.innerWidth || 1;
+    const threshold = dt < 280 ? 28 : Math.min(85, vw * 0.14);
+    let nextIdx = currentViewIndex;
+    if (lastDx < -threshold && currentViewIndex < 3) {
+      nextIdx = currentViewIndex + 1;
+    } else if (lastDx > threshold && currentViewIndex > 0) {
+      nextIdx = currentViewIndex - 1;
+    }
+    const btns = document.querySelectorAll(".seg-btn");
+    switchViewIndex(nextIdx, btns[nextIdx] || null);
+  };
+
+  viewport.addEventListener("touchend", finishSwipe, { passive: true });
+  viewport.addEventListener("touchcancel", finishSwipe, { passive: true });
+}
 
 // ==================== ВСПЛЫВАЮЩИЕ ПОДСКАЗКИ (APPLE FLOATING TOOLTIPS) ====================
 let activeTooltipEl = null;

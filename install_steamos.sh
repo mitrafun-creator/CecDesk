@@ -155,9 +155,10 @@ Type=simple
 WorkingDirectory=$INSTALL_DIR
 Environment=DISPLAY=:0
 Environment=GDK_BACKEND=x11
+Environment=WEBKIT_DISABLE_DMABUF_RENDERER=1
 ExecStart=$BIN_PATH --minimized
 KillMode=process
-Restart=always
+Restart=on-failure
 RestartSec=2
 
 [Install]
