@@ -1523,6 +1523,9 @@ function updateDynamicWindowTitle() {
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
 window.addEventListener("DOMContentLoaded", async () => {
+  if (/linux/i.test(navigator.userAgent || "") || /linux/i.test(navigator.platform || "")) {
+    document.body.classList.add("platform-linux");
+  }
   initUiBindings();
   initTitlebarDragging();
 

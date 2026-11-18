@@ -237,6 +237,11 @@
   }
 
   function startAnimation(force = false) {
+    const isLinuxWebKit = typeof navigator !== "undefined" && /Linux/i.test(navigator.userAgent || "") && !/Android/i.test(navigator.userAgent || "");
+    if (isLinuxWebKit) {
+      drawFrame(0);
+      return;
+    }
     if (force) {
       forceTicksRemaining = Math.max(forceTicksRemaining, 6);
     }
