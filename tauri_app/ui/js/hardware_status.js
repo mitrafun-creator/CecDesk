@@ -615,6 +615,9 @@ function decodeCecLine(line) {
   }
 
   if (line.includes("Transmit failed, no acknowledge")) {
+    if (tvPowerState === "syncing") {
+      updateTvPowerButtonUi(false);
+    }
     return "Проверка шины";
   }
 
@@ -666,22 +669,28 @@ function decodeCecLine(line) {
     handleCalibrationKeyCapture(kHex);
   }
 
-  // Статус питания (0x90): Report Power Status
+  const isFromTv = line.startsWith("RX 0->") || line.startsWith("RX 0 ");
+
+  // Статус питания (0x90): Report Power Status (учитываем только ответы от ТВ LA=0!)
   if (op === 0x90 && bytes.length >= 2) {
     const p = POWER_MAP[bytes[1]] || "";
-    if (bytes[1] === 0) {
-      updateTvPowerButtonUi(true);
-    } else {
-      updateTvPowerButtonUi(false);
+    if (isFromTv) {
+      if (bytes[1] === 0) {
+        updateTvPowerButtonUi(true);
+      } else {
+        updateTvPowerButtonUi(false);
+      }
     }
     return `${name} (${p})`;
   }
 
-  // Включение экрана со стороны ТВ
-  if (op === 0x04) {
-    updateTvPowerButtonUi(true);
-  } else if (op === 0x36) {
-    updateTvPowerButtonUi(false);
+  // Включение / сон экрана со стороны ТВ
+  if (isFromTv) {
+    if (op === 0x04) {
+      updateTvPowerButtonUi(true);
+    } else if (op === 0x36) {
+      updateTvPowerButtonUi(false);
+    }
   }
 
   return name;

@@ -98,15 +98,60 @@ async function appWinToggleMaximize() {
   }
 }
 
-async function appWinHideToTray() {
-  if (invoke) {
-    try {
-      await invoke("app_win_hide_to_tray");
-    } catch (e) {
-      console.warn("Hide to tray error:", e);
-    }
-  }
+function openCloseConfirmModal() {
+  const modal = document.getElementById("close-confirm-modal");
+  const chk = document.getElementById("chk-close-dont-ask");
+  if (chk) chk.checked = false;
+  if (modal) modal.classList.add("is-open");
 }
+
+function closeCloseConfirmModal() {
+  const modal = document.getElementById("close-confirm-modal");
+  if (modal) modal.classList.remove("is-open");
+}
+
+async function appWinHideToTray() {
+  const mode = (appConfig && appConfig.close_behavior) ? appConfig.close_behavior : "ask";
+  if (mode === "exit") {
+    if (invoke) {
+      try {
+        await invoke("app_win_quit");
+      } catch (e) {
+        console.warn("Quit error:", e);
+      }
+    }
+    return;
+  }
+  if (mode === "tray") {
+    if (invoke) {
+      try {
+        await invoke("app_win_hide_to_tray");
+      } catch (e) {
+        console.warn("Hide to tray error:", e);
+      }
+    }
+    return;
+  }
+  openCloseConfirmModal();
+}
+
+function renderCloseBehaviorSelect() {
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
+  const cur = (appConfig && appConfig.close_behavior) ? appConfig.close_behavior : "ask";
+  const opts = [
+    { value: "ask", label: _t("settings.close_opt_ask", "Спрашивать каждый раз") },
+    { value: "tray", label: _t("settings.close_opt_tray", "Сворачивать в трей") },
+    { value: "exit", label: _t("settings.close_opt_exit", "Закрывать полностью") }
+  ];
+  createCustomSelect("csel-close-behavior", opts, cur, async (val) => {
+    if (!appConfig) return;
+    appConfig.close_behavior = val;
+    if (invoke) {
+      await invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
+    }
+  });
+}
+window.renderCloseBehaviorSelect = renderCloseBehaviorSelect;
 
 /**
  * Инициализация перетаскивания окна за шапку (fallback вне нативного Tauri drag.js)
@@ -255,6 +300,32 @@ function initUiBindings() {
   onChange("chk-wake-tv-on-pc", autoSaveQolSettings);
   onChange("chk-tv-off-on-pc", autoSaveQolSettings);
   onChange("chk-pc-off-on-tv", onPcOffOnTvToggleChanged);
+  onChange("chk-standalone-hid", () => {
+    const chk = document.getElementById("chk-standalone-hid");
+    updateStandaloneHidBodyVisibility();
+    if (chk && !chk.checked) {
+      saveStandaloneHidConfig({
+        toastKey: "settings.standalone_disabled_toast",
+        toastFallback: "Автономный HID-режим выключен"
+      });
+    } else {
+      setStandaloneHidDirty(true);
+    }
+  });
+  const inpStandalonePin = document.getElementById("inp-standalone-pin");
+  if (inpStandalonePin) {
+    inpStandalonePin.addEventListener("input", () => setStandaloneHidDirty(true));
+  }
+  onClick("btn-save-standalone-hid", saveStandaloneHidConfig);
+  onClick("btn-toggle-standalone-pin", () => {
+    const inp = document.getElementById("inp-standalone-pin");
+    const btn = document.getElementById("btn-toggle-standalone-pin");
+    if (!inp || !btn) return;
+    const isPwd = inp.type === "password";
+    inp.type = isPwd ? "text" : "password";
+    const _t = typeof t === "function" ? t : (_k, fb) => fb;
+    btn.textContent = isPwd ? _t("settings.standalone_pin_hide", "Скрыть") : _t("settings.standalone_pin_show", "Показать");
+  });
 
   document.querySelectorAll(".lang-choice-btn[data-lang]").forEach((btn) => {
     btn.addEventListener("click", () => switchLanguage(btn.dataset.lang));
@@ -305,7 +376,116 @@ function initUiBindings() {
   onClick("btn-modal-github-issue", openGithubBugIssueFromModal);
   onClick("btn-bug-close-bottom", closeBugReportModal);
 
+  initBiosPowerHintModal();
+  initCloseConfirmModal();
   initHelpPopovers();
+}
+
+function initCloseConfirmModal() {
+  const modal = document.getElementById("close-confirm-modal");
+  const btnX = document.getElementById("btn-close-modal-x");
+  const btnTray = document.getElementById("btn-close-to-tray");
+  const btnExit = document.getElementById("btn-close-exit-app");
+
+  if (btnX) btnX.addEventListener("click", closeCloseConfirmModal);
+  if (modal) {
+    modal.addEventListener("click", (ev) => {
+      if (ev.target === modal) closeCloseConfirmModal();
+    });
+  }
+  if (btnTray) {
+    btnTray.addEventListener("click", async () => {
+      const chk = document.getElementById("chk-close-dont-ask");
+      if (chk && chk.checked && appConfig) {
+        appConfig.close_behavior = "tray";
+        renderCloseBehaviorSelect();
+        if (invoke) await invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
+      }
+      closeCloseConfirmModal();
+      if (invoke) await invoke("app_win_hide_to_tray").catch(() => {});
+    });
+  }
+  if (btnExit) {
+    btnExit.addEventListener("click", async () => {
+      const chk = document.getElementById("chk-close-dont-ask");
+      if (chk && chk.checked && appConfig) {
+        appConfig.close_behavior = "exit";
+        renderCloseBehaviorSelect();
+        if (invoke) await invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
+      }
+      closeCloseConfirmModal();
+      if (invoke) await invoke("app_win_quit").catch(() => {});
+    });
+  }
+}
+
+let detectedMotherboardModel = "";
+
+function initBiosPowerHintModal() {
+  const btnHint = document.getElementById("btn-bios-power-hint");
+  const modal = document.getElementById("bios-power-modal");
+  const btnOk = document.getElementById("btn-bios-modal-ok");
+  const btnMore = document.getElementById("btn-bios-modal-more");
+  const lblMb = document.getElementById("lbl-bios-mb-model");
+
+  if (btnHint) {
+    try {
+      if (localStorage.getItem("cecdesk_bios_hint_seen") === "1") {
+        btnHint.classList.remove("is-pulsing");
+      }
+    } catch (_) {}
+
+    btnHint.addEventListener("click", async () => {
+      btnHint.classList.remove("is-pulsing");
+      try {
+        localStorage.setItem("cecdesk_bios_hint_seen", "1");
+      } catch (_) {}
+
+      const _t = typeof t === "function" ? t : (_k, fb) => fb;
+      if (!detectedMotherboardModel && invoke) {
+        try {
+          detectedMotherboardModel = (await invoke("get_motherboard_model")) || "";
+        } catch (_) {}
+      }
+      if (lblMb) {
+        const prefix = _t("bios.mb_prefix", "Материнская плата:");
+        const unknown = _t("bios.mb_unknown", "не определена");
+        lblMb.textContent = `${prefix} ${detectedMotherboardModel || unknown}`;
+      }
+      if (modal) modal.classList.add("is-open");
+    });
+  }
+
+  const closeBiosModal = () => {
+    if (modal) modal.classList.remove("is-open");
+  };
+  if (btnOk) btnOk.addEventListener("click", closeBiosModal);
+  if (modal) {
+    modal.addEventListener("click", (ev) => {
+      if (ev.target === modal) closeBiosModal();
+    });
+  }
+  if (btnMore) {
+    btnMore.addEventListener("click", async () => {
+      const isEn = typeof currentLang !== "undefined" && currentLang === "en";
+      const baseQuery = isEn
+        ? "how to enable USB power when PC is off disable ErP BIOS"
+        : "как включить питание USB при выключенном ПК отключить ErP BIOS";
+      const fullQuery = detectedMotherboardModel
+        ? `${baseQuery} ${detectedMotherboardModel}`
+        : baseQuery;
+      const url = `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
+      if (invoke) {
+        try {
+          await invoke("open_browser_url", { url });
+        } catch (_) {
+          window.open(url, "_blank");
+        }
+      } else {
+        window.open(url, "_blank");
+      }
+    });
+  }
 }
 
 /**
@@ -538,7 +718,7 @@ async function toggleAutostart(enabled) {
 
 let availablePortsList = [];
 let detectedHardwareModel = "";
-let detectedFirmwareVersion = "1.1.0";
+let detectedFirmwareVersion = "";
 let connectedPort = "";
 let hasAutoWokenTvOnce = false;
 
@@ -591,10 +771,12 @@ function populateProfiles(profiles, options = {}) {
   const profCount = document.getElementById("prof-count");
   if (profCount) profCount.textContent = tvProfiles.length;
 
-  const targetId = (appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "universal_hdmi_cec";
+  const targetId = (currentProfile && currentProfile.id)
+    ? currentProfile.id
+    : ((appConfig && appConfig.active_profile_id) ? appConfig.active_profile_id : "universal_hdmi_cec");
   if (tvProfiles.length > 0 && !currentProfile) {
     const def = tvProfiles.find(p => p.id === targetId) || tvProfiles[0];
-    selectProfileById(def.id, options);
+    selectProfileById(def.id, { ...options, skipSave: true });
   } else {
     const opts = tvProfiles.map(p => ({ value: p.id, label: `${p.brand} — ${profileShortName(p)}` }));
     createCustomSelect("csel-profile", opts, targetId, (val) => selectProfileById(val));
@@ -656,6 +838,12 @@ function selectProfileById(id, options = {}) {
   const prof = tvProfiles.find(p => p.id === id);
   if (!prof) return;
   currentProfile = prof;
+  if (appConfig && appConfig.active_profile_id !== prof.id) {
+    appConfig.active_profile_id = prof.id;
+    if (!options.skipSave && invoke) {
+      invoke("save_app_config", { newCfg: appConfig }).catch(() => {});
+    }
+  }
 
   const opts = tvProfiles.map(p => ({ value: p.id, label: `${p.brand} — ${profileShortName(p)}` }));
   createCustomSelect("csel-profile", opts, prof.id, (val) => selectProfileById(val));
@@ -839,6 +1027,11 @@ async function connectDeviceNow(forceSwitch = false) {
     updateDynamicWindowTitle();
     addLog(`[USB] Контроллер подключен: ${selectedPort}`, "log-ok");
     autoSetupTv({ skipState: true });
+    setTimeout(() => {
+      if (isConnected && invoke) {
+        invoke("send_cec_command", { cmd: "INFO" }).catch(() => {});
+      }
+    }, 250);
     if (appConfig && appConfig.auto_wake_tv_on_start && !hasAutoWokenTvOnce) {
       hasAutoWokenTvOnce = true;
       setTimeout(() => wakeAndSelectTv(), 500);
@@ -857,11 +1050,14 @@ async function disconnectDeviceNow() {
   if (typeof window.finishStartupGrace === "function") window.finishStartupGrace();
   await invoke("disconnect_esp32");
   connectedPort = "";
+  detectedHardwareModel = "";
+  detectedFirmwareVersion = "";
   lastHwStatus.tvConnected = false;
   lastHwStatus.lineHigh = false;
   updateConnectionButtonsState(false);
   updateHardwareStatusUi({ connected: false, error: "Адаптер отключен" }, { checked: false });
   updateDynamicWindowTitle();
+  if (typeof checkFirmwareUpdatesUi === "function") checkFirmwareUpdatesUi(true);
   addLog("[USB] Контроллер отключен вручную", "log-info");
 }
 
@@ -870,6 +1066,147 @@ async function toggleConnect() {
     await disconnectDeviceNow();
   } else {
     await connectDeviceNow(true);
+  }
+}
+
+const STANDALONE_HID_BUTTONS = [
+  { hex: "0x00", ru: "OK (Ввод)", en: "OK (Select)" },
+  { hex: "0x0D", ru: "Назад (Exit / Return)", en: "Back (Exit / Return)" },
+  { hex: "0x71", ru: "Синяя (Blue)", en: "Blue" },
+  { hex: "0x72", ru: "Красная (Red)", en: "Red" },
+  { hex: "0x73", ru: "Зеленая (Green)", en: "Green" },
+  { hex: "0x74", ru: "Желтая (Yellow)", en: "Yellow" },
+  { hex: "0x09", ru: "Меню (Menu)", en: "Menu" },
+  { hex: "0x0B", ru: "Info", en: "Info" }
+];
+
+const STANDALONE_HID_ACTIONS = [
+  { value: "NONE", ru: "Отключено", en: "Disabled" },
+  { value: "MOUSE_TOGGLE", ru: "Переключить Мышь / Смарт-пульт", en: "Toggle Mouse / Smart Remote" },
+  { value: "WIN_OSK", ru: "Экранная клавиатура (Win+Ctrl+O)", en: "Windows OSK (Win+Ctrl+O)" },
+  { value: "AUTO_LOGIN", ru: "Макрос: Логин одной кнопкой", en: "Macro: One-Button Login" },
+  { value: "ENTER", ru: "Клавиша Enter", en: "Enter Key" },
+  { value: "ESC", ru: "Клавиша Esc", en: "Esc Key" },
+  { value: "BACKSPACE", ru: "Клавиша Backspace", en: "Backspace Key" },
+  { value: "TAB", ru: "Клавиша Tab", en: "Tab Key" },
+  { value: "SPACE", ru: "Клавиша Пробел", en: "Space Key" },
+  { value: "RIGHT_CLICK", ru: "Правый клик мыши (ПКМ)", en: "Mouse Right Click" },
+  { value: "DOUBLE_CLICK", ru: "Двойной клик (2x ЛКМ)", en: "Mouse Double Click" },
+  { value: "CTRL_C", ru: "Ctrl + C", en: "Ctrl + C" },
+  { value: "CTRL_V", ru: "Ctrl + V", en: "Ctrl + V" },
+  { value: "CTRL_A", ru: "Ctrl + A", en: "Ctrl + A" },
+  { value: "ALT_TAB", ru: "Alt + Tab", en: "Alt + Tab" },
+  { value: "WIN_L", ru: "Блокировка ПК (Win + L)", en: "Lock PC (Win + L)" }
+];
+
+let appToastTimer = null;
+function showAppToast(message, isError = false) {
+  const el = document.getElementById("app-toast");
+  if (!el) return;
+  el.textContent = String(message || "");
+  el.classList.toggle("is-error", !!isError);
+  el.classList.add("is-visible");
+  if (appToastTimer) clearTimeout(appToastTimer);
+  appToastTimer = setTimeout(() => {
+    el.classList.remove("is-visible");
+  }, 2800);
+}
+
+function setStandaloneHidDirty(dirty) {
+  const btn = document.getElementById("btn-save-standalone-hid");
+  if (!btn) return;
+  btn.disabled = !dirty;
+  btn.classList.toggle("accent-blue", !!dirty);
+}
+
+function updateStandaloneHidBodyVisibility() {
+  const chk = document.getElementById("chk-standalone-hid");
+  const body = document.getElementById("wrap-standalone-hid-body");
+  if (!body) return;
+  body.classList.toggle("is-collapsed", !(chk && chk.checked));
+}
+
+function renderStandaloneHidConfig() {
+  if (!appConfig) return;
+  const chk = document.getElementById("chk-standalone-hid");
+  if (chk) chk.checked = !!appConfig.standalone_hid_enabled;
+  updateStandaloneHidBodyVisibility();
+
+  const inp = document.getElementById("inp-standalone-pin");
+  if (inp) inp.value = appConfig.standalone_login_pin || "";
+
+  const list = document.getElementById("standalone-hid-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const isEn = typeof currentLang !== "undefined" && currentLang === "en";
+  const maps = appConfig.standalone_hid_mappings || {};
+  const opts = STANDALONE_HID_ACTIONS.map(a => ({ value: a.value, label: isEn ? a.en : a.ru }));
+
+  STANDALONE_HID_BUTTONS.forEach((btn) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.gap = "8px";
+    row.style.alignItems = "center";
+
+    const lbl = document.createElement("span");
+    lbl.style.fontSize = "12px";
+    lbl.style.minWidth = "142px";
+    lbl.style.color = "var(--text-primary)";
+    lbl.textContent = isEn ? btn.en : btn.ru;
+
+    const sel = document.createElement("div");
+    sel.className = "c-select";
+    sel.style.flex = "1";
+    const fallbackDef = btn.hex === "0x00" ? "ENTER" : (btn.hex === "0x0D" ? "ESC" : "NONE");
+    const curVal = maps[btn.hex] || fallbackDef;
+    createCustomSelect(sel, opts, curVal, (val) => {
+      if (!appConfig.standalone_hid_mappings) appConfig.standalone_hid_mappings = {};
+      appConfig.standalone_hid_mappings[btn.hex] = val;
+      setStandaloneHidDirty(true);
+    });
+
+    row.appendChild(lbl);
+    row.appendChild(sel);
+    list.appendChild(row);
+  });
+
+  setStandaloneHidDirty(false);
+}
+
+async function saveStandaloneHidConfig(opts = {}) {
+  if (!invoke || !appConfig) return;
+  const chk = document.getElementById("chk-standalone-hid");
+  const inp = document.getElementById("inp-standalone-pin");
+  if (chk) appConfig.standalone_hid_enabled = chk.checked;
+  if (inp) appConfig.standalone_login_pin = inp.value;
+
+  const allowedHex = new Set(STANDALONE_HID_BUTTONS.map(b => b.hex));
+  const cleanedMaps = {};
+  const existingMaps = appConfig.standalone_hid_mappings || {};
+  STANDALONE_HID_BUTTONS.forEach((btn) => {
+    const fallbackDef = btn.hex === "0x00" ? "ENTER" : (btn.hex === "0x0D" ? "ESC" : "NONE");
+    cleanedMaps[btn.hex] = existingMaps[btn.hex] || fallbackDef;
+  });
+  Object.keys(cleanedMaps).forEach((k) => {
+    if (!allowedHex.has(k)) delete cleanedMaps[k];
+  });
+  appConfig.standalone_hid_mappings = cleanedMaps;
+
+  try {
+    await invoke("save_app_config", { newCfg: appConfig });
+    setStandaloneHidDirty(false);
+    const _t = typeof t === "function" ? t : (_k, fb) => fb;
+    const toastMsg = _t(
+      opts.toastKey || "settings.standalone_saved_toast",
+      opts.toastFallback || "HID-профиль записан в контроллер"
+    );
+    showAppToast(toastMsg, false);
+    if (typeof addLog === "function") {
+      addLog(_t("settings.standalone_saved_log", "[HID] Автономный USB HID-профиль сохранён и отправлен в контроллер."), "log-ok");
+    }
+  } catch (e) {
+    showAppToast(String(e), true);
+    if (typeof addLog === "function") addLog(`[HID Ошибка] ${e}`, "log-err");
   }
 }
 
@@ -984,7 +1321,15 @@ async function applyPaAndName() {
 
 async function wakeAndSelectTv() {
   setHumanStatus("online", "Готово", "Включение телевизора");
-  await sendCmd("ACTIVE");
+  const seq = (currentProfile && Array.isArray(currentProfile.wake_sequence) && currentProfile.wake_sequence.length > 0)
+    ? currentProfile.wake_sequence
+    : ["ACTIVE"];
+  for (let i = 0; i < seq.length; i++) {
+    await sendCmd(seq[i]);
+    if (i + 1 < seq.length) {
+      await new Promise(r => setTimeout(r, 120));
+    }
+  }
   const tvTarget = (appConfig && appConfig.tv_audio_device) ? appConfig.tv_audio_device.trim() : "";
   if (appConfig && appConfig.auto_audio_switch && tvTarget && invoke) {
     await invoke("set_audio_device", { target: tvTarget }).catch(() => {});
@@ -1149,7 +1494,9 @@ function updateDynamicWindowTitle() {
 
   const fwBadge = document.getElementById("lbl-fw-chip-badge");
   if (fwBadge) {
-    fwBadge.textContent = `${model} • FW v${detectedFirmwareVersion}`;
+    fwBadge.textContent = detectedFirmwareVersion
+      ? `${model} • FW v${detectedFirmwareVersion}`
+      : `${model} • FW —`;
   }
 
   const adapterStatus = isConnected
@@ -1200,6 +1547,9 @@ window.addEventListener("DOMContentLoaded", async () => {
             detectedFirmwareVersion = parts[4].trim();
           }
           updateDynamicWindowTitle();
+          if (typeof checkFirmwareUpdatesUi === "function") {
+            checkFirmwareUpdatesUi(true);
+          }
         }
       }
 
@@ -1292,6 +1642,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       addLog(`[Система] ${msg}`, "log-ok");
     }),
 
+    listen("request-close-confirm", () => {
+      openCloseConfirmModal();
+    }),
+
     listen("key-profile-changed", (ev) => {
       const newCfg = ev.payload;
       if (!newCfg) return;
@@ -1352,7 +1706,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       ports,
       scripts,
       logPaths,
-      autostartEnabled
+      autostartEnabled,
+      osLabel
     ] = await Promise.all([
       invoke("get_app_version").catch(() => null),
       invoke("get_app_config").catch(() => null),
@@ -1361,8 +1716,14 @@ window.addEventListener("DOMContentLoaded", async () => {
       invoke("list_custom_scripts").catch(() => []),
       invoke("get_log_paths").catch(() => null),
       invoke("get_autostart").catch(() => false),
+      invoke("get_os_platform_label").catch(() => null),
       listenPromise
     ]);
+
+    if (osLabel) {
+      const lblOs = document.getElementById("lbl-os-platform");
+      if (lblOs) lblOs.textContent = osLabel;
+    }
 
     if (Array.isArray(scripts)) {
       customScripts = scripts;
@@ -1410,9 +1771,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("chk-disp-sleep").checked = !!appConfig.display_disable_on_sleep;
       const chkHud = document.getElementById("chk-hud-overlay");
       if (chkHud) chkHud.checked = appConfig.hud_enabled !== false;
+      renderCloseBehaviorSelect();
 
       const chkTel = document.getElementById("chk-telemetry-opt-in");
       if (chkTel) chkTel.checked = !!appConfig.telemetry_opt_in;
+      if (typeof updateTelemetryEndpointVisibility === "function") updateTelemetryEndpointVisibility();
       const inpTel = document.getElementById("inp-telemetry-endpoint");
       if (inpTel) inpTel.value = appConfig.telemetry_endpoint || "";
       updateAudioDevicesVisibility();
@@ -1426,6 +1789,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       const chkPcOff = document.getElementById("chk-pc-off-on-tv");
       if (chkPcOff) chkPcOff.checked = !!appConfig.power_off_pc_on_tv_off;
       renderPcOffModeSelect();
+      renderStandaloneHidConfig();
     }
 
     populateProfiles(profiles, { skipMapper: true });

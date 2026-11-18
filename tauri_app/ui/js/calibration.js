@@ -190,6 +190,9 @@ async function finishCalibration() {
       else appConfig.key_mappings[k] = "NONE";
     }
   });
+  if (appConfig.active_key_profile === "custom") {
+    appConfig.custom_key_mappings = Object.assign({}, appConfig.key_mappings);
+  }
 
   isCalibratingRemote = false;
   hideCalibrationModalUi();

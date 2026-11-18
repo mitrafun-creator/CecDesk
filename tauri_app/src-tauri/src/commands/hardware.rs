@@ -67,11 +67,10 @@ pub(crate) fn classify_port_info(
     };
 
     let desc_u = desc.to_uppercase();
-    let mut is_pref = desc_u.contains("E8:3D:C1:F2:DE:08")
-        || (matched_vid == "303A" && !desc_u.contains("D0:CF:13:07:AC:C0"))
+    let mut is_pref = matched_vid == "303A"
+        || matched_vid == "2E8A"
         || desc_u.contains("CECDESK")
-        || desc_u.contains("CEC-EMU")
-        || matched_vid == "2E8A";
+        || desc_u.contains("CEC-EMU");
 
     if matched_vid.is_empty() {
         if let Some(sub_u) = usb_reg_hint {
@@ -79,19 +78,10 @@ pub(crate) fn classify_port_info(
             if sub_u.contains("2E8A") {
                 matched_vid = "2E8A".to_string();
                 is_pref = true;
-            } else if sub_u.contains("303A") || sub_u.contains("E8:3D:C1:F2:DE:08") {
+            } else if sub_u.contains("303A") {
                 matched_vid = "303A".to_string();
                 is_pref = true;
             }
-        }
-        if !is_pref && port_upper == "COM10" {
-            matched_vid = "2E8A".to_string();
-            is_pref = true;
-            is_usb = true;
-        } else if !is_pref && port_upper == "COM6" {
-            matched_vid = "303A".to_string();
-            is_pref = true;
-            is_usb = true;
         }
     }
 
@@ -100,7 +90,7 @@ pub(crate) fn classify_port_info(
     }
 
     let final_desc = if is_pref {
-        if matched_vid == "2E8A" || desc_u.contains("2E8A") || desc_u.contains("RP2040") || port_upper == "COM10" {
+        if matched_vid == "2E8A" || desc_u.contains("2E8A") || desc_u.contains("RP2040") {
             format!("CecDesk Dongle RP2040-Zero ({})", port_name)
         } else {
             format!("CecDesk Dongle ESP32-S3 ({})", port_name)
@@ -313,10 +303,9 @@ pub async fn connect_esp32(
                 } else {
                     let _ = p.write_all(b"PC_OFF_TV_STANDBY 0\n");
                 }
-                if cfg_snapshot.opto_pwr_pin > 0 {
-                    let pin_cmd = format!("PC_PWR_PIN {}\n", cfg_snapshot.opto_pwr_pin);
-                    let _ = p.write_all(pin_cmd.as_bytes());
-                }
+                let pin_cmd = format!("PC_PWR_PIN {}\n", cfg_snapshot.opto_pwr_pin);
+                let _ = p.write_all(pin_cmd.as_bytes());
+                sync_standalone_hid_to_port(p, &cfg_snapshot);
                 let _ = p.write_all(b"INFO\n");
                 let _ = p.write_all(b"STATE\n");
                 let _ = p.flush();
@@ -337,6 +326,41 @@ pub async fn connect_esp32(
     .map_err(|e| e.to_string())?
 }
 
+/// Синхронизирует профиль автономного USB HID-режима в LittleFS контроллера без перепрошивки.
+pub fn sync_standalone_hid_to_port(port: &mut dyn Write, cfg: &crate::types::AppConfig) {
+    let _ = port.write_all(b"HID_CFG_BEGIN\n");
+    let en_cmd = format!(
+        "HID_CFG_EN {}\n",
+        if cfg.standalone_hid_enabled { 1 } else { 0 }
+    );
+    let _ = port.write_all(en_cmd.as_bytes());
+    let clean_pin: String = cfg
+        .standalone_login_pin
+        .chars()
+        .filter(|c| c.is_ascii() && !matches!(c, '\r' | '\n'))
+        .take(32)
+        .collect();
+    if !clean_pin.is_empty() {
+        let pin_cmd = format!("HID_CFG_PIN {}\n", clean_pin);
+        let _ = port.write_all(pin_cmd.as_bytes());
+    }
+    let mut pairs: Vec<(&String, &String)> = cfg.standalone_hid_mappings.iter().collect();
+    pairs.sort_by(|a, b| a.0.cmp(b.0));
+    for (hex_key, action) in pairs.into_iter().take(24) {
+        let clean_hex = hex_key.trim().trim_start_matches("0x").trim_start_matches("0X");
+        let clean_act: String = action
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .take(19)
+            .collect();
+        if !clean_hex.is_empty() && !clean_act.is_empty() {
+            let map_cmd = format!("HID_CFG_MAP {} {}\n", clean_hex, clean_act);
+            let _ = port.write_all(map_cmd.as_bytes());
+        }
+    }
+    let _ = port.write_all(b"HID_CFG_COMMIT\n");
+}
+
 #[tauri::command]
 pub async fn disconnect_esp32(state: State<'_, AppState>) -> Result<String, String> {
     let st = state.inner().clone();
@@ -346,6 +370,7 @@ pub async fn disconnect_esp32(state: State<'_, AppState>) -> Result<String, Stri
         let mut guard = safe_lock(&st.serial_writer);
         if let Some(ref mut port) = *guard {
             let _ = port.write_all(b"REMOTE_OFF\n");
+            let _ = port.write_all(b"HOST_BYE\n");
             let _ = port.flush();
             std::thread::sleep(Duration::from_millis(180));
         }

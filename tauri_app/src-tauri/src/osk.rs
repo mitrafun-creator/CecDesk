@@ -21,8 +21,9 @@ pub fn toggle_osk_helper(
 
     if target_state {
         if platform::try_native_osk() {
-            osk_visible.store(false, Ordering::SeqCst);
-            return false;
+            osk_visible.store(true, Ordering::SeqCst);
+            let _ = app.emit("osk-state-changed", true);
+            return true;
         }
         if let Some((osk_win, _)) = crate::window_manager::get_or_create_osk_window(app) {
             // Если система использует собственную нативную клавиатуру (например, SteamOS / Steam Big Picture: steam://open/keyboard),

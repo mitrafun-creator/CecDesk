@@ -129,6 +129,7 @@ function applyKeyPreset(presetKey, btnEl) {
 
   const hudTitle = typeof t === "function" ? t("keys.preset_hud_title", "Профиль кнопок") : "Профиль кнопок";
   const changedProfile = appConfig.active_key_profile !== presetKey;
+  const changedMappings = JSON.stringify(appConfig.key_mappings || {}) !== JSON.stringify(targetMappings || {});
   appConfig.active_key_profile = presetKey;
   appConfig.key_mappings = targetMappings;
 
@@ -139,8 +140,12 @@ function applyKeyPreset(presetKey, btnEl) {
   if (typeof renderDynamicRemote === "function") renderDynamicRemote();
   captureSavedState();
 
-  if (changedProfile) {
-    addLog(`[Профиль кнопок] Активирован: ${localizedName}`, "log-ok");
+  if (changedProfile || changedMappings) {
+    if (changedProfile) {
+      addLog(`[Профиль кнопок] Активирован: ${localizedName}`, "log-ok");
+    } else {
+      addLog(`[Профиль кнопок] Сброшен к шаблону: ${localizedName}`, "log-ok");
+    }
 
     if (invoke) {
       invoke("save_app_config", { newCfg: appConfig }).catch(e => {
@@ -148,7 +153,7 @@ function applyKeyPreset(presetKey, btnEl) {
       });
     }
 
-    if (window.__TAURI__ && (!appConfig || appConfig.hud_enabled !== false)) {
+    if (changedProfile && window.__TAURI__ && (!appConfig || appConfig.hud_enabled !== false)) {
       window.__TAURI__.event.emit("show-hud", {
         icon: hudIcon,
         title: hudTitle,
@@ -434,8 +439,6 @@ async function saveMapperConfig() {
   if (appConfig.active_key_profile === "custom") {
     appConfig.custom_key_mappings = Object.assign({}, appConfig.key_mappings);
   }
-  appConfig.osd_name = document.getElementById("inp-osd").value.trim();
-  appConfig.pa_override = selectedPa;
   if (currentProfile) appConfig.active_profile_id = currentProfile.id;
 
   const chkRemote = document.getElementById("chk-remote-os");

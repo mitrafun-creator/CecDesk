@@ -53,7 +53,16 @@ async function dismissCrashBanner() {
   }
 }
 
+function updateTelemetryEndpointVisibility() {
+  const chk = document.getElementById("chk-telemetry-opt-in");
+  const wrap = document.getElementById("wrap-telemetry-endpoint");
+  if (!wrap) return;
+  wrap.classList.toggle("is-collapsed", !(chk && chk.checked));
+}
+window.updateTelemetryEndpointVisibility = updateTelemetryEndpointVisibility;
+
 async function onTelemetryOptInChanged() {
+  updateTelemetryEndpointVisibility();
   if (!invoke || !appConfig) return;
   const chk = document.getElementById("chk-telemetry-opt-in");
   const statusEl = document.getElementById("lbl-telemetry-status");
@@ -282,6 +291,9 @@ function importXmlProfileStub() {
         let count = 0;
         if (!appConfig) appConfig = {};
         if (!appConfig.key_mappings) appConfig.key_mappings = {};
+        Object.keys(appConfig.key_mappings).forEach((k) => {
+          appConfig.key_mappings[k] = "NONE";
+        });
         mappings.forEach((m) => {
           const code = m.getAttribute("code");
           const act = m.getAttribute("action");

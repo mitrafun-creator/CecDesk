@@ -134,6 +134,14 @@ pub struct AppConfig {
     #[serde(default)]
     pub opto_pwr_pin: u8,
 
+    // Автономный USB HID-режим (когда ПК включён, но CecDesk не запущен)
+    #[serde(default)]
+    pub standalone_hid_enabled: bool,
+    #[serde(default)]
+    pub standalone_login_pin: String,
+    #[serde(default = "default_standalone_hid_mappings")]
+    pub standalone_hid_mappings: HashMap<String, String>,
+
     #[serde(default = "default_language")]
     pub language: String,
 
@@ -158,6 +166,8 @@ pub struct AppConfig {
     pub display_disable_on_sleep: bool,  // #9 Отключение дисплея ТВ в Windows при сне
     #[serde(default = "default_true")]
     pub hud_enabled: bool,               // Экранные уведомления (HUD)
+    #[serde(default = "default_close_behavior")]
+    pub close_behavior: String,          // Поведение при закрытии окна ("ask" / "tray" / "exit")
 
     // ==================== ПРЕДБЕТА: ТЕЛЕМЕТРИЯ И ОБНОВЛЕНИЯ ====================
     #[serde(default)]
@@ -191,6 +201,9 @@ impl Default for AppConfig {
             power_off_pc_on_tv_off: false,
             pc_off_action: "SLEEP".to_string(),
             opto_pwr_pin: 0,
+            standalone_hid_enabled: false,
+            standalone_login_pin: String::new(),
+            standalone_hid_mappings: default_standalone_hid_mappings(),
             language: "ru".to_string(),
             custom_profile_names: HashMap::new(),
             calibrated_keys: vec![
@@ -211,6 +224,7 @@ impl Default for AppConfig {
             auto_healing_usb: true,
             display_disable_on_sleep: false,
             hud_enabled: true,
+            close_behavior: default_close_behavior(),
 
             install_id: String::new(),
             telemetry_opt_in: false,
@@ -227,4 +241,19 @@ pub struct CustomScriptInfo {
     pub name: String,
     pub filename: String,
     pub ext: String,
+}
+
+pub fn default_close_behavior() -> String {
+    "ask".to_string()
+}
+
+pub fn default_standalone_hid_mappings() -> HashMap<String, String> {
+    let mut m = HashMap::new();
+    m.insert("0x00".to_string(), "ENTER".to_string());
+    m.insert("0x0D".to_string(), "ESC".to_string());
+    m.insert("0x71".to_string(), "MOUSE_TOGGLE".to_string());
+    m.insert("0x72".to_string(), "WIN_OSK".to_string());
+    m.insert("0x73".to_string(), "AUTO_LOGIN".to_string());
+    m.insert("0x74".to_string(), "TAB".to_string());
+    m
 }

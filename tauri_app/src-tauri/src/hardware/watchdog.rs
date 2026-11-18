@@ -37,18 +37,17 @@ pub fn spawn_usb_watchdog(
                         if p.port_name.to_uppercase() == "COM1" {
                             continue;
                         }
-                        let desc = match &p.port_type {
+                        let is_match = match &p.port_type {
                             serialport::SerialPortType::UsbPort(usb) => {
-                                format!("{:04X}:{:04X}", usb.vid, usb.pid)
+                                let s = usb.serial_number.as_deref().unwrap_or("").to_uppercase();
+                                usb.vid == 0x303A
+                                    || usb.vid == 0x2E8A
+                                    || s.contains("CECDESK")
+                                    || s.contains("CEC-EMU")
                             }
-                            _ => String::new(),
+                            _ => false,
                         };
-                        // Распознаем USB VID:PID ESP32-S3 (303A) и RP2040-Zero (2E8A)
-                        if desc.contains("303A")
-                            || desc.contains("2E8A")
-                            || p.port_name == "COM6"
-                            || p.port_name == "COM10"
-                        {
+                        if is_match {
                             let _ = app_handle.emit("cec-auto-reconnecting", &p.port_name);
                             break;
                         }

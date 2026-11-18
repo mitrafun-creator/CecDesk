@@ -235,16 +235,20 @@ async function handleKeyPress(action, displayLabel) {
 
   if (action === "MODE_LANG") {
     currentMode = (currentMode === "RU") ? "EN" : "RU";
+    window._oskLastAlphaMode = currentMode;
     renderKeyboard();
     return;
   }
   if (action === "MODE_SYM") {
+    if (currentMode === "RU" || currentMode === "EN") {
+      window._oskLastAlphaMode = currentMode;
+    }
     currentMode = "SYM";
     renderKeyboard();
     return;
   }
   if (action === "MODE_ABC") {
-    currentMode = "RU";
+    currentMode = window._oskLastAlphaMode || "RU";
     renderKeyboard();
     return;
   }

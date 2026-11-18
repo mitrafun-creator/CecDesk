@@ -151,7 +151,24 @@ fn main() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
-                    let _ = window.hide();
+                    let behavior = window
+                        .try_state::<AppState>()
+                        .map(|st| safe_lock(&st.config).close_behavior.clone())
+                        .unwrap_or_else(|| "ask".to_string());
+                    match behavior.as_str() {
+                        "exit" => {
+                            window.app_handle().exit(0);
+                        }
+                        "tray" => {
+                            let _ = window.hide();
+                        }
+                        _ => {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                            let _ = window.emit("request-close-confirm", ());
+                        }
+                    }
                 }
             }
         })
@@ -393,8 +410,11 @@ fn main() {
             commands::app_win_minimize,
             commands::app_win_toggle_maximize,
             commands::app_win_hide_to_tray,
+            commands::app_win_quit,
             commands::set_window_title,
             commands::get_app_version,
+            commands::get_os_platform_label,
+            commands::get_motherboard_model,
             commands::open_browser_url,
             commands::create_support_bundle,
             commands::open_support_bundle_folder,
@@ -445,15 +465,12 @@ fn release_device_on_exit(app_handle: &tauri::AppHandle, exit_released: &AtomicB
         if let Some(st) = app_handle.try_state::<AppState>() {
             st.manual_disconnect.store(true, Ordering::SeqCst);
             st.connection_id.fetch_add(1, Ordering::SeqCst);
-            let skip_standby = st.skip_standby_on_exit.load(Ordering::SeqCst);
-            let stby_on_exit = !skip_standby && safe_lock(&st.config).auto_standby_tv_on_exit;
+            let _skip_standby = st.skip_standby_on_exit.load(Ordering::SeqCst);
             let mut guard = safe_lock(&st.serial_writer);
             if let Some(ref mut port) = *guard {
                 use std::io::Write;
                 let _ = port.write_all(b"REMOTE_OFF\n");
-                if stby_on_exit {
-                    let _ = port.write_all(b"OFF\n");
-                }
+                let _ = port.write_all(b"HOST_BYE\n");
                 let _ = port.flush();
                 std::thread::sleep(Duration::from_millis(180));
             }

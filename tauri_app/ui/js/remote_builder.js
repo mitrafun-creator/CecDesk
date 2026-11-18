@@ -11,8 +11,9 @@ function pulseVirtualRemoteButton(codeHex) {
   const norm = codeHex.toUpperCase().startsWith("0X")
     ? "0x" + codeHex.substring(2).toUpperCase()
     : "0x" + codeHex.toUpperCase();
-  const targetId = norm === "0x46" ? "rem-btn-0x44" : `rem-btn-${norm}`;
-  const btn = document.getElementById(targetId);
+  const exactBtn = document.getElementById(`rem-btn-${norm}`);
+  const targetId = exactBtn ? `rem-btn-${norm}` : (norm === "0x46" ? "rem-btn-0x44" : `rem-btn-${norm}`);
+  const btn = exactBtn || document.getElementById(targetId);
   if (!btn) return;
 
   btn.classList.add("rem-active");
@@ -35,7 +36,11 @@ function uiOsClick(codeHex, osAction) {
 function uiNumClick(codeHex, defaultAction) {
   pulseVirtualRemoteButton(codeHex);
   const action = (appConfig && appConfig.key_mappings && appConfig.key_mappings[codeHex]) || defaultAction;
-  pressOsKey(action);
+  if (action && action !== "NONE") {
+    pressOsKey(action);
+  } else {
+    sendKey(codeHex.replace("0x", ""));
+  }
 }
 
 function uiRemoteOrOsClick(codeHex) {

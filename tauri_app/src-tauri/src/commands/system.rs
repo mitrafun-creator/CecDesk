@@ -97,6 +97,9 @@ pub async fn save_app_config(
         let pin_changed = prev_cfg.opto_pwr_pin != new_cfg.opto_pwr_pin;
         let name_changed = prev_cfg.osd_name != new_cfg.osd_name;
         let pa_changed = prev_cfg.pa_override != new_cfg.pa_override;
+        let hid_changed = prev_cfg.standalone_hid_enabled != new_cfg.standalone_hid_enabled
+            || prev_cfg.standalone_login_pin != new_cfg.standalone_login_pin
+            || prev_cfg.standalone_hid_mappings != new_cfg.standalone_hid_mappings;
 
         let is_remote_enabled = new_cfg.remote_to_os_enabled;
         let wake_pc_on_tv = new_cfg.wake_pc_on_tv_on;
@@ -116,6 +119,7 @@ pub async fn save_app_config(
             || pin_changed
             || name_changed
             || pa_changed
+            || hid_changed
         {
             if let Ok(mut guard) = st.serial_writer.lock() {
                 if let Some(ref mut port) = *guard {
@@ -190,6 +194,10 @@ pub async fn save_app_config(
                                 log_warn("serial", &format!("Failed writing PA: {}", e));
                             }
                         }
+                    }
+                    if hid_changed {
+                        let cfg_now = safe_lock(&st.config).clone();
+                        crate::commands::hardware::sync_standalone_hid_to_port(port, &cfg_now);
                     }
                     let _ = port.flush();
                 }
@@ -269,8 +277,6 @@ pub async fn set_autostart(enabled: bool) -> Result<(), String> {
 pub async fn show_hud_window(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         if let Some((hud, _)) = crate::window_manager::get_or_create_hud_window(&app) {
-            let _ = hud.show();
-            let _ = hud.unminimize();
             crate::platform::setup_hud_window(&hud);
         }
     })
@@ -323,6 +329,11 @@ pub fn app_win_hide_to_tray(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn app_win_quit(app: AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
 pub fn set_window_title(app: AppHandle, title: String) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.set_title(&title);
@@ -333,6 +344,103 @@ pub fn set_window_title(app: AppHandle, title: String) -> Result<(), String> {
 #[tauri::command]
 pub fn get_app_version() -> String {
     crate::updater::CURRENT_APP_VERSION.to_string()
+}
+
+#[tauri::command]
+pub fn get_os_platform_label() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        "Windows 11 / 10 x64".to_string()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        "Linux / SteamOS x64".to_string()
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        std::env::consts::OS.to_string()
+    }
+}
+
+fn clean_smbios_value(raw: &str) -> String {
+    let trimmed = raw.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if trimmed.is_empty()
+        || lower.contains("to be filled")
+        || lower.contains("default string")
+        || lower == "none"
+        || lower == "n/a"
+        || lower == "system product name"
+        || lower == "system manufacturer"
+    {
+        return String::new();
+    }
+    trimmed.to_string()
+}
+
+fn shorten_board_vendor(vendor: &str) -> String {
+    let lower = vendor.to_ascii_lowercase();
+    if lower.contains("micro-star") || lower == "msi" {
+        "MSI".to_string()
+    } else if lower.contains("asustek") || lower == "asus" {
+        "ASUS".to_string()
+    } else if lower.contains("gigabyte") {
+        "Gigabyte".to_string()
+    } else if lower.contains("asrock") {
+        "ASRock".to_string()
+    } else {
+        vendor.to_string()
+    }
+}
+
+#[tauri::command]
+pub fn get_motherboard_model() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::HKEY_LOCAL_MACHINE;
+        use winreg::RegKey;
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        if let Ok(bios) = hklm.open_subkey("HARDWARE\\DESCRIPTION\\System\\BIOS") {
+            let mfg_raw: String = bios.get_value("BaseBoardManufacturer").unwrap_or_default();
+            let prod_raw: String = bios.get_value("BaseBoardProduct").unwrap_or_default();
+            let mfg = shorten_board_vendor(&clean_smbios_value(&mfg_raw));
+            let prod = clean_smbios_value(&prod_raw);
+            if !prod.is_empty() {
+                if !mfg.is_empty()
+                    && !prod
+                        .to_ascii_lowercase()
+                        .contains(&mfg.to_ascii_lowercase())
+                {
+                    return format!("{} {}", mfg, prod);
+                }
+                return prod;
+            }
+            if !mfg.is_empty() {
+                return mfg;
+            }
+        }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let mfg_raw = std::fs::read_to_string("/sys/class/dmi/id/board_vendor").unwrap_or_default();
+        let prod_raw = std::fs::read_to_string("/sys/class/dmi/id/board_name").unwrap_or_default();
+        let mfg = shorten_board_vendor(&clean_smbios_value(&mfg_raw));
+        let prod = clean_smbios_value(&prod_raw);
+        if !prod.is_empty() {
+            if !mfg.is_empty()
+                && !prod
+                    .to_ascii_lowercase()
+                    .contains(&mfg.to_ascii_lowercase())
+            {
+                return format!("{} {}", mfg, prod);
+            }
+            return prod;
+        }
+        if !mfg.is_empty() {
+            return mfg;
+        }
+    }
+    String::new()
 }
 
 #[tauri::command]

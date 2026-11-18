@@ -165,9 +165,11 @@ function handleShowHudPayload(p) {
     const lbl = document.getElementById("cockpit-sector-label");
     if (lbl && p.title) {
       lbl.textContent = p.title;
-      setTimeout(() => {
+      if (window._hudSectorRestoreTimer) clearTimeout(window._hudSectorRestoreTimer);
+      window._hudSectorRestoreTimer = setTimeout(() => {
         if (isMouseActive) {
-          lbl.textContent = (activeSector === 5 || activeSector === 0) ? "Сектор 5 (Центр)" : `Сектор ${activeSector}`;
+          const dict = HUD_I18N[hudLang] || HUD_I18N.ru;
+          lbl.textContent = (activeSector === 5 || activeSector === 0) ? dict.sector_center : `${dict.sector_n} ${activeSector}`;
         }
       }, 1400);
     }
@@ -178,6 +180,10 @@ function showMouseCockpit() {
   if (hideTimer) {
     clearTimeout(hideTimer);
     hideTimer = null;
+  }
+  if (window._hudWindowHideTimer) {
+    clearTimeout(window._hudWindowHideTimer);
+    window._hudWindowHideTimer = null;
   }
   const mouseCard = document.getElementById("mouse-hud");
   const stdCard = document.getElementById("hud-card");
@@ -193,7 +199,8 @@ function hideMouseCockpit() {
   const mouseCard = document.getElementById("mouse-hud");
   if (mouseCard) mouseCard.classList.remove("visible");
 
-  setTimeout(() => {
+  if (window._hudWindowHideTimer) clearTimeout(window._hudWindowHideTimer);
+  window._hudWindowHideTimer = setTimeout(() => {
     if (invoke && !isMouseActive) {
       invoke("hide_hud_window").catch(() => {});
     }
@@ -256,6 +263,10 @@ function showOverlay(iconId, title, desc, progress) {
   if (mouseCard) mouseCard.classList.remove("visible");
   card.classList.add("visible");
 
+  if (window._hudWindowHideTimer) {
+    clearTimeout(window._hudWindowHideTimer);
+    window._hudWindowHideTimer = null;
+  }
   if (invoke) {
     invoke("show_hud_window").catch(() => {});
   }
@@ -263,7 +274,8 @@ function showOverlay(iconId, title, desc, progress) {
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = setTimeout(() => {
     card.classList.remove("visible");
-    setTimeout(() => {
+    if (window._hudWindowHideTimer) clearTimeout(window._hudWindowHideTimer);
+    window._hudWindowHideTimer = setTimeout(() => {
       if (invoke && !isMouseActive) invoke("hide_hud_window").catch(() => {});
     }, 240);
   }, 1600);

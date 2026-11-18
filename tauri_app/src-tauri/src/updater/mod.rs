@@ -26,7 +26,7 @@ pub const DEFAULT_CATALOG_URL: &str =
     "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/tv_profiles/catalog.json";
 pub const DEFAULT_APP_VERSION_URL: &str =
     "https://raw.githubusercontent.com/mitrafun-creator/CecDesk/main/version.json";
-pub const LATEST_BUNDLED_FW_VERSION: &str = "1.1.0";
+pub const LATEST_BUNDLED_FW_VERSION: &str = "1.1.1";
 
 static APP_UPDATE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 

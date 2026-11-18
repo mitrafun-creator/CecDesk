@@ -818,12 +818,14 @@ pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
         WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
     };
 
-    let osk_w = 1040i32;
-    let osk_h = 380i32;
+    let scale = osk_win.scale_factor().unwrap_or(1.0);
+    let osk_w = (1040.0 * scale).round() as i32;
+    let osk_h = (380.0 * scale).round() as i32;
+    let margin_b = (28.0 * scale).round() as i32;
     let prev_fg = unsafe { GetForegroundWindow() };
 
     let mut pos_x = (1920 - osk_w) / 2;
-    let mut pos_y = 1080 - osk_h - 28;
+    let mut pos_y = 1080 - osk_h - margin_b;
     unsafe {
         let hmon = MonitorFromWindow(
             if !prev_fg.is_null() {
@@ -839,7 +841,7 @@ pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
             if GetMonitorInfoW(hmon, &mut mi) != 0 {
                 let work_w = mi.rcWork.right - mi.rcWork.left;
                 pos_x = mi.rcWork.left + (work_w - osk_w) / 2;
-                pos_y = mi.rcWork.bottom - osk_h - 28;
+                pos_y = mi.rcWork.bottom - osk_h - margin_b;
             }
         }
     }
@@ -858,13 +860,16 @@ pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
         unsafe {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
 
+            static SUBCLASS_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             static PREV_OSK_HWND: AtomicIsize = AtomicIsize::new(0);
-            let hwnd_val = hwnd as isize;
-            if PREV_OSK_HWND.load(Ordering::SeqCst) != hwnd_val {
-                let old_proc =
-                    SetWindowLongPtrW(hwnd, GWL_WNDPROC, osk_subclass_proc as *const () as isize);
-                PREV_OSK_WNDPROC.store(old_proc, Ordering::SeqCst);
-                PREV_OSK_HWND.store(hwnd_val, Ordering::SeqCst);
+            if let Ok(_guard) = SUBCLASS_LOCK.lock() {
+                let hwnd_val = hwnd as isize;
+                if PREV_OSK_HWND.load(Ordering::SeqCst) != hwnd_val {
+                    let old_proc =
+                        SetWindowLongPtrW(hwnd, GWL_WNDPROC, osk_subclass_proc as *const () as isize);
+                    PREV_OSK_WNDPROC.store(old_proc, Ordering::SeqCst);
+                    PREV_OSK_HWND.store(hwnd_val, Ordering::SeqCst);
+                }
             }
 
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
@@ -982,15 +987,14 @@ pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
         WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
     };
 
-    let _ = hud_win.show();
-    let _ = hud_win.unminimize();
-
-    let hud_w = 480i32;
-    let hud_h = 170i32;
+    let scale = hud_win.scale_factor().unwrap_or(1.0);
+    let hud_w = (480.0 * scale).round() as i32;
+    let hud_h = (170.0 * scale).round() as i32;
+    let margin_t = (36.0 * scale).round() as i32;
 
     // Сначала пробуем монитор по текущему положению курсора, иначе берем Primary (ТВ 1920x1080)
     let mut pos_x = (1920 - hud_w) / 2;
-    let mut pos_y = 36i32;
+    let mut pos_y = margin_t;
     unsafe {
         let mut pt: POINT = std::mem::zeroed();
         let has_cursor = GetCursorPos(&mut pt) != 0;
@@ -1011,7 +1015,7 @@ pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
             if GetMonitorInfoW(hmon, &mut mi) != 0 {
                 let work_w = mi.rcWork.right - mi.rcWork.left;
                 pos_x = mi.rcWork.left + (work_w - hud_w) / 2;
-                pos_y = mi.rcWork.top + 36;
+                pos_y = mi.rcWork.top + margin_t;
             }
         }
     }

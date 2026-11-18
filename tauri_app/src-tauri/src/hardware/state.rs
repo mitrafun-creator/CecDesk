@@ -25,7 +25,7 @@ pub struct AppState {
     pub mouse_mode_active: Arc<Mutex<bool>>,
     pub last_mouse_activity: Arc<Mutex<Instant>>,
     pub mouse_move_streak: Arc<Mutex<Option<(u8, Instant, u32)>>>,
-    pub back_hold_start: Arc<Mutex<Option<Instant>>>,
+    pub back_hold_start: Arc<Mutex<Option<(Instant, Instant)>>>,
     pub last_seek_press: Arc<Mutex<Option<(u8, Instant, u32)>>>,
     pub osk_visible: Arc<AtomicBool>,
     pub calibration_mode: Arc<AtomicBool>,

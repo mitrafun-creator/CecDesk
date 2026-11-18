@@ -124,23 +124,34 @@ pub fn detect_controller_type_by_port(port_name: &str) -> String {
 
 /// Проверка версии прошивки и готовности встроенного программатора
 pub fn check_firmware_update(detected_fw_ver: &str, port_name: &str) -> FirmwareVersionInfo {
-    let cur = if detected_fw_ver.is_empty() {
-        "1.1.0"
-    } else {
-        detected_fw_ver
-    };
-    let update_available = compare_semver(LATEST_BUNDLED_FW_VERSION, cur) == Ordering::Greater;
+    let cur = detected_fw_ver.trim();
+    let known = !cur.is_empty() && cur != "0.0.0";
+    let update_available =
+        known && compare_semver(LATEST_BUNDLED_FW_VERSION, cur) == Ordering::Greater;
     let ctrl_type = detect_controller_type_by_port(port_name);
+
+    let changelog = if !known {
+        format!(
+            "Контроллер не подключён или версия не определена (в комплекте прошивка v{}).",
+            LATEST_BUNDLED_FW_VERSION
+        )
+    } else if update_available {
+        format!(
+            "Доступна прошивка v{}: автономный USB HID-режим (Смарт-пульт + Мышь), экранная клавиатура и оптопара ПК.",
+            LATEST_BUNDLED_FW_VERSION
+        )
+    } else {
+        format!(
+            "Установлена актуальная прошивка v{} (поддержка автономного HID, оптопары ПК и сценариев сна).",
+            cur
+        )
+    };
 
     FirmwareVersionInfo {
         current_version: cur.to_string(),
         latest_version: LATEST_BUNDLED_FW_VERSION.to_string(),
         update_available,
-        changelog: if update_available {
-            "Доступна прошивка v1.1.0: поддержка оптопары питания ПК (GP1/GPIO5), авто-пробуждение и встроенный загрузчик.".to_string()
-        } else {
-            "Установлена актуальная прошивка v1.1.0 (поддержка оптопары ПК, сценариев сна и встроенного обновления).".to_string()
-        },
+        changelog,
         controller_type: ctrl_type,
         rp2040_uf2_available: find_bundled_rp2040_uf2().is_some(),
         esp32_bin_available: find_bundled_esp32_bin().is_some(),
@@ -321,14 +332,15 @@ fn flash_esp32_serial_ota(
     let wait_for_reply =
         |reader: &mut BufReader<Box<dyn serialport::SerialPort>>, expected: &str, timeout_ms: u64| -> Result<(), String> {
             let start = Instant::now();
-            let mut line = String::new();
+            let mut raw_buf: Vec<u8> = Vec::with_capacity(128);
             while start.elapsed() < Duration::from_millis(timeout_ms) {
-                line.clear();
-                match reader.read_line(&mut line) {
+                raw_buf.clear();
+                match reader.read_until(b'\n', &mut raw_buf) {
                     Ok(0) => {
                         return Err("Устройство отключилось во время OTA-прошивки (EOF)".to_string());
                     }
                     Ok(_) => {
+                        let line = String::from_utf8_lossy(&raw_buf);
                         let trimmed = line.trim();
                         if trimmed.contains(expected) {
                             return Ok(());
@@ -478,6 +490,8 @@ pub fn flash_controller_firmware_internal(
             "Встроенный образ rp2040_zero_firmware.uf2 не найден в папке bin/firmware.".to_string()
         })?;
         flash_rp2040_uf2(port_name, &uf2_path, app)
+    } else if port_name.trim().is_empty() {
+        Err("Контроллер не обнаружен (нет COM-порта и накопителя RPI-RP2). Для прошивки новой/пустой платы RP2040-Zero зажмите кнопку BOOT на плате, подключите USB-кабель, дождитесь появления диска RPI-RP2 и снова нажмите «Прошить» (или выберите COM-порт для ESP32-S3).".to_string())
     } else {
         let bin_path = find_bundled_esp32_bin().ok_or_else(|| {
             "Встроенный образ esp32_s3_firmware.bin не найден в папке bin/firmware.".to_string()

@@ -14,9 +14,156 @@ use tauri::WebviewWindow;
 
 static STEAM_BP_ACTIVE: AtomicBool = AtomicBool::new(false);
 static INSTANCE_LOCK_FILE: OnceLock<Mutex<fs::File>> = OnceLock::new();
+static UINPUT_DEVICE: OnceLock<Mutex<Option<fs::File>>> = OnceLock::new();
+
+#[repr(C)]
+struct InputId {
+    bustype: u16,
+    vendor: u16,
+    product: u16,
+    version: u16,
+}
+
+#[repr(C)]
+struct UinputUserDev {
+    name: [u8; 80],
+    id: InputId,
+    ff_effects_max: u32,
+    absmax: [i32; 64],
+    absmin: [i32; 64],
+    absfuzz: [i32; 64],
+    absflat: [i32; 64],
+}
+
+#[repr(C)]
+struct LinuxInputEvent {
+    tv_sec: libc::time_t,
+    tv_usec: libc::suseconds_t,
+    type_: u16,
+    code: u16,
+    value: i32,
+}
+
+fn open_uinput_device() -> Option<fs::File> {
+    const UI_SET_EVBIT: libc::c_ulong = 0x4004_5564;
+    const UI_SET_KEYBIT: libc::c_ulong = 0x4004_5565;
+    const UI_SET_RELBIT: libc::c_ulong = 0x4004_5566;
+    const UI_DEV_CREATE: libc::c_ulong = 0x5501;
+
+    const EV_SYN: libc::c_int = 0x00;
+    const EV_KEY: libc::c_int = 0x01;
+    const EV_REL: libc::c_int = 0x02;
+    const REL_X: libc::c_int = 0x00;
+    const REL_Y: libc::c_int = 0x01;
+    const REL_WHEEL: libc::c_int = 0x08;
+    const BTN_LEFT: libc::c_int = 0x110;
+    const BTN_RIGHT: libc::c_int = 0x111;
+
+    let mut file = OpenOptions::new().write(true).open("/dev/uinput").ok()?;
+    let fd = file.as_raw_fd();
+    unsafe {
+        if libc::ioctl(fd, UI_SET_EVBIT, EV_SYN) < 0
+            || libc::ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0
+            || libc::ioctl(fd, UI_SET_EVBIT, EV_REL) < 0
+        {
+            return None;
+        }
+        let _ = libc::ioctl(fd, UI_SET_RELBIT, REL_X);
+        let _ = libc::ioctl(fd, UI_SET_RELBIT, REL_Y);
+        let _ = libc::ioctl(fd, UI_SET_RELBIT, REL_WHEEL);
+        let _ = libc::ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
+        let _ = libc::ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
+        for code in 1..=248 {
+            let _ = libc::ioctl(fd, UI_SET_KEYBIT, code as libc::c_int);
+        }
+
+        let mut uidev: UinputUserDev = std::mem::zeroed();
+        let dev_name = b"CecDesk Virtual Input";
+        uidev.name[..dev_name.len()].copy_from_slice(dev_name);
+        uidev.id = InputId {
+            bustype: 0x03, // BUS_USB
+            vendor: 0x1234,
+            product: 0x5678,
+            version: 1,
+        };
+        let raw_bytes = std::slice::from_raw_parts(
+            &uidev as *const UinputUserDev as *const u8,
+            std::mem::size_of::<UinputUserDev>(),
+        );
+        if file.write_all(raw_bytes).is_err() {
+            return None;
+        }
+        if libc::ioctl(fd, UI_DEV_CREATE) < 0 {
+            return None;
+        }
+    }
+    std::thread::sleep(std::time::Duration::from_millis(60));
+    Some(file)
+}
+
+fn uinput_emit_events(events: &[(u16, u16, i32)]) -> bool {
+    let lock = UINPUT_DEVICE.get_or_init(|| Mutex::new(open_uinput_device()));
+    let Ok(mut guard) = lock.lock() else {
+        return false;
+    };
+    if guard.is_none() {
+        *guard = open_uinput_device();
+    }
+    let Some(ref mut file) = *guard else {
+        return false;
+    };
+    let mut buf = Vec::with_capacity((events.len() + 1) * std::mem::size_of::<LinuxInputEvent>());
+    for &(type_, code, value) in events {
+        let ev = LinuxInputEvent {
+            tv_sec: 0,
+            tv_usec: 0,
+            type_,
+            code,
+            value,
+        };
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                &ev as *const LinuxInputEvent as *const u8,
+                std::mem::size_of::<LinuxInputEvent>(),
+            )
+        };
+        buf.extend_from_slice(bytes);
+    }
+    let syn = LinuxInputEvent {
+        tv_sec: 0,
+        tv_usec: 0,
+        type_: 0,
+        code: 0,
+        value: 0,
+    };
+    let syn_bytes = unsafe {
+        std::slice::from_raw_parts(
+            &syn as *const LinuxInputEvent as *const u8,
+            std::mem::size_of::<LinuxInputEvent>(),
+        )
+    };
+    buf.extend_from_slice(syn_bytes);
+
+    if file.write_all(&buf).is_err() {
+        *guard = None;
+        return false;
+    }
+    true
+}
 
 pub fn create_hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
     Command::new(program)
+}
+
+fn spawn_reaped(mut cmd: Command) -> bool {
+    if let Ok(mut child) = cmd.spawn() {
+        std::thread::spawn(move || {
+            let _ = child.wait();
+        });
+        true
+    } else {
+        false
+    }
 }
 
 fn has_command(cmd: &str) -> bool {
@@ -187,6 +334,9 @@ pub fn shutdown_pc() -> String {
 }
 
 pub fn move_mouse_cursor(dx: i32, dy: i32) {
+    if uinput_emit_events(&[(0x02, 0x00, dx), (0x02, 0x01, dy)]) {
+        return;
+    }
     if has_command("ydotool") {
         let _ = Command::new("ydotool")
             .args(["mousemove", "--", &dx.to_string(), &dy.to_string()])
@@ -199,6 +349,12 @@ pub fn move_mouse_cursor(dx: i32, dy: i32) {
 }
 
 pub fn trigger_mouse_click(is_left: bool) {
+    let btn_code = if is_left { 0x110 } else { 0x111 };
+    if uinput_emit_events(&[(0x01, btn_code, 1)]) {
+        std::thread::sleep(std::time::Duration::from_millis(15));
+        let _ = uinput_emit_events(&[(0x01, btn_code, 0)]);
+        return;
+    }
     if has_command("ydotool") {
         // ydotool click: 0xC0 = Left click (down+up), 0xC1 = Right click (down+up)
         let code = if is_left { "0xC0" } else { "0xC1" };
@@ -210,6 +366,10 @@ pub fn trigger_mouse_click(is_left: bool) {
 }
 
 pub fn trigger_mouse_scroll(up: bool) {
+    let wheel_val = if up { 1 } else { -1 };
+    if uinput_emit_events(&[(0x02, 0x08, wheel_val)]) {
+        return;
+    }
     if has_command("ydotool") {
         let wheel = if up { "1" } else { "-1" };
         let _ = Command::new("ydotool")
@@ -222,6 +382,15 @@ pub fn trigger_mouse_scroll(up: bool) {
 }
 
 pub fn trigger_double_click() {
+    if uinput_emit_events(&[(0x01, 0x110, 1)]) {
+        std::thread::sleep(std::time::Duration::from_millis(15));
+        let _ = uinput_emit_events(&[(0x01, 0x110, 0)]);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let _ = uinput_emit_events(&[(0x01, 0x110, 1)]);
+        std::thread::sleep(std::time::Duration::from_millis(15));
+        let _ = uinput_emit_events(&[(0x01, 0x110, 0)]);
+        return;
+    }
     if has_command("ydotool") {
         let _ = Command::new("ydotool")
             .args(["click", "--repeat", "2", "--next-delay", "50", "0xC0"])
@@ -261,22 +430,27 @@ pub fn jump_cursor_to_sector(sector: u8) -> (i32, i32) {
     (pct_x, pct_y)
 }
 
-/// Отправка одиночной клавиши через ydotool (Linux evdev keycode) или xdotool (X11 keysym)
+/// Отправка одиночной клавиши через /dev/uinput, ydotool или xdotool
 fn send_linux_key(evdev_code: Option<u16>, xdo_key: &str) {
     if let Some(code) = evdev_code {
+        if uinput_emit_events(&[(0x01, code, 1)]) {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            let _ = uinput_emit_events(&[(0x01, code, 0)]);
+            return;
+        }
         if has_command("ydotool") {
             let down = format!("{}:1", code);
             let up = format!("{}:0", code);
-            if Command::new("ydotool")
-                .args(["key", &down, &up])
-                .spawn()
-                .is_ok()
-            {
+            let mut c = Command::new("ydotool");
+            c.args(["key", &down, &up]);
+            if spawn_reaped(c) {
                 return;
             }
         }
     }
-    let _ = Command::new("xdotool").args(["key", xdo_key]).spawn();
+    let mut c = Command::new("xdotool");
+    c.args(["key", xdo_key]);
+    spawn_reaped(c);
 }
 
 pub fn trigger_combo_key(mod_vk: u8, vk: u8) {
@@ -301,6 +475,15 @@ pub fn trigger_combo_key(mod_vk: u8, vk: u8) {
         0x28 => (108, "Down"),   // KEY_DOWN
         _ => return,
     };
+    if uinput_emit_events(&[(0x01, mod_evdev, 1)]) {
+        std::thread::sleep(std::time::Duration::from_millis(8));
+        let _ = uinput_emit_events(&[(0x01, key_evdev, 1)]);
+        std::thread::sleep(std::time::Duration::from_millis(12));
+        let _ = uinput_emit_events(&[(0x01, key_evdev, 0)]);
+        std::thread::sleep(std::time::Duration::from_millis(8));
+        let _ = uinput_emit_events(&[(0x01, mod_evdev, 0)]);
+        return;
+    }
     if has_command("ydotool") {
         let m_dn = format!("{}:1", mod_evdev);
         let k_dn = format!("{}:1", key_evdev);
@@ -430,6 +613,9 @@ pub fn emergency_kill_foreground_task() -> String {
         .args([
             "-c",
             "PID=$(xdotool getwindowpid $(xdotool getwindowfocus) 2>/dev/null); \
+             if [ -z \"$PID\" ] && command -v kdotool >/dev/null 2>&1; then \
+               PID=$(kdotool getactivewindow getwindowpid 2>/dev/null); \
+             fi; \
              if [ -n \"$PID\" ]; then \
                COMM=$(cat /proc/$PID/comm 2>/dev/null | tr '[:upper:]' '[:lower:]'); \
                case \"$COMM\" in \
@@ -476,14 +662,29 @@ pub fn toggle_steam_big_picture() -> String {
 
 pub fn detect_edid_os() -> EdidInfoDto {
     if let Ok(entries) = fs::read_dir("/sys/class/drm") {
+        let mut candidates: Vec<(u8, String, PathBuf)> = Vec::new();
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
-            if name.contains("HDMI") || name.contains("-DP-") {
-                let edid_path = entry.path().join("edid");
-                if let Ok(bytes) = fs::read(&edid_path) {
-                    if let Some(dto) = parse_edid_bytes(&bytes, &name) {
-                        return dto;
-                    }
+            let prio = if name.contains("HDMI") {
+                0u8
+            } else if name.contains("-DP-") {
+                1u8
+            } else {
+                continue;
+            };
+            let status_path = entry.path().join("status");
+            if let Ok(status) = fs::read_to_string(&status_path) {
+                if status.trim() != "connected" {
+                    continue;
+                }
+            }
+            candidates.push((prio, name, entry.path().join("edid")));
+        }
+        candidates.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+        for (_, name, edid_path) in candidates {
+            if let Ok(bytes) = fs::read(&edid_path) {
+                if let Some(dto) = parse_edid_bytes(&bytes, &name) {
+                    return dto;
                 }
             }
         }
@@ -496,14 +697,58 @@ pub fn detect_edid_os() -> EdidInfoDto {
     }
 }
 
+fn parse_pactl_sinks_with_desc() -> Vec<(String, String)> {
+    let mut sinks = Vec::new();
+    if let Ok(out) = Command::new("pactl").args(["list", "sinks"]).output() {
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        let mut cur_name = String::new();
+        let mut cur_desc = String::new();
+        for raw_line in stdout.lines() {
+            let line = raw_line.trim();
+            if line.starts_with("Sink #") {
+                if !cur_name.is_empty() {
+                    let label = if cur_desc.is_empty() {
+                        cur_name.clone()
+                    } else {
+                        format!("{} ({})", cur_desc, cur_name)
+                    };
+                    sinks.push((cur_name.clone(), label));
+                }
+                cur_name.clear();
+                cur_desc.clear();
+            } else if let Some(rest) = line.strip_prefix("Name:") {
+                cur_name = rest.trim().to_string();
+            } else if let Some(rest) = line.strip_prefix("Description:") {
+                cur_desc = rest.trim().to_string();
+            }
+        }
+        if !cur_name.is_empty() {
+            let label = if cur_desc.is_empty() {
+                cur_name.clone()
+            } else {
+                format!("{} ({})", cur_desc, cur_name)
+            };
+            sinks.push((cur_name, label));
+        }
+    }
+    sinks
+}
+
 pub fn switch_audio_endpoint(target: &str) -> Result<String, String> {
     // 1. Переключение через pactl (PipeWire-Pulse на SteamOS и Linux) + перенос всех активных потоков
     if let Ok(out) = Command::new("pactl").args(["list", "short", "sinks"]).output() {
         let stdout = String::from_utf8_lossy(&out.stdout);
-        let q = target.to_lowercase();
+        let raw_q = target.to_lowercase();
+        let mut sink_query = raw_q.clone();
+        if let (Some(l), Some(r)) = (target.rfind('('), target.rfind(')')) {
+            if r > l + 1 {
+                sink_query = target[l + 1..r].trim().to_lowercase();
+            }
+        }
         for line in stdout.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 && line.to_lowercase().contains(&q) {
+            let line_l = line.to_lowercase();
+            if parts.len() >= 2 && (line_l.contains(&sink_query) || line_l.contains(&raw_q)) {
                 let sink_id = parts[0];
                 let sink_name = parts[1];
                 let _ = Command::new("pactl")
@@ -526,22 +771,17 @@ pub fn switch_audio_endpoint(target: &str) -> Result<String, String> {
             }
         }
     }
-    // 2. Fallback через wpctl (WirePlumber / PipeWire)
-    let _ = Command::new("wpctl").args(["set-default", target]).spawn();
-    Ok(format!("Переключен на {}", target))
+    // 2. Fallback через wpctl (только если передан числовой PipeWire Node ID)
+    if target.trim().chars().all(|c| c.is_ascii_digit()) && has_command("wpctl") {
+        let _ = Command::new("wpctl").args(["set-default", target.trim()]).spawn();
+        return Ok(format!("Переключен на PipeWire node {}", target.trim()));
+    }
+    Err(format!("Аудиоустройство '{}' не найдено", target))
 }
 
 pub fn list_audio_endpoints() -> Vec<String> {
-    let mut sinks = Vec::new();
-    if let Ok(out) = Command::new("pactl").args(["list", "short", "sinks"]).output() {
-        let stdout = String::from_utf8_lossy(&out.stdout);
-        for line in stdout.lines() {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 {
-                sinks.push(parts[1].to_string());
-            }
-        }
-    }
+    let detailed = parse_pactl_sinks_with_desc();
+    let mut sinks: Vec<String> = detailed.into_iter().map(|(_, label)| label).collect();
     if sinks.is_empty() {
         sinks.push("alsa_output.hdmi-stereo".to_string());
         sinks.push("Default Audio Sink".to_string());
@@ -549,7 +789,25 @@ pub fn list_audio_endpoints() -> Vec<String> {
     sinks
 }
 
-pub fn switch_display_mode(_extend: bool) {}
+pub fn switch_display_mode(enable: bool) {
+    if has_command("kscreen-doctor") {
+        let action = if enable { "enable" } else { "disable" };
+        let cmd = format!(
+            "OUT=$(kscreen-doctor -o 2>/dev/null | grep -Eo 'HDMI-[A-Za-z0-9-]+' | head -n 1); \
+             if [ -n \"$OUT\" ]; then kscreen-doctor \"output.$OUT.{}\" 2>/dev/null; fi",
+            action
+        );
+        let _ = Command::new("sh").args(["-c", &cmd]).spawn();
+    } else if has_command("xrandr") {
+        let flag = if enable { "--auto" } else { "--off" };
+        let cmd = format!(
+            "OUT=$(xrandr --query 2>/dev/null | awk '/^HDMI.* connected/{{print $1; exit}}'); \
+             if [ -n \"$OUT\" ]; then xrandr --output \"$OUT\" {} 2>/dev/null; fi",
+            flag
+        );
+        let _ = Command::new("sh").args(["-c", &cmd]).spawn();
+    }
+}
 
 /// Прописывает X11-атомы оверлея Gamescope (`STEAM_OVERLAY`, `STEAM_NOTIFICATION`, `STEAM_INPUT_FOCUS`),
 /// чтобы окна программы и HUD-уведомления отображались поверх Steam Big Picture / Gaming Mode.

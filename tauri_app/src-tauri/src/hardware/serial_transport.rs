@@ -120,47 +120,52 @@ pub fn spawn_serial_reader_thread(
                         if let Some((is_on, is_standby_cmd)) = parse_tv_power_event(&trimmed) {
                             let cfg = safe_lock(&cfg_arc).clone();
                             if is_on {
-                                // ТВ ВКЛЮЧЕН
+                                // ТВ ВКЛЮЧЕН (реагируем на смену состояния, а не на каждый повторный опрос)
+                                let transitioned_to_on = !was_tv_on;
                                 was_tv_on = true;
-                                let audio_dev = if cfg.auto_audio_switch && !cfg.tv_audio_device.is_empty() {
-                                    Some(cfg.tv_audio_device.clone())
-                                } else {
-                                    None
-                                };
-                                let disp = cfg.display_disable_on_sleep;
-                                if audio_dev.is_some() || disp {
-                                    thread::spawn(move || {
-                                        if let Some(dev) = audio_dev {
-                                            if let Err(e) = switch_audio_endpoint(&dev) {
-                                                log_warn("audio", &format!("TV-ON audio switch failed: {}", e));
+                                if transitioned_to_on {
+                                    let audio_dev = if cfg.auto_audio_switch && !cfg.tv_audio_device.is_empty() {
+                                        Some(cfg.tv_audio_device.clone())
+                                    } else {
+                                        None
+                                    };
+                                    let disp = cfg.display_disable_on_sleep;
+                                    if audio_dev.is_some() || disp {
+                                        thread::spawn(move || {
+                                            if let Some(dev) = audio_dev {
+                                                if let Err(e) = switch_audio_endpoint(&dev) {
+                                                    log_warn("audio", &format!("TV-ON audio switch failed: {}", e));
+                                                }
                                             }
-                                        }
-                                        if disp {
-                                            switch_display_mode(true);
-                                        }
-                                    });
+                                            if disp {
+                                                switch_display_mode(true);
+                                            }
+                                        });
+                                    }
                                 }
                             } else {
                                 let transitioned_to_off = is_standby_cmd || was_tv_on;
                                 was_tv_on = false;
-                                // ТВ В СПЯЩЕМ РЕЖИМЕ (по команде Standby или статусу 0x90 01/03)
-                                let audio_dev = if cfg.auto_audio_switch && !cfg.fallback_audio_device.is_empty() {
-                                    Some(cfg.fallback_audio_device.clone())
-                                } else {
-                                    None
-                                };
-                                let disp = cfg.display_disable_on_sleep;
-                                if audio_dev.is_some() || disp {
-                                    thread::spawn(move || {
-                                        if let Some(dev) = audio_dev {
-                                            if let Err(e) = switch_audio_endpoint(&dev) {
-                                                log_warn("audio", &format!("TV-OFF audio switch failed: {}", e));
+                                if transitioned_to_off {
+                                    // ТВ В СПЯЩЕМ РЕЖИМЕ (по команде Standby или переходу из ON)
+                                    let audio_dev = if cfg.auto_audio_switch && !cfg.fallback_audio_device.is_empty() {
+                                        Some(cfg.fallback_audio_device.clone())
+                                    } else {
+                                        None
+                                    };
+                                    let disp = cfg.display_disable_on_sleep;
+                                    if audio_dev.is_some() || disp {
+                                        thread::spawn(move || {
+                                            if let Some(dev) = audio_dev {
+                                                if let Err(e) = switch_audio_endpoint(&dev) {
+                                                    log_warn("audio", &format!("TV-OFF audio switch failed: {}", e));
+                                                }
                                             }
-                                        }
-                                        if disp {
-                                            switch_display_mode(false);
-                                        }
-                                    });
+                                            if disp {
+                                                switch_display_mode(false);
+                                            }
+                                        });
+                                    }
                                 }
                                 // Сценарий усыпления или выключения ПК при выключении ТВ
                                 if cfg.power_off_pc_on_tv_off && transitioned_to_off {

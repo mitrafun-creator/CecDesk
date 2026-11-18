@@ -59,7 +59,7 @@ pub fn dispatch_user_control_pressed(
     mouse_mode_ref: &Arc<Mutex<bool>>,
     last_mouse_act_ref: &Arc<Mutex<Instant>>,
     mouse_streak_ref: &KeyStreakRef,
-    back_hold_ref: &Arc<Mutex<Option<Instant>>>,
+    back_hold_ref: &Arc<Mutex<Option<(Instant, Instant)>>>,
     last_seek_ref: &KeyStreakRef,
     sess_log: &Path,
     lat_log: &Path,
@@ -198,11 +198,14 @@ pub fn dispatch_user_control_pressed(
         return;
     }
 
-    // 3. Аварийное снятие зависшего окна (удержание кнопки Back 0x0D > 3.8 сек)
+    // 3. Аварийное снятие зависшего окна (непрерывное удержание кнопки Back 0x0D > 3.8 сек)
     if key_code == 0x0D && cfg.emergency_kill_enabled {
         let mut hold_lock = safe_lock(back_hold_ref);
-        if let Some(start_t) = *hold_lock {
-            if start_t.elapsed() >= Duration::from_millis(3800) {
+        let now = Instant::now();
+        if let Some((start_t, last_t)) = *hold_lock {
+            if now.duration_since(last_t) > Duration::from_millis(850) {
+                *hold_lock = Some((now, now));
+            } else if now.duration_since(start_t) >= Duration::from_millis(3800) {
                 *hold_lock = None;
                 let res = emergency_kill_foreground_task();
                 write_log_to_disk(sess_log, lat_log, &format!("EMERGENCY_KILL: {}", res));
@@ -217,9 +220,11 @@ pub fn dispatch_user_control_pressed(
                     None,
                 );
                 return;
+            } else {
+                *hold_lock = Some((start_t, now));
             }
         } else {
-            *hold_lock = Some(Instant::now());
+            *hold_lock = Some((now, now));
         }
     }
 
@@ -292,7 +297,7 @@ pub fn dispatch_user_control_pressed(
             }
             // Двойной клик ЛКМ
             0x44 => {
-                trigger_double_click();
+                std::thread::spawn(trigger_double_click);
                 "2x Клик (ЛКМ)".to_string()
             }
             // Прокрутка колесом мыши (Канал + / Канал -)
@@ -376,17 +381,17 @@ pub fn dispatch_user_control_pressed(
                 if k == key_code && now.duration_since(t) < Duration::from_millis(600) {
                     let new_c = c + 1;
                     if new_c > 6 {
-                        trigger_repeated_key(vk, 6);
+                        std::thread::spawn(move || trigger_repeated_key(vk, 6));
                         (new_c, "Ускорение >> (30 сек)")
                     } else if new_c > 2 {
-                        trigger_repeated_key(vk, 3);
+                        std::thread::spawn(move || trigger_repeated_key(vk, 3));
                         (new_c, "Ускорение > (15 сек)")
                     } else {
-                        trigger_repeated_key(vk, 1);
+                        std::thread::spawn(move || trigger_repeated_key(vk, 1));
                         (new_c, "Шаг 5 сек")
                     }
                 } else {
-                    trigger_repeated_key(vk, 1);
+                    std::thread::spawn(move || trigger_repeated_key(vk, 1));
                     (1, "Шаг 5 сек")
                 }
             } else {
@@ -443,7 +448,7 @@ pub fn dispatch_user_control_pressed(
 /// Обработка отпускания клавиши пульта (Opcode 0x45: User Control Released)
 pub fn dispatch_user_control_released(
     app: &AppHandle,
-    back_hold_ref: &Arc<Mutex<Option<Instant>>>,
+    back_hold_ref: &Arc<Mutex<Option<(Instant, Instant)>>>,
     last_seek_ref: &KeyStreakRef,
     mouse_streak_ref: &KeyStreakRef,
     _calib_mode_ref: &Arc<AtomicBool>,

@@ -468,10 +468,10 @@
               <!-- 1. Параметры порта HDMI -->
               <div class="glass-panel">
                 <div class="panel-header">
-                  <div class="panel-title" data-i18n="settings.port_params_title">Параметры порта HDMI</div>
+                  <div class="panel-title" data-i18n="settings.port_params_title">Подключение к ТВ (HDMI-CEC)</div>
                 </div>
 
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.pc_name">Имя компьютера на ТВ (OSD)</div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;" data-i18n="settings.pc_name">Имя ПК на экране ТВ</div>
                 <div class="row" style="gap:8px;">
                   <input id="inp-osd" type="text" value="GAMING PC" maxlength="14" style="flex:1;" />
                   <button type="button" id="btn-save-osd" class="apple-btn btn-saved-idle" style="padding:8px 16px;" disabled data-i18n="keys.save">
@@ -488,25 +488,28 @@
                 </div>
               </div>
 
-              <!-- 1.5. Синхронизация питания ПК и ТВ (Оптопара / Сон / Выключение) -->
+              <!-- 1.5. Синхронизация питания ПК и ТВ -->
               <div class="glass-panel">
                 <div class="panel-header" style="margin-bottom:4px;">
-                  <div class="panel-title" data-i18n="settings.power_sync_title">Питание ПК и ТВ (Оптопара)</div>
-                  <span class="tech-accent-badge">RP2040: GP1 • ESP32: GPIO5</span>
+                  <div class="panel-title" data-i18n="settings.power_sync_title">Питание ПК и ТВ</div>
                 </div>
 
-                <!-- Включать ПК при включении ТВ (через оптопару) -->
+                <!-- Включать ПК при включении ТВ -->
                 <div class="toggle-row" style="margin-top:4px;">
                   <div class="toggle-meta">
                     <div class="toggle-title-row">
-                      <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.wake_pc_on_tv_title">Включать ПК при включении ТВ (Оптопара)</span>
+                      <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.wake_pc_on_tv_title">Включать ПК при включении ТВ</span>
                       <div class="info-tip-anchor" tabindex="0">
                         <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                         <div class="apple-popover">
-                          <div class="popover-title" data-i18n="settings.wake_pc_on_tv_title">Включать ПК при включении ТВ (Оптопара)</div>
-                          <div class="popover-desc" data-i18n="settings.wake_pc_on_tv_desc">Микроконтроллер автономно замыкает оптопару кнопки Power материнской платы (GP1 на RP2040 / GPIO5 на ESP32) на 350 мс при включении телевизора или выборе HDMI-входа ПК.</div>
+                          <div class="popover-title" data-i18n="settings.wake_pc_on_tv_title">Включать ПК при включении ТВ</div>
+                          <div class="popover-desc" data-i18n="settings.wake_pc_on_tv_desc">Контроллер замыкает кнопку Power материнской платы через оптопару (GP29/GP1 на RP2040 / GPIO5 на ESP32) на 350 мс при включении ТВ или выборе HDMI-входа ПК.</div>
                         </div>
                       </div>
+                      <button type="button" id="btn-bios-power-hint" class="bios-warn-btn is-pulsing" data-tooltip="Важно: требуется настройка BIOS для питания USB при выключенном ПК" data-i18n-tooltip="settings.bios_hint_tip">
+                        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <span>BIOS</span>
+                      </button>
                     </div>
                   </div>
                   <label class="ios-switch">
@@ -581,10 +584,10 @@
                   <div id="csel-pc-off-mode" class="c-select" style="margin-top:4px;"></div>
                 </div>
 
-                <!-- Быстрые кнопки проверки оптопары и сна -->
+                <!-- Быстрые кнопки проверки питания и сна -->
                 <div class="row" style="gap:8px; margin-top:10px;">
-                  <button type="button" id="btn-test-opto" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-cec-cmd="PC_PWR_PULSE" data-i18n="settings.test_opto_btn">
-                    Тест оптопары (350 мс)
+                  <button type="button" id="btn-test-opto" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-cec-cmd="PC_PWR_PULSE" data-tooltip="Импульс 350 мс на кнопку Power материнской платы (GP29/GP1 / GPIO5)" data-i18n-tooltip="settings.test_opto_tip" data-i18n="settings.test_opto_btn">
+                    Тест кнопки питания
                   </button>
                   <button type="button" id="btn-test-sleep" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-os-key="PC_SLEEP" data-i18n="settings.test_sleep_btn">
                     Сон ПК
@@ -592,22 +595,52 @@
                 </div>
               </div>
 
-              <!-- 2. Язык интерфейса -->
+              <!-- 1.6. Автономный режим (клавиатура и мышь без CecDesk) -->
               <div class="glass-panel">
-                <div class="panel-header">
-                  <div class="panel-title" data-i18n="settings.lang_title">Язык интерфейса / Language</div>
+                <div class="panel-header" style="margin-bottom:4px;">
+                  <div class="panel-title" data-i18n="settings.standalone_hid_title">Автономный режим (клавиатура и мышь)</div>
                 </div>
-                <div class="lang-segmented" style="margin-top:8px;">
-                  <button type="button" class="lang-choice-btn active" data-lang="ru">
-                    Русский
-                  </button>
-                  <button type="button" class="lang-choice-btn" data-lang="en">
-                    English
-                  </button>
+
+                <div class="toggle-row" style="margin-top:4px;">
+                  <div class="toggle-meta">
+                    <div class="toggle-title-row">
+                      <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.standalone_hid_enable">Работать без запущенного CecDesk</span>
+                      <div class="info-tip-anchor" tabindex="0">
+                        <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        <div class="apple-popover">
+                          <div class="popover-title" data-i18n="settings.standalone_hid_enable">Работать без запущенного CecDesk</div>
+                          <div class="popover-desc" data-i18n="settings.standalone_hid_desc">Когда ПК включён (экран входа Windows, BIOS), но программа не запущена, адаптер сам эмулирует Смарт-пульт (стрелки, OK, Esc, цифры 0-9) и режим Мыши (курсор с ускорением и прыжки по секторам 1-9). Настройки хранятся в памяти платы.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <label class="ios-switch">
+                    <input type="checkbox" id="chk-standalone-hid" />
+                    <span class="ios-slider"></span>
+                  </label>
+                </div>
+
+                <div id="wrap-standalone-hid-body" class="standalone-hid-body is-collapsed">
+                  <div class="standalone-hid-inner">
+                    <div style="margin-top:8px;">
+                      <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:4px;" data-i18n="settings.standalone_pin_label">PIN / пароль для быстрого входа:</div>
+                      <div class="row" style="gap:6px;">
+                        <input type="password" id="inp-standalone-pin" class="apple-input" maxlength="32" placeholder="PIN / ASCII" style="flex:1;" />
+                        <button type="button" id="btn-toggle-standalone-pin" class="apple-btn" style="padding:6px 10px; font-size:11.5px;" data-i18n="settings.standalone_pin_show">Показать</button>
+                      </div>
+                    </div>
+
+                    <div style="font-size:11.5px; color:var(--text-secondary); margin-top:10px; margin-bottom:6px;" data-i18n="settings.standalone_map_label">Назначения кнопок пульта:</div>
+                    <div id="standalone-hid-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+
+                    <button type="button" id="btn-save-standalone-hid" class="apple-btn" disabled style="width:100%; margin-top:10px; padding:8px 12px;" data-i18n="settings.standalone_save_btn">
+                      Сохранить в контроллер
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <!-- 3. О программе и обновления -->
+              <!-- 2. О программе и обновления -->
               <div class="glass-panel">
                 <div class="panel-header">
                   <div class="panel-title" data-i18n="settings.about_title">О программе</div>
@@ -646,8 +679,9 @@
                         <svg class="ico" style="width:14px;height:14px;stroke:var(--apple-blue);" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
                         <span data-i18n="settings.fw_box_title">Прошивка контроллера</span>
                       </div>
-                      <span id="lbl-fw-chip-badge" class="tech-accent-badge">FW v1.1.0</span>
+                      <span id="lbl-fw-chip-badge" class="tech-accent-badge">FW —</span>
                     </div>
+                    <div id="lbl-fw-update-status" class="fw-update-status"></div>
                     <div id="fw-progress-wrap" class="fw-progress-wrap">
                       <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-bottom:5px;">
                         <div id="fw-progress-bar" style="width:0%; height:100%; background:var(--apple-blue); border-radius:999px; transition:width 0.2s ease;"></div>
@@ -657,7 +691,7 @@
                     <div class="row" style="gap:8px;">
                       <button type="button" id="btn-flash-bundled-fw" class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-                        <span data-i18n="settings.fw_flash_bundled_btn">Прошить (v1.1.0)</span>
+                        <span data-i18n="settings.fw_flash_bundled_btn">Прошить (v1.1.1)</span>
                       </button>
                       <button type="button" id="btn-flash-custom-fw" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" data-tooltip="Выбрать файл прошивки (.uf2 / .bin)" data-i18n-tooltip="settings.fw_custom_tip">
                         <svg class="ico" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
@@ -689,21 +723,21 @@
               </div>
             </div>
 
-            <!-- Правая колонка Настроек: Умные функции QoL + Диагностика и телеметрия -->
+            <!-- Правая колонка Настроек: Автоматизация + Язык + Диагностика -->
             <div style="display:flex; flex-direction:column; gap:16px; align-self:start;">
             <div class="glass-panel">
               <div class="panel-header">
-                <div class="panel-title" data-i18n="settings.qol_title">Умные функции (QoL)</div>
+                <div class="panel-title" data-i18n="settings.qol_title">Автоматизация и удобство</div>
               </div>
 
               <div class="toggle-row" style="margin-top:4px;">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.autostart_title">Автозапуск системы</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.autostart_title">Запускать вместе с Windows</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.autostart_title">Автозапуск системы</div>
+                        <div class="popover-title" data-i18n="settings.autostart_title">Запускать вместе с Windows</div>
                         <div class="popover-desc" data-i18n="settings.autostart_desc">Автоматический запуск службы HDMI-CEC в фоновом режиме при старте Windows без отображения главного окна (сворачивание в трей).</div>
                       </div>
                     </div>
@@ -715,15 +749,20 @@
                 </label>
               </div>
 
+              <div style="margin-top:8px; margin-bottom:4px;">
+                <div style="font-size:11.5px; color:var(--text-secondary); margin-bottom:4px;" data-i18n="settings.close_behavior_label">При закрытии окна:</div>
+                <div id="csel-close-behavior" class="c-select"></div>
+              </div>
+
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.hud_title">Экранные уведомления (HUD)</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.hud_title">Всплывающие уведомления на экране</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.hud_title">Экранные уведомления (HUD)</div>
-                        <div class="popover-desc" data-i18n="settings.hud_desc">Элегантные полупрозрачные плашки поверх окон при изменении громкости, переключении режима мыши, навигации и выполнении макросов.</div>
+                        <div class="popover-title" data-i18n="settings.hud_title">Всплывающие уведомления на экране</div>
+                        <div class="popover-desc" data-i18n="settings.hud_desc">Полупрозрачные плашки (HUD) поверх окон при изменении громкости, переключении режима мыши, навигации и выполнении макросов.</div>
                       </div>
                     </div>
                   </div>
@@ -737,12 +776,12 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.audio_title">Маршрутизация звука ПК / ТВ</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.audio_title">Переключать звук на ТВ и обратно</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.audio_title">Маршрутизация звука ПК / ТВ</div>
-                        <div class="popover-desc" data-i18n="settings.audio_desc">Автоматический вывод звука на динамики телевизора при его включении и плавный возврат на наушники или колонки ПК при переходе ТВ в спящий режим.</div>
+                        <div class="popover-title" data-i18n="settings.audio_title">Переключать звук на ТВ и обратно</div>
+                        <div class="popover-desc" data-i18n="settings.audio_desc">Автоматический вывод звука на динамики телевизора при его включении и возврат на наушники или колонки ПК при переходе ТВ в спящий режим.</div>
                       </div>
                     </div>
                   </div>
@@ -763,12 +802,12 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.soundbar_title">Сквозной звук eARC</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.soundbar_title">Регулировать громкость на ТВ / саундбаре</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.soundbar_title">Сквозной звук eARC</div>
-                        <div class="popover-desc" data-i18n="settings.soundbar_desc">Регулировка уровня громкости напрямую на телевизоре или саундбаре по шине CEC без изменения системного микшера Windows.</div>
+                        <div class="popover-title" data-i18n="settings.soundbar_title">Регулировать громкость на ТВ / саундбаре</div>
+                        <div class="popover-desc" data-i18n="settings.soundbar_desc">Регулировка уровня громкости напрямую на телевизоре или саундбаре по шине CEC (eARC) без изменения системного микшера Windows.</div>
                       </div>
                     </div>
                   </div>
@@ -782,11 +821,11 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.seek_title">Адаптивная перемотка медиа</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.seek_title">Ускорять перемотку при удержании</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.seek_title">Адаптивная перемотка медиа</div>
+                        <div class="popover-title" data-i18n="settings.seek_title">Ускорять перемотку при удержании</div>
                         <div class="popover-desc" data-i18n="settings.seek_desc">Одиночное нажатие стрелок мотает видео на 5 секунд, а непрерывное удержание ускоряет шаг до 1 и 5 минут.</div>
                       </div>
                     </div>
@@ -801,11 +840,11 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.kill_title">Аварийное закрытие зависших игр</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.kill_title">Закрывать зависшую игру долгим «Назад»</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.kill_title">Аварийное закрытие зависших игр</div>
+                        <div class="popover-title" data-i18n="settings.kill_title">Закрывать зависшую игру долгим «Назад»</div>
                         <div class="popover-desc" data-i18n="settings.kill_desc">Удержание кнопки «Назад» на пульте в течение 4 секунд принудительно завершает зависший полноэкранный процесс без вызова диспетчера задач.</div>
                       </div>
                     </div>
@@ -820,12 +859,12 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.polite_title">Фоновое присутствие (CEC)</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.polite_title">Не перехватывать HDMI-вход автоматически</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.polite_title">Фоновое присутствие (CEC)</div>
-                        <div class="popover-desc" data-i18n="settings.polite_desc">Компьютер объявляет себя на шине CEC для работы пульта, но не перехватывает HDMI-вход при включении или фоновых событиях.</div>
+                        <div class="popover-title" data-i18n="settings.polite_title">Не перехватывать HDMI-вход автоматически</div>
+                        <div class="popover-desc" data-i18n="settings.polite_desc">Компьютер объявляет себя на шине CEC для работы пульта, но не переключает телевизор на свой HDMI-вход при фоновых событиях.</div>
                       </div>
                     </div>
                   </div>
@@ -839,12 +878,12 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.autoheal_title">Сторожевой таймер связи (Watchdog)</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.autoheal_title">Автопереподключение адаптера</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.autoheal_title">Сторожевой таймер связи (Watchdog)</div>
-                        <div class="popover-desc" data-i18n="settings.autoheal_desc">Непрерывный мониторинг COM-порта микроконтроллера и мгновенное автоматическое переподключение при отсоединении провода.</div>
+                        <div class="popover-title" data-i18n="settings.autoheal_title">Автопереподключение адаптера</div>
+                        <div class="popover-desc" data-i18n="settings.autoheal_desc">Сторожевой таймер (Watchdog): мониторинг COM-порта и мгновенное переподключение при сбое USB-кабеля или выходе из сна.</div>
                       </div>
                     </div>
                   </div>
@@ -858,12 +897,12 @@
               <div class="toggle-row">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.disp_sleep_title">Отключение видеовыхода при сне ТВ</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.disp_sleep_title">Отключать экран ТВ в Windows при его сне</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="settings.disp_sleep_title">Отключение видеовыхода при сне ТВ</div>
-                        <div class="popover-desc" data-i18n="settings.disp_sleep_desc">Программное отключение второго дисплея в Windows при выключении ТВ, чтобы курсор и окна не терялись на отключенном экране.</div>
+                        <div class="popover-title" data-i18n="settings.disp_sleep_title">Отключать экран ТВ в Windows при его сне</div>
+                        <div class="popover-desc" data-i18n="settings.disp_sleep_desc">Программное отключение второго дисплея в Windows при выключении ТВ, чтобы курсор и окна не терялись на выключенном экране.</div>
                       </div>
                     </div>
                   </div>
@@ -875,23 +914,38 @@
               </div>
             </div>
 
-            <!-- Диагностика, отчёты и добровольная телеметрия -->
+            <!-- Язык интерфейса -->
+            <div class="glass-panel">
+              <div class="panel-header">
+                <div class="panel-title" data-i18n="settings.lang_title">Язык интерфейса / Language</div>
+              </div>
+              <div class="lang-segmented" style="margin-top:8px;">
+                <button type="button" class="lang-choice-btn active" data-lang="ru">
+                  Русский
+                </button>
+                <button type="button" class="lang-choice-btn" data-lang="en">
+                  English
+                </button>
+              </div>
+            </div>
+
+            <!-- Диагностика, отчёты и телеметрия -->
             <div class="glass-panel">
               <div class="panel-header">
                 <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
                   <svg class="ico" style="stroke:var(--apple-blue);" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                  <span data-i18n="diag.panel_title">Диагностика, отчёты и телеметрия</span>
+                  <span data-i18n="diag.panel_title">Диагностика и отчёты</span>
                 </div>
               </div>
 
               <div class="toggle-row" style="margin-top:4px;">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
-                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="diag.telemetry_title">Анонимная телеметрия запуска</span>
+                    <span class="toggle-title" style="font-size:12.5px;" data-i18n="diag.telemetry_title">Анонимная телеметрия</span>
                     <div class="info-tip-anchor" tabindex="0">
                       <svg class="ico-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                       <div class="apple-popover">
-                        <div class="popover-title" data-i18n="diag.telemetry_title">Анонимная телеметрия запуска</div>
+                        <div class="popover-title" data-i18n="diag.telemetry_title">Анонимная телеметрия</div>
                         <div class="popover-desc" data-i18n="diag.telemetry_desc">Отключена по умолчанию. Передает только случайный install_id, версию ПО, ОС, модель адаптера, EDID и счетчики ошибок на указанный вами HTTPS webhook. Не содержит имен, путей и личных данных.</div>
                       </div>
                     </div>
@@ -903,23 +957,27 @@
                 </label>
               </div>
 
+              <div id="wrap-telemetry-endpoint" class="standalone-hid-body is-collapsed">
+                <div class="standalone-hid-inner">
+                  <div style="font-size:11.5px; color:var(--text-secondary); margin-top:8px;" data-i18n="diag.endpoint_label">HTTPS Webhook для телеметрии:</div>
+                  <div class="row" style="gap:8px; margin-top:4px;">
+                    <input id="inp-telemetry-endpoint" type="url" placeholder="https://example.com/api/cec-report" style="flex:1; font-size:12px;" />
+                    <button type="button" id="btn-save-telemetry-endpoint" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" data-i18n="keys.save">Сохранить</button>
+                  </div>
+                  <div id="lbl-telemetry-status" style="font-size:11px; color:var(--text-tertiary); margin-top:4px; min-height:14px;"></div>
+                </div>
+              </div>
+
               <div class="inset-group" style="margin-top:8px;">
                 <div class="inset-row">
                   <span class="text-secondary" style="font-size:12px;" data-i18n="diag.storage_mode_label">Хранилище данных:</span>
                   <span id="lbl-storage-mode" class="fw-medium" style="font-size:12px;">—</span>
                 </div>
                 <div class="inset-row">
-                  <span class="text-secondary" style="font-size:12px;" data-i18n="diag.counters_label">Ошибки / Предупреждения сессии:</span>
+                  <span class="text-secondary" style="font-size:12px;" data-i18n="diag.counters_label">Ошибки / Предупреждения:</span>
                   <span id="lbl-diag-counters" class="fw-medium" style="font-size:12px;">0 / 0</span>
                 </div>
               </div>
-
-              <div style="font-size:11.5px; color:var(--text-secondary); margin-top:10px;" data-i18n="diag.endpoint_label">HTTPS Webhook для отчётов / телеметрии (опционально):</div>
-              <div class="row" style="gap:8px; margin-top:4px;">
-                <input id="inp-telemetry-endpoint" type="url" placeholder="https://example.com/api/cec-report" style="flex:1; font-size:12px;" />
-                <button type="button" id="btn-save-telemetry-endpoint" class="apple-btn" style="padding:7px 12px; font-size:11.5px;" data-i18n="keys.save">Сохранить</button>
-              </div>
-              <div id="lbl-telemetry-status" style="font-size:11px; color:var(--text-tertiary); margin-top:4px; min-height:14px;"></div>
 
               <div class="row" style="gap:8px; margin-top:10px; flex-wrap:wrap;">
                 <button type="button" id="btn-open-bug-modal" class="apple-btn accent-blue" style="padding:7px 12px; font-size:11.5px; flex:1;">
@@ -1009,6 +1067,65 @@
       </div>
     </div>
   </div>
+
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: НАСТРОЙКА BIOS ДЛЯ ВКЛЮЧЕНИЯ ПК ==================== -->
+  <div id="bios-power-modal" class="calib-modal-backdrop">
+    <div class="calib-modal-card bug-modal-card">
+      <div class="calib-modal-header">
+        <div class="calib-modal-title">
+          <svg class="ico" style="stroke:#ff6b63;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span data-i18n="bios.modal_title">Настройка BIOS для включения ПК с пульта</span>
+        </div>
+      </div>
+
+      <div id="lbl-bios-mb-model" class="bios-mb-badge">Материнская плата: определение...</div>
+
+      <div class="calib-instruction" data-i18n="bios.modal_intro">
+        Чтобы адаптер оставался запитанным и мог включить выключенный ПК при включении телевизора, проверьте два параметра в BIOS:
+      </div>
+
+      <ul class="bios-steps-list">
+        <li><strong data-i18n="bios.step1_title">Питание USB в выключенном состоянии (USB Power in S4/S5 / Wake on USB):</strong> <span data-i18n="bios.step1_desc">установите Enabled (Вкл), чтобы адаптер оставался запитанным от USB.</span></li>
+        <li><strong data-i18n="bios.step2_title">ErP Ready / EuP 2013 (Глубокое энергосбережение S4+S5):</strong> <span data-i18n="bios.step2_desc">установите Disabled (Выкл), иначе материнская плата полностью обесточит USB-порты.</span></li>
+      </ul>
+
+      <div class="calib-actions">
+        <button id="btn-bios-modal-ok" class="apple-btn accent-blue" type="button" data-i18n="bios.btn_ok">Понятно</button>
+        <button id="btn-bios-modal-more" class="apple-btn" type="button" data-i18n="bios.btn_more">Подробнее</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ДЕЙСТВИЕ ПРИ ЗАКРЫТИИ ОКНА ==================== -->
+  <div id="close-confirm-modal" class="calib-modal-backdrop">
+    <div class="calib-modal-card bug-modal-card">
+      <div class="calib-modal-header">
+        <div class="calib-modal-title">
+          <svg class="ico" style="stroke:var(--apple-blue);" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+          <span data-i18n="close_modal.title">Закрытие CecDesk</span>
+        </div>
+        <button id="btn-close-modal-x" class="apple-btn calib-close-btn" type="button">
+          <svg class="ico" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="calib-instruction" data-i18n="close_modal.desc">
+        Свернуть программу в системный трей для работы пульта в фоне или закрыть полностью?
+      </div>
+
+      <label class="close-dont-ask-row">
+        <input type="checkbox" id="chk-close-dont-ask" />
+        <span data-i18n="close_modal.dont_ask">Больше не спрашивать (запомнить выбор)</span>
+      </label>
+
+      <div class="calib-actions">
+        <button id="btn-close-to-tray" class="apple-btn accent-blue" type="button" data-i18n="close_modal.to_tray">Свернуть в трей</button>
+        <button id="btn-close-exit-app" class="apple-btn" type="button" data-i18n="close_modal.exit_app">Закрыть полностью</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-toast" class="app-toast" aria-live="polite"></div>
 
   <canvas id="ambient-canvas" class="ambient-canvas"></canvas>
 

@@ -60,6 +60,9 @@ pub fn emit_and_show_hud(
     sector_payload: Option<serde_json::Value>,
 ) {
     if let Some(st) = app.try_state::<AppState>() {
+        if !safe_lock(&st.config).hud_enabled {
+            return;
+        }
         let mut pending = safe_lock(&st.pending_hud);
         let now = Instant::now();
         if let Some(ref p) = show_payload {
@@ -78,8 +81,6 @@ pub fn emit_and_show_hud(
     }
 
     if let Some(hud) = app.get_webview_window("hud") {
-        let _ = hud.show();
-        let _ = hud.unminimize();
         crate::platform::setup_hud_window(&hud);
     } else {
         // Создаем окно HUD в асинхронной задаче: при готовности hud.html заберет состояние через get_initial_hud_state

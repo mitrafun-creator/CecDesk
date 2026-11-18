@@ -28,12 +28,6 @@ function renderAppUpdateUiState() {
   }
 
   if (info.has_update) {
-    if (btn) {
-      btn.style.background = "var(--apple-blue)";
-      btn.style.color = "#ffffff";
-      btn.textContent = `v${info.latest_version}`;
-      btn.dataset.updateUrl = latestUpdateUrl;
-    }
     if (btnSettings) {
       btnSettings.innerHTML = "";
       const svg = document.createElementNS(svgNS, "svg");
@@ -66,7 +60,6 @@ function renderAppUpdateUiState() {
       lblStatus.style.color = "var(--apple-blue)";
     }
   } else {
-    if (btn) btn.textContent = `v${info.current_version}`;
     if (btnSettings) {
       btnSettings.innerHTML = "";
       const svg = document.createElementNS(svgNS, "svg");
@@ -160,16 +153,72 @@ async function installAppUpdateUi() {
   }
 }
 
+async function checkFirmwareUpdatesUi(silent = false) {
+  if (!invoke) return null;
+  const lblFwStatus = document.getElementById("lbl-fw-update-status");
+  const btnBundled = document.getElementById("btn-flash-bundled-fw");
+  const curFw = typeof detectedFirmwareVersion !== "undefined" ? detectedFirmwareVersion : "";
+  const targetPort = (typeof selectedPort !== "undefined" && selectedPort) || (typeof connectedPort !== "undefined" && connectedPort) || null;
+  const _t = typeof t === "function" ? t : (_k, fb) => fb;
+
+  try {
+    const fwInfo = await invoke("check_firmware_updates", {
+      currentFwVer: curFw,
+      portName: targetPort
+    });
+    if (lblFwStatus) {
+      lblFwStatus.classList.add("is-visible");
+      if (!fwInfo.current_version) {
+        lblFwStatus.textContent = _t("settings.fw_not_connected", "Контроллер не подключён (в комплекте v{lat})")
+          .replace("{lat}", fwInfo.latest_version);
+        lblFwStatus.style.color = "var(--text-secondary)";
+      } else if (fwInfo.update_available) {
+        lblFwStatus.textContent = _t("settings.fw_update_avail", "Доступно обновление прошивки: v{cur} -> v{lat}")
+          .replace("{cur}", fwInfo.current_version)
+          .replace("{lat}", fwInfo.latest_version);
+        lblFwStatus.style.color = "var(--apple-blue)";
+      } else {
+        lblFwStatus.textContent = _t("settings.fw_up_to_date", "Прошивка контроллера актуальна (v{cur})")
+          .replace("{cur}", fwInfo.current_version);
+        lblFwStatus.style.color = "var(--apple-green)";
+      }
+    }
+    if (btnBundled) {
+      const span = btnBundled.querySelector("span[data-i18n]");
+      if (span) {
+        span.textContent = _t("settings.fw_flash_bundled_btn", `Прошить (v${fwInfo.latest_version})`);
+      }
+    }
+    if (!silent && typeof addLog === "function") {
+      if (!fwInfo.current_version) {
+        addLog(`[Прошивка] Контроллер не подключён (встроенная прошивка: v${fwInfo.latest_version})`, "log-info");
+      } else if (fwInfo.update_available) {
+        addLog(`[Прошивка] Доступно обновление для ${fwInfo.controller_type}: v${fwInfo.current_version} -> v${fwInfo.latest_version}`, "log-ok");
+      } else {
+        addLog(`[Прошивка] Установлена актуальная прошивка v${fwInfo.current_version}`, "log-ok");
+      }
+    }
+    return fwInfo;
+  } catch (err) {
+    if (!silent && typeof addLog === "function") {
+      addLog(`[Прошивка] Ошибка проверки прошивки: ${err}`, "log-err");
+    }
+    return null;
+  }
+}
+window.checkFirmwareUpdatesUi = checkFirmwareUpdatesUi;
+
 async function checkAppUpdatesUi(silent = false) {
   if (!invoke) return;
   if (silent && appConfig && appConfig.last_update_check_ts) {
     const nowSecs = Math.floor(Date.now() / 1000);
     if (nowSecs - Number(appConfig.last_update_check_ts) < UPDATE_CHECK_THROTTLE_SECS) {
+      await checkFirmwareUpdatesUi(true);
       return;
     }
   }
 
-  if (!silent) addLog("[OTA] Проверка обновлений приложения онлайн...", "log-ok");
+  if (!silent) addLog("[OTA] Проверка обновлений приложения и прошивки...", "log-ok");
   const btnSettings = document.getElementById("btn-check-update-settings");
   const lblStatus = document.getElementById("lbl-update-status");
   if (btnSettings && !silent) {
@@ -179,6 +228,8 @@ async function checkAppUpdatesUi(silent = false) {
       lblStatus.style.color = "var(--text-tertiary)";
     }
   }
+
+  const fwPromise = checkFirmwareUpdatesUi(silent);
 
   try {
     const info = await invoke("check_app_updates");
@@ -190,12 +241,21 @@ async function checkAppUpdatesUi(silent = false) {
     }
 
     renderAppUpdateUiState();
+    const fwInfo = await fwPromise;
     if (info.has_update) {
       addLog(`[OTA] Доступна новая версия: v${info.latest_version}! (${info.release_notes})`, "log-ok");
     } else if (!silent) {
       addLog(`[OTA] Установлена последняя версия v${info.current_version}`, "log-ok");
+      if (fwInfo && fwInfo.update_available && lblStatus) {
+        const _t = typeof t === "function" ? t : (_k, fb) => fb;
+        lblStatus.textContent = _t("settings.fw_update_avail", "Доступно обновление прошивки: v{cur} -> v{lat}")
+          .replace("{cur}", fwInfo.current_version)
+          .replace("{lat}", fwInfo.latest_version);
+        lblStatus.style.color = "var(--apple-blue)";
+      }
     }
   } catch (err) {
+    await fwPromise;
     lastUpdateCheckFailed = true;
     renderAppUpdateUiState();
     if (!silent) addLog(`[OTA] Ошибка проверки обновлений: ${err}`, "log-err");
