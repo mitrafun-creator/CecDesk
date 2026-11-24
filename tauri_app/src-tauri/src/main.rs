@@ -38,8 +38,11 @@ use tauri::{Emitter, Manager};
 fn main() {
     #[cfg(target_os = "linux")]
     {
-        // Обход зависания DMA-BUF рендерера WebKitGTK 2.44+ на AMD RADV / SteamOS (Gamescope / XWayland)
-        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        // По умолчанию используем аппаратное GPU-ускорение WebKitGTK (AMD RADV на Steam Deck).
+        // Принудительный программный рендеринг включается только явно через CECDESK_SOFTWARE_RENDER=1.
+        if std::env::var("CECDESK_SOFTWARE_RENDER").as_deref() == Ok("1")
+            && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+        {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
         }
     }
@@ -313,30 +316,20 @@ fn main() {
                             });
                         }
                         "toggle_mouse" => {
-                            let state_now = {
-                                let mut is_m = safe_lock(&mouse_mode_tray);
-                                *is_m = !*is_m;
-                                *safe_lock(&last_mouse_act_tray) = Instant::now();
-                                *is_m
-                            };
-                            let _ = app.emit("mouse-mode-changed", state_now);
-                            let msg = if state_now {
-                                "Режим мыши ВКЛ"
-                            } else {
-                                "Режим мыши ВЫКЛ"
-                            };
-                            let _ = app.emit("cec-toast", msg);
-                            let payload = serde_json::json!({
-                                "icon": "mouse",
-                                "title": if state_now { "Режим мыши активен" } else { "Режим мыши выключен" },
-                                "desc": if state_now { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
-                                "mouse_active": state_now
-                            });
-                            if state_now {
-                                crate::window_manager::emit_and_show_hud(app, Some(payload), None);
-                            } else {
-                                let _ = app.emit("show-hud", &payload);
-                                crate::window_manager::hide_hud_if_exists(app);
+                            if let Ok(state_now) = crate::hardware::set_mouse_mode_checked(
+                                app,
+                                &mouse_mode_tray,
+                                &last_mouse_act_tray,
+                                None,
+                                &osk_visible_tray,
+                                None,
+                            ) {
+                                let msg = if state_now {
+                                    "Режим мыши ВКЛ"
+                                } else {
+                                    "Режим мыши ВЫКЛ"
+                                };
+                                let _ = app.emit("cec-toast", msg);
                             }
                         }
                         "quit" => {
@@ -433,6 +426,7 @@ fn main() {
             commands::set_window_title,
             commands::get_app_version,
             commands::get_os_platform_label,
+            commands::get_platform_profile,
             commands::get_motherboard_model,
             commands::open_browser_url,
             commands::create_support_bundle,

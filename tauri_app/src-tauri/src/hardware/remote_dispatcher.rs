@@ -1,13 +1,13 @@
 use crate::cec_protocol::cec_key_name;
 use crate::config::write_log_to_disk;
-use crate::hardware::mouse_engine::handle_mouse_movement;
+use crate::hardware::mouse_engine::{handle_mouse_movement, set_mouse_mode_checked};
 use crate::hardware::state::safe_lock;
 use crate::input_simulator::{
     emergency_kill_foreground_task, jump_cursor_to_sector, trigger_combo_key,
     trigger_double_click, trigger_mouse_click, trigger_mouse_scroll,
     trigger_os_key_internal, trigger_repeated_key,
 };
-use crate::osk::{toggle_osk_helper, type_unicode_char_internal};
+use crate::osk::{toggle_osk_checked, toggle_osk_helper, type_unicode_char_internal, OskToggleOutcome};
 use crate::types::AppConfig;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -109,8 +109,19 @@ pub fn dispatch_user_control_pressed(
         return;
     }
 
-    // 2. Обработка экранной клавиатуры (OSK)
-    let is_osk_open = osk_visible_ref.load(Ordering::SeqCst);
+    // 2. Обработка экранной клавиатуры (OSK) — сверяем флаг с реальной видимостью окна, чтобы избежать залипания
+    let mut is_osk_open = osk_visible_ref.load(Ordering::SeqCst);
+    if is_osk_open {
+        let osk_actually_visible = app
+            .get_webview_window("osk")
+            .and_then(|w| w.is_visible().ok())
+            .unwrap_or(false);
+        if !osk_actually_visible {
+            osk_visible_ref.store(false, Ordering::SeqCst);
+            let _ = app.emit("osk-state-changed", false);
+            is_osk_open = false;
+        }
+    }
     if is_osk_open {
         if key_code == 0x0D
             || key_code == 0x0A
@@ -179,12 +190,22 @@ pub fn dispatch_user_control_pressed(
     }
 
     if os_act == "SHOW_KEYBOARD" {
-        toggle_osk_helper(app, osk_visible_ref, None);
-        let is_now_open = osk_visible_ref.load(Ordering::SeqCst);
-        let desc = if is_now_open {
-            "Клавиатура ОТКРЫТА"
-        } else {
-            "Клавиатура СКРЫТА"
+        if *safe_lock(mouse_mode_ref) {
+            let _ = set_mouse_mode_checked(
+                app,
+                mouse_mode_ref,
+                last_mouse_act_ref,
+                Some(mouse_streak_ref),
+                osk_visible_ref,
+                Some(false),
+            );
+        }
+        let outcome = toggle_osk_checked(app, osk_visible_ref, None);
+        let desc = match outcome {
+            OskToggleOutcome::WebOpened => "Клавиатура ОТКРЫТА",
+            OskToggleOutcome::NativeOpened => "Нативная клавиатура Steam",
+            OskToggleOutcome::Closed => "Клавиатура СКРЫТА",
+            OskToggleOutcome::Failed => "Не удалось открыть клавиатуру",
         };
         write_log_to_disk(sess_log, lat_log, &format!("OSK_TOGGLE: {}", desc));
         let _ = app.emit(
@@ -241,32 +262,22 @@ pub fn dispatch_user_control_pressed(
         return;
     }
 
-    let mut is_mouse_mode = *safe_lock(mouse_mode_ref);
+    let is_mouse_mode = *safe_lock(mouse_mode_ref);
 
-    // 5. Переключение режима мыши
+    // 5. Переключение режима мыши (с проверкой реальной доступности ввода ОС и снятием конфликта с OSK)
     if os_act == "MOUSE_TOGGLE" {
-        is_mouse_mode = !is_mouse_mode;
-        *safe_lock(mouse_mode_ref) = is_mouse_mode;
-        *safe_lock(last_mouse_act_ref) = Instant::now();
-        *safe_lock(mouse_streak_ref) = None;
-        let mode_str = if is_mouse_mode {
-            "Режим мыши ВКЛ"
-        } else {
-            "Режим мыши ВЫКЛ"
+        let mode_str = match set_mouse_mode_checked(
+            app,
+            mouse_mode_ref,
+            last_mouse_act_ref,
+            Some(mouse_streak_ref),
+            osk_visible_ref,
+            None,
+        ) {
+            Ok(true) => "Режим мыши ВКЛ".to_string(),
+            Ok(false) => "Режим мыши ВЫКЛ".to_string(),
+            Err(reason) => format!("Ошибка режима мыши: {}", reason),
         };
-        let _ = app.emit("mouse-mode-changed", is_mouse_mode);
-        let hud_payload = serde_json::json!({
-            "icon": "mouse",
-            "title": if is_mouse_mode { "Режим мыши активен" } else { "Режим мыши выключен" },
-            "desc": if is_mouse_mode { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
-            "mouse_active": is_mouse_mode
-        });
-        if is_mouse_mode {
-            crate::window_manager::emit_and_show_hud(app, Some(hud_payload), None);
-        } else {
-            let _ = app.emit("show-hud", &hud_payload);
-            crate::window_manager::hide_hud_if_exists(app);
-        }
         write_log_to_disk(sess_log, lat_log, &format!("MOUSE_MODE_TOGGLE: {}", mode_str));
         let _ = app.emit(
             "cec-remote-key",

@@ -102,13 +102,15 @@ elif [ -f "$APP_DIR/tauri_app/src-tauri/icons/icon.png" ]; then
 fi
 
 echo "[1/4] Настройка правил udev (доступ к портам ESP32-S3 / RP2040-Zero и виртуальному вводу uinput через uaccess без world-writable прав)..."
-UDEV_RULE_CONTENT='# CecDesk Dongle: ESP32-S3 (303a/10c4/1a86) и RP2040-Zero (2e8a) + uinput для Gamescope / Wayland
+UDEV_RULE_CONTENT='# CecDesk Dongle: ESP32-S3 (303a/10c4/1a86) и RP2040-Zero (2e8a) + USB Remote Wakeup + uinput для Gamescope / Wayland
 SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", MODE="0660", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", MODE="0660", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", MODE="0660", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="2e8a", MODE="0660", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", MODE="0660", TAG+="uaccess"
 SUBSYSTEM=="usb", ATTRS{idVendor}=="303a", MODE="0660", TAG+="uaccess"
+ACTION=="add|change", SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", TEST=="power/wakeup", ATTR{power/wakeup}="enabled"
+ACTION=="add|change", SUBSYSTEM=="usb", ATTRS{idVendor}=="303a", TEST=="power/wakeup", ATTR{power/wakeup}="enabled"
 KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess", OPTIONS+="static_node=uinput"
 '
 
@@ -155,7 +157,6 @@ Type=simple
 WorkingDirectory=$INSTALL_DIR
 Environment=DISPLAY=:0
 Environment=GDK_BACKEND=x11
-Environment=WEBKIT_DISABLE_DMABUF_RENDERER=1
 ExecStart=$BIN_PATH --minimized
 KillMode=process
 Restart=on-failure

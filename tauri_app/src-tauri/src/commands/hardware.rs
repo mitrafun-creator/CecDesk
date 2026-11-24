@@ -4,17 +4,20 @@ use crate::config::{
     write_log_to_disk,
 };
 use crate::edid::detect_edid_os;
-use crate::hardware::{safe_lock, spawn_serial_reader_thread, AppState};
+use crate::hardware::{safe_lock, set_mouse_mode_checked, spawn_serial_reader_thread, AppState};
 use crate::input_simulator::trigger_os_key_internal;
 use crate::logger::{log_info, log_warn};
-use crate::osk::{toggle_osk_helper, type_special_key_internal, type_unicode_char_internal};
+use crate::osk::{
+    toggle_osk_checked, toggle_osk_helper, type_special_key_internal, type_unicode_char_internal,
+    OskToggleOutcome,
+};
 use crate::telemetry::sanitize_profile_id;
 use crate::types::{EdidInfoDto, PortInfoDto, TvProfile};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::sync::atomic::Ordering;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
 
@@ -463,40 +466,39 @@ pub async fn trigger_os_key(
     let st = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         if action == "SHOW_KEYBOARD" {
-            toggle_osk_helper(&app, &st.osk_visible, None);
-            let is_open = st.osk_visible.load(Ordering::SeqCst);
-            return Ok(if is_open {
-                "Клавиатура ОТКРЫТА".to_string()
-            } else {
-                "Клавиатура СКРЫТА".to_string()
-            });
+            if *safe_lock(&st.mouse_mode_active) {
+                let _ = set_mouse_mode_checked(
+                    &app,
+                    &st.mouse_mode_active,
+                    &st.last_mouse_activity,
+                    Some(&st.mouse_move_streak),
+                    &st.osk_visible,
+                    Some(false),
+                );
+            }
+            let msg = match toggle_osk_checked(&app, &st.osk_visible, None) {
+                OskToggleOutcome::WebOpened => "Клавиатура ОТКРЫТА",
+                OskToggleOutcome::NativeOpened => "Нативная клавиатура Steam",
+                OskToggleOutcome::Closed => "Клавиатура СКРЫТА",
+                OskToggleOutcome::Failed => "Не удалось открыть клавиатуру",
+            };
+            return Ok(msg.to_string());
         }
         if action == "MOUSE_TOGGLE" {
-            let mut is_m = safe_lock(&st.mouse_mode_active);
-            *is_m = !*is_m;
-            *safe_lock(&st.last_mouse_activity) = Instant::now();
-            *safe_lock(&st.mouse_move_streak) = None;
-            let state_now = *is_m;
-            drop(is_m);
-            let _ = app.emit("mouse-mode-changed", state_now);
+            let state_now = set_mouse_mode_checked(
+                &app,
+                &st.mouse_mode_active,
+                &st.last_mouse_activity,
+                Some(&st.mouse_move_streak),
+                &st.osk_visible,
+                None,
+            )?;
             let msg = if state_now {
                 "Режим мыши ВКЛ"
             } else {
                 "Режим мыши ВЫКЛ"
             };
             let _ = app.emit("cec-toast", msg);
-            let hud_payload = serde_json::json!({
-                "icon": "mouse",
-                "title": if state_now { "Режим мыши активен" } else { "Режим мыши выключен" },
-                "desc": if state_now { "Стрелки: Курсор • OK: Клик • 1-9: Секторы" } else { "Обычный режим пульта" },
-                "mouse_active": state_now
-            });
-            if state_now {
-                crate::window_manager::emit_and_show_hud(&app, Some(hud_payload), None);
-            } else {
-                let _ = app.emit("show-hud", &hud_payload);
-                crate::window_manager::hide_hud_if_exists(&app);
-            }
             return Ok(msg.to_string());
         }
         if action == "OPTO_POWER" {

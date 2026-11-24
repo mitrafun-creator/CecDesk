@@ -1,10 +1,85 @@
 use crate::hardware::state::safe_lock;
 use crate::input_simulator::move_mouse_cursor;
+use crate::osk::toggle_osk_helper;
 use crate::types::AppConfig;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
+
+pub type MouseStreakRef = Arc<Mutex<Option<(u8, Instant, u32)>>>;
+
+/// Единая проверенная точка переключения режима мыши (с валидацией доступности ввода ОС и снятием конфликта с OSK).
+pub fn set_mouse_mode_checked(
+    app: &AppHandle,
+    mouse_mode_ref: &Arc<Mutex<bool>>,
+    last_mouse_act_ref: &Arc<Mutex<Instant>>,
+    mouse_streak_ref: Option<&MouseStreakRef>,
+    osk_visible_ref: &Arc<AtomicBool>,
+    force_state: Option<bool>,
+) -> Result<bool, String> {
+    let current = *safe_lock(mouse_mode_ref);
+    let target = force_state.unwrap_or(!current);
+
+    if target {
+        // Проверяем, что ОС действительно способна эмулировать ввод мыши (на Linux — /dev/uinput, ydotool или xdotool)
+        if let Err(reason) = crate::platform::can_simulate_mouse() {
+            *safe_lock(mouse_mode_ref) = false;
+            let _ = app.emit("mouse-mode-changed", false);
+            let _ = app.emit("cec-toast", &reason);
+            crate::window_manager::emit_and_show_hud(
+                app,
+                Some(serde_json::json!({
+                    "icon": "warning",
+                    "title": "Режим мыши недоступен",
+                    "desc": reason,
+                    "mouse_active": false
+                })),
+                None,
+            );
+            return Err(reason);
+        }
+
+        // Закрываем веб-OSK перед входом в режим мыши, чтобы режимы не блокировали друг друга
+        if osk_visible_ref.load(Ordering::SeqCst) {
+            toggle_osk_helper(app, osk_visible_ref, Some(false));
+        }
+
+        *safe_lock(mouse_mode_ref) = true;
+        *safe_lock(last_mouse_act_ref) = Instant::now();
+        if let Some(streak) = mouse_streak_ref {
+            *safe_lock(streak) = None;
+        }
+
+        let _ = app.emit("mouse-mode-changed", true);
+        let hud_payload = serde_json::json!({
+            "icon": "mouse",
+            "title": "Режим мыши активен",
+            "desc": "Стрелки: Курсор • OK: Клик • 1-9: Секторы",
+            "mouse_active": true
+        });
+        crate::window_manager::emit_and_show_hud(app, Some(hud_payload), None);
+        Ok(true)
+    } else {
+        *safe_lock(mouse_mode_ref) = false;
+        *safe_lock(last_mouse_act_ref) = Instant::now();
+        if let Some(streak) = mouse_streak_ref {
+            *safe_lock(streak) = None;
+        }
+
+        let _ = app.emit("mouse-mode-changed", false);
+        let hud_payload = serde_json::json!({
+            "icon": "mouse",
+            "title": "Режим мыши выключен",
+            "desc": "Обычный режим пульта",
+            "mouse_active": false
+        });
+        let _ = app.emit("show-hud", &hud_payload);
+        crate::window_manager::hide_hud_if_exists(app);
+        Ok(false)
+    }
+}
 
 /// Чистый расчет направления, шага ускорения и подписи без вызова ОС.
 pub fn compute_mouse_movement(

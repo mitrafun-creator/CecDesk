@@ -871,7 +871,16 @@ pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
                     PREV_OSK_HWND.store(hwnd_val, Ordering::SeqCst);
                 }
             }
-
+        }
+        // Вызываем штатный Tauri show(), чтобы WebView2 гарантированно выполнил ICoreWebView2Controller::SetIsVisible(true)
+        let _ = osk_win.show();
+        unsafe {
+            let ex_after = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let enforced = ex_after
+                | (WS_EX_NOACTIVATE as isize)
+                | (WS_EX_TOPMOST as isize)
+                | (WS_EX_TOOLWINDOW as isize);
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, enforced);
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
             SetWindowPos(
                 hwnd,
@@ -908,6 +917,7 @@ pub fn hide_osk_window(osk_win: &WebviewWindow) {
             );
         }
     }
+    let _ = osk_win.hide();
     TARGET_WINDOW_HWND.store(0, Ordering::SeqCst);
 }
 
@@ -1020,19 +1030,31 @@ pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
         }
     }
 
+    let _ = hud_win.set_ignore_cursor_events(true);
+
     if let Ok(raw_hwnd) = hud_win.hwnd() {
         let hwnd = raw_hwnd.0 as HWND;
         let ex_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) };
-        // Обязательно СОХРАНЯЕМ WS_EX_LAYERED для корректного рендеринга прозрачности WebView2
-        // и добавляем WS_EX_NOACTIVATE, WS_EX_TOPMOST, WS_EX_TOOLWINDOW и WS_EX_TRANSPARENT (0x20)
-        let new_style = ex_style
+        let pre_style = ex_style
             | (WS_EX_LAYERED as isize)
             | (WS_EX_NOACTIVATE as isize)
             | (WS_EX_TOPMOST as isize)
             | (WS_EX_TOOLWINDOW as isize)
             | 0x00000020_isize /* WS_EX_TRANSPARENT (click-through) */;
         unsafe {
-            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, pre_style);
+        }
+        // Вызываем штатный Tauri show(), чтобы WebView2 гарантированно выполнил ICoreWebView2Controller::SetIsVisible(true)
+        let _ = hud_win.show();
+        unsafe {
+            let ex_after = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+            let enforced_style = ex_after
+                | (WS_EX_LAYERED as isize)
+                | (WS_EX_NOACTIVATE as isize)
+                | (WS_EX_TOPMOST as isize)
+                | (WS_EX_TOOLWINDOW as isize)
+                | 0x00000020_isize;
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, enforced_style);
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
             SetWindowPos(
                 hwnd,
@@ -1073,6 +1095,30 @@ pub fn hide_hud_window_os(hud_win: &WebviewWindow) {
 }
 
 pub fn set_gamescope_overlay_props(_win: &WebviewWindow, _is_overlay: bool) {}
+
+pub fn can_simulate_mouse() -> Result<(), String> {
+    Ok(())
+}
+
+pub fn get_platform_profile() -> crate::types::PlatformProfile {
+    crate::types::PlatformProfile {
+        os: "windows".to_string(),
+        variant: "windows".to_string(),
+        is_steamos: false,
+        is_linux: false,
+        is_windows: true,
+        os_label: "Windows 11 / 10 x64".to_string(),
+        port_term: "COM-порт".to_string(),
+        autostart_kind: "windows_registry".to_string(),
+        capabilities: crate::types::PlatformCapabilities {
+            opto_power: true,
+            usb_wake: true,
+            display_sleep_toggle: true,
+            steam_integration: true,
+            native_steam_osk: false,
+        },
+    }
+}
 
 pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
     use winreg::enums::*;

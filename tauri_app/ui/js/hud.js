@@ -101,6 +101,9 @@ const HUD_SVGS = {
 };
 
 async function initHud() {
+  if (/linux/i.test(navigator.userAgent || "") || /linux/i.test(navigator.platform || "")) {
+    document.body.classList.add("platform-linux");
+  }
   if (listen) {
     await Promise.all([
       listen("mouse-mode-changed", (ev) => {
@@ -196,6 +199,7 @@ function showMouseCockpit() {
 }
 
 function hideMouseCockpit() {
+  isMouseActive = false;
   const mouseCard = document.getElementById("mouse-hud");
   if (mouseCard) mouseCard.classList.remove("visible");
 
@@ -204,7 +208,7 @@ function hideMouseCockpit() {
     if (invoke && !isMouseActive) {
       invoke("hide_hud_window").catch(() => {});
     }
-  }, 240);
+  }, 180);
 }
 
 function highlightSector(sector) {

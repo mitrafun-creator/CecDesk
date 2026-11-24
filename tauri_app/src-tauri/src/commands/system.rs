@@ -348,18 +348,12 @@ pub fn get_app_version() -> String {
 
 #[tauri::command]
 pub fn get_os_platform_label() -> String {
-    #[cfg(target_os = "windows")]
-    {
-        "Windows 11 / 10 x64".to_string()
-    }
-    #[cfg(target_os = "linux")]
-    {
-        "Linux / SteamOS x64".to_string()
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    {
-        std::env::consts::OS.to_string()
-    }
+    crate::platform::get_platform_profile().os_label
+}
+
+#[tauri::command]
+pub fn get_platform_profile() -> crate::types::PlatformProfile {
+    crate::platform::get_platform_profile()
 }
 
 fn clean_smbios_value(raw: &str) -> String {

@@ -835,36 +835,107 @@ pub fn set_gamescope_overlay_props(win: &WebviewWindow, is_hud_or_osk: bool) {
     }
 }
 
+pub fn can_simulate_mouse() -> Result<(), String> {
+    let lock = UINPUT_DEVICE.get_or_init(|| Mutex::new(open_uinput_device()));
+    if let Ok(mut guard) = lock.lock() {
+        if guard.is_none() {
+            *guard = open_uinput_device();
+        }
+        if guard.is_some() {
+            return Ok(());
+        }
+    }
+    if has_command("ydotool") || has_command("xdotool") {
+        return Ok(());
+    }
+    Err("Не удалось активировать режим мыши: нет доступа к /dev/uinput и не найдены ydotool/xdotool. Запустите install_steamos.sh.".to_string())
+}
+
+fn is_steamos_os() -> bool {
+    if is_gamescope_session() || has_command("steamos-session-select") {
+        return true;
+    }
+    if let Ok(os_release) = fs::read_to_string("/etc/os-release") {
+        let lower = os_release.to_ascii_lowercase();
+        if lower.contains("id=steamos") || lower.contains("variant_id=steamdeck") {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn get_platform_profile() -> crate::types::PlatformProfile {
+    let steamos = is_steamos_os();
+    crate::types::PlatformProfile {
+        os: "linux".to_string(),
+        variant: if steamos { "steamos".to_string() } else { "linux".to_string() },
+        is_steamos: steamos,
+        is_linux: true,
+        is_windows: false,
+        os_label: if steamos {
+            "SteamOS (Steam Deck)".to_string()
+        } else {
+            "Linux x64".to_string()
+        },
+        port_term: "USB-порт".to_string(),
+        autostart_kind: if steamos {
+            "steamos_systemd".to_string()
+        } else {
+            "linux_systemd".to_string()
+        },
+        capabilities: crate::types::PlatformCapabilities {
+            opto_power: !steamos,
+            usb_wake: true,
+            display_sleep_toggle: !steamos,
+            steam_integration: true,
+            native_steam_osk: steamos || is_steam_running(),
+        },
+    }
+}
+
 pub fn try_native_osk() -> bool {
-    if is_gamescope_session() || is_steam_running() {
+    if is_gamescope_session() || is_steam_big_picture_focused() {
         return run_steam_uri("steam://open/keyboard");
     }
     false
 }
 
 pub fn try_hide_native_osk() {
-    if is_gamescope_session() || is_steam_running() {
+    if is_gamescope_session() || is_steam_big_picture_focused() {
         let _ = run_steam_uri("steam://close/keyboard");
     }
 }
 
 pub fn setup_osk_window(osk_win: &WebviewWindow) -> bool {
-    // В SteamOS / Steam Big Picture есть собственная нативная экранная клавиатура с полной поддержкой пульта/геймпада.
-    // Если запущен Steam или активна сессия Gamescope — вызываем нативную клавиатуру Steam (`steam://open/keyboard`)
-    // и возвращаем false, чтобы не перекрывать экран второй клавиатурой.
-    if is_gamescope_session() || is_steam_running() {
+    // В SteamOS Gaming Mode / Steam Big Picture есть собственная нативная экранная клавиатура с поддержкой пульта/геймпада.
+    if is_gamescope_session() || is_steam_big_picture_focused() {
         if run_steam_uri("steam://open/keyboard") {
             return false;
         }
     }
-    let _ = osk_win.show();
+    // Позиционируем встроенную OSK внизу по центру активного монитора
+    let scale = osk_win.scale_factor().unwrap_or(1.0);
+    let osk_w = (1040.0 * scale).round() as i32;
+    let osk_h = (380.0 * scale).round() as i32;
+    let margin_b = (28.0 * scale).round() as i32;
+    if let Ok(Some(mon)) = osk_win.current_monitor().or_else(|_| osk_win.primary_monitor()) {
+        let pos = mon.position();
+        let size = mon.size();
+        let x = pos.x + (size.width as i32 - osk_w) / 2;
+        let y = pos.y + size.height as i32 - osk_h - margin_b;
+        let _ = osk_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
+            x.max(pos.x),
+            y.max(pos.y),
+        )));
+    }
     let _ = osk_win.set_always_on_top(true);
+    let _ = osk_win.show();
     set_gamescope_overlay_props(osk_win, true);
-    true
+    osk_win.is_visible().unwrap_or(true)
 }
 
 pub fn hide_osk_window(osk_win: &WebviewWindow) {
-    if is_gamescope_session() || is_steam_running() {
+    if is_gamescope_session() || is_steam_big_picture_focused() {
         let _ = run_steam_uri("steam://close/keyboard");
     }
     let _ = osk_win.hide();
@@ -895,10 +966,26 @@ pub fn type_special_key(key: &str) {
 }
 
 pub fn setup_hud_window(hud_win: &WebviewWindow) -> bool {
-    let _ = hud_win.show();
+    // Позиционируем HUD вверху по центру экрана (а не в центре экрана!) и включаем click-through
+    let scale = hud_win.scale_factor().unwrap_or(1.0);
+    let hud_w = (480.0 * scale).round() as i32;
+    let margin_t = (18.0 * scale).round() as i32;
+    let (mut pos_x, mut pos_y) = ((1280 - hud_w) / 2, margin_t);
+    if let Ok(Some(mon)) = hud_win.current_monitor().or_else(|_| hud_win.primary_monitor()) {
+        let pos = mon.position();
+        let size = mon.size();
+        pos_x = pos.x + (size.width as i32 - hud_w) / 2;
+        pos_y = pos.y + margin_t;
+    }
+    let _ = hud_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
+        pos_x.max(0),
+        pos_y.max(0),
+    )));
+    let _ = hud_win.set_ignore_cursor_events(true);
     let _ = hud_win.set_always_on_top(true);
+    let _ = hud_win.show();
     set_gamescope_overlay_props(hud_win, true);
-    true
+    hud_win.is_visible().unwrap_or(true)
 }
 
 pub fn hide_hud_window_os(hud_win: &WebviewWindow) {
@@ -980,7 +1067,7 @@ pub fn set_autostart_os(enabled: bool) -> Result<(), String> {
                  Environment=GDK_BACKEND=x11\n\
                  ExecStart=\"{}\" --minimized\n\
                  KillMode=process\n\
-                 Restart=always\n\
+                 Restart=on-failure\n\
                  RestartSec=2\n\n\
                  [Install]\n\
                  WantedBy=default.target\n",

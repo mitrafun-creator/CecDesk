@@ -429,7 +429,7 @@
                 <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 0F 85" data-i18n="sys.q_active_in">Активный вход</button>
                 <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="RAW 00 46" data-i18n="sys.q_tv_name">Имя ТВ</button>
                 <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="ANNOUNCE" data-i18n="sys.q_pc_announce">Анонс ПК</button>
-                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="PC_PWR_PULSE" data-i18n="sys.q_opto_pulse">Оптопара Power</button>
+                <button type="button" class="apple-btn" style="padding:8px; font-size:12px;" data-cec-cmd="PC_PWR_PULSE" data-cap="opto_power" data-i18n="sys.q_opto_pulse">Оптопара Power</button>
                 <button type="button" id="btn-sys-pc-sleep" class="apple-btn" style="padding:8px; font-size:12px;" data-os-key="PC_SLEEP" data-i18n="sys.q_pc_sleep">Сон ПК</button>
               </div>
               <div style="font-size:12px; color:var(--text-secondary); margin-top:auto;" data-i18n="sys.command_label">Команда</div>
@@ -586,7 +586,7 @@
 
                 <!-- Быстрые кнопки проверки питания и сна -->
                 <div class="row" style="gap:8px; margin-top:10px;">
-                  <button type="button" id="btn-test-opto" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-cec-cmd="PC_PWR_PULSE" data-tooltip="Импульс 350 мс на кнопку Power материнской платы (GP29/GP1 / GPIO5)" data-i18n-tooltip="settings.test_opto_tip" data-i18n="settings.test_opto_btn">
+                  <button type="button" id="btn-test-opto" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-cec-cmd="PC_PWR_PULSE" data-cap="opto_power" data-tooltip="Импульс 350 мс на кнопку Power материнской платы (GP29/GP1 / GPIO5)" data-i18n-tooltip="settings.test_opto_tip" data-i18n="settings.test_opto_btn">
                     Тест кнопки питания
                   </button>
                   <button type="button" id="btn-test-sleep" class="apple-btn" style="flex:1; padding:7px 10px; font-size:11.5px;" data-os-key="PC_SLEEP" data-i18n="settings.test_sleep_btn">
@@ -894,7 +894,7 @@
                 </label>
               </div>
 
-              <div class="toggle-row">
+              <div class="toggle-row" data-cap="display_sleep_toggle">
                 <div class="toggle-meta">
                   <div class="toggle-title-row">
                     <span class="toggle-title" style="font-size:12.5px;" data-i18n="settings.disp_sleep_title">Отключать экран ТВ в Windows при его сне</span>

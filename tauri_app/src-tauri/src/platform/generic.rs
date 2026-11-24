@@ -114,6 +114,30 @@ pub fn hide_hud_window_os(_hud_win: &WebviewWindow) {
 
 pub fn set_gamescope_overlay_props(_win: &WebviewWindow, _is_overlay: bool) {}
 
+pub fn can_simulate_mouse() -> Result<(), String> {
+    Err("Эмуляция мыши не поддерживается на данной платформе".to_string())
+}
+
+pub fn get_platform_profile() -> crate::types::PlatformProfile {
+    crate::types::PlatformProfile {
+        os: std::env::consts::OS.to_string(),
+        variant: std::env::consts::OS.to_string(),
+        is_steamos: false,
+        is_linux: false,
+        is_windows: false,
+        os_label: std::env::consts::OS.to_string(),
+        port_term: "USB-порт".to_string(),
+        autostart_kind: "generic".to_string(),
+        capabilities: crate::types::PlatformCapabilities {
+            opto_power: false,
+            usb_wake: true,
+            display_sleep_toggle: false,
+            steam_integration: false,
+            native_steam_osk: false,
+        },
+    }
+}
+
 pub fn set_autostart_os(_enabled: bool) -> Result<(), String> {
     Ok(())
 }

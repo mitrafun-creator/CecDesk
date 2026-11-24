@@ -717,7 +717,7 @@ async function toggleAutostart(enabled) {
   if (!invoke) return;
   try {
     await invoke("set_autostart", { enabled });
-    addLog(`[Система] Автозапуск с Windows: ${enabled ? 'ВКЛЮЧЕН' : 'ОТКЛЮЧЕН'}`, "log-ok");
+    addLog(`[Система] Автозапуск системы: ${enabled ? 'ВКЛЮЧЕН' : 'ОТКЛЮЧЕН'}`, "log-ok");
   } catch (err) {
     addLog(`[Ошибка автозапуска] ${err}`, "log-err");
   }
@@ -1218,13 +1218,22 @@ async function saveStandaloneHidConfig(opts = {}) {
 }
 
 function renderPcOffModeSelect() {
-  const curMode = (appConfig && appConfig.pc_off_action) ? appConfig.pc_off_action : "SLEEP";
+  const allowOpto = !window.platformProfile || !window.platformProfile.capabilities || window.platformProfile.capabilities.opto_power !== false;
+  let curMode = (appConfig && appConfig.pc_off_action) ? appConfig.pc_off_action : "SLEEP";
+  if (!allowOpto && curMode === "OPTO_PULSE") {
+    curMode = "SLEEP";
+  }
   const modeOpts = [
     { value: "SLEEP", label: typeof t === "function" ? t("settings.pc_mode_sleep", "Режим сна (Sleep S3 — без выключения)") : "Режим сна (Sleep S3)" },
     { value: "SHUTDOWN", label: typeof t === "function" ? t("settings.pc_mode_shutdown", "Полное выключение ОС (Shutdown)") : "Полное выключение ОС" },
-    { value: "HIBERNATE", label: typeof t === "function" ? t("settings.pc_mode_hibernate", "Гибернация (Hibernate)") : "Гибернация" },
-    { value: "OPTO_PULSE", label: typeof t === "function" ? t("settings.pc_mode_opto", "Импульс оптопары (Кнопка Power 350 мс)") : "Импульс оптопары (Power 350 мс)" }
+    { value: "HIBERNATE", label: typeof t === "function" ? t("settings.pc_mode_hibernate", "Гибернация (Hibernate)") : "Гибернация" }
   ];
+  if (allowOpto) {
+    modeOpts.push({
+      value: "OPTO_PULSE",
+      label: typeof t === "function" ? t("settings.pc_mode_opto", "Импульс оптопары (Кнопка Power 350 мс)") : "Импульс оптопары (Power 350 мс)"
+    });
+  }
   createCustomSelect("csel-pc-off-mode", modeOpts, curMode, (val) => {
     if (appConfig) {
       appConfig.pc_off_action = val;
@@ -1522,15 +1531,39 @@ function updateDynamicWindowTitle() {
 }
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
+function applyPlatformProfileUi(profile) {
+  if (!profile) return;
+  window.platformProfile = profile;
+  document.body.classList.toggle("platform-linux", !!profile.is_linux);
+  document.body.classList.toggle("platform-steamos", !!profile.is_steamos);
+  document.body.classList.toggle("platform-windows", !!profile.is_windows);
+  const caps = profile.capabilities || {};
+  document.body.classList.toggle("cap-no-opto-power", caps.opto_power === false);
+  document.body.classList.toggle("cap-no-display-sleep", caps.display_sleep_toggle === false);
+  const osLabel = document.getElementById("lbl-os-platform");
+  if (osLabel && profile.os_label) {
+    osLabel.textContent = profile.os_label;
+  }
+  if (typeof applyLocalization === "function") {
+    applyLocalization();
+  }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   if (/linux/i.test(navigator.userAgent || "") || /linux/i.test(navigator.platform || "")) {
     document.body.classList.add("platform-linux");
+  }
+  if (invoke) {
+    try {
+      const prof = await invoke("get_platform_profile");
+      if (prof) applyPlatformProfileUi(prof);
+    } catch (_) {}
   }
   initUiBindings();
   initTitlebarDragging();
 
   const osLabel = document.getElementById("lbl-os-platform");
-  if (osLabel) {
+  if (osLabel && !window.platformProfile) {
     const ua = (navigator.userAgent || "").toLowerCase();
     const plat = (navigator.platform || "").toLowerCase();
     if (ua.includes("linux") || plat.includes("linux")) {

@@ -243,6 +243,28 @@ pub struct CustomScriptInfo {
     pub ext: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlatformCapabilities {
+    pub opto_power: bool,
+    pub usb_wake: bool,
+    pub display_sleep_toggle: bool,
+    pub steam_integration: bool,
+    pub native_steam_osk: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlatformProfile {
+    pub os: String,
+    pub variant: String,
+    pub is_steamos: bool,
+    pub is_linux: bool,
+    pub is_windows: bool,
+    pub os_label: String,
+    pub port_term: String,
+    pub autostart_kind: String,
+    pub capabilities: PlatformCapabilities,
+}
+
 pub fn default_close_behavior() -> String {
     "ask".to_string()
 }

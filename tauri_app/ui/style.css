@@ -420,6 +420,11 @@ body.platform-linux .apple-popover {
   -webkit-backdrop-filter: none !important;
 }
 
+body.cap-no-opto-power [data-cap="opto_power"],
+body.cap-no-display-sleep [data-cap="display_sleep_toggle"] {
+  display: none !important;
+}
+
 .screens-slider {
   display: flex;
   width: 400%;

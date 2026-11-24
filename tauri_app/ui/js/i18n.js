@@ -895,10 +895,94 @@ const I18N_DICTIONARY = {
   }
 };
 
+const PLATFORM_I18N_OVERRIDES = {
+  linux: {
+    ru: {
+      "remote.searching_port": "Поиск USB-порта...",
+      "remote.usb_off_desc": "Связь с адаптером разорвана. Нажмите «Подключить», чтобы открыть USB-порт и возобновить работу.",
+      "settings.autostart_title": "Запускать автоматически (фоновая служба)",
+      "settings.autostart_desc": "Автоматический запуск фоновой службы CecDesk (systemd) при входе в систему без отображения главного окна.",
+      "settings.soundbar_sub": "Не менять системную громкость",
+      "settings.soundbar_desc": "Регулировка уровня громкости напрямую на телевизоре или саундбаре по шине CEC (eARC) без изменения системного микшера.",
+      "settings.autoheal_desc": "Сторожевой таймер (Watchdog): мониторинг USB-порта и мгновенное переподключение при сбое кабеля или выходе из сна.",
+      "settings.disp_sleep_title": "Отключать экран ТВ в системе при его сне",
+      "settings.disp_sleep_desc": "Программное отключение второго дисплея при выключении ТВ, чтобы курсор и окна не терялись на выключенном экране.",
+      "settings.os_version_title": "Linux x64",
+      "action.win_d": "Рабочий стол (Super+D)",
+      "settings.pc_mode_shutdown": "Полное выключение системы",
+      "settings.standalone_hid_desc": "Когда устройство включено (экран входа, BIOS), но CecDesk не запущен, адаптер сам эмулирует Смарт-пульт (стрелки, OK, Esc, цифры 0-9) и режим Мыши. Настройки хранятся в памяти платы."
+    },
+    en: {
+      "remote.searching_port": "Searching USB port...",
+      "remote.usb_off_desc": "Adapter link lost. Click Connect to reopen the USB port and resume.",
+      "settings.autostart_title": "Auto-start background service",
+      "settings.autostart_desc": "Automatically launch the CecDesk systemd user service in the background on startup without showing the main window.",
+      "settings.soundbar_sub": "Do not modify system mixer volume",
+      "settings.soundbar_desc": "Directly adjust volume on TV or soundbar via CEC (eARC) without modifying the system volume mixer.",
+      "settings.autoheal_desc": "Connection watchdog: continuous USB port monitoring and automatic reconnection if the cable drops or wakes from sleep.",
+      "settings.disp_sleep_title": "Disable TV display in OS on sleep",
+      "settings.disp_sleep_desc": "Software deactivation of the TV display when the TV turns off, preventing cursor and windows from getting lost.",
+      "settings.os_version_title": "Linux x64",
+      "action.win_d": "Show Desktop (Super+D)",
+      "settings.pc_mode_shutdown": "Full System Shutdown",
+      "settings.standalone_hid_desc": "While the device is powered on (login screen, BIOS) without CecDesk running, the adapter emulates a Smart Remote (arrows, OK, Esc, digits 0-9) and Mouse mode. Stored in controller flash."
+    }
+  },
+  steamos: {
+    ru: {
+      "remote.searching_port": "Поиск USB-порта...",
+      "remote.usb_off_desc": "Связь с адаптером разорвана. Нажмите «Подключить», чтобы открыть USB-порт и возобновить работу.",
+      "settings.autostart_title": "Фоновая служба SteamOS (автозапуск)",
+      "settings.autostart_desc": "Автоматический запуск службы CecDesk (systemd) в Gaming Mode и Desktop Mode без отображения главного окна.",
+      "settings.soundbar_sub": "Не менять громкость SteamOS",
+      "settings.soundbar_desc": "Регулировка уровня громкости напрямую на телевизоре или саундбаре по шине CEC (eARC) без изменения системного микшера SteamOS.",
+      "settings.autoheal_desc": "Сторожевой таймер (Watchdog): мониторинг USB-порта и мгновенное переподключение при сбое кабеля или выходе Steam Deck из сна.",
+      "settings.os_version_title": "SteamOS (Steam Deck)",
+      "action.win_d": "Рабочий стол (Plasma / Super+D)",
+      "settings.wake_pc_on_tv_title": "Будить Steam Deck по USB при включении ТВ",
+      "settings.wake_pc_on_tv_desc": "Адаптер отправляет сигнал USB Remote Wakeup для пробуждения Steam Deck из сна при включении ТВ или переключении на HDMI-вход.",
+      "settings.pc_off_on_tv_title": "Усыплять Steam Deck при выключении ТВ",
+      "settings.pc_off_on_tv_desc": "Автоматически переводить Steam Deck в режим сна или выключать его, когда телевизор переходит в спящий режим.",
+      "settings.pc_mode_shutdown": "Полное выключение Steam Deck",
+      "settings.test_sleep_btn": "Сон Steam Deck",
+      "sys.q_pc_sleep": "Сон Steam Deck",
+      "settings.standalone_hid_desc": "Когда Steam Deck включён, но служба CecDesk не запущена, адаптер сам эмулирует Смарт-пульт (стрелки, OK, Esc, цифры 0-9) и режим Мыши по USB HID. Настройки хранятся в памяти платы."
+    },
+    en: {
+      "remote.searching_port": "Searching USB port...",
+      "remote.usb_off_desc": "Adapter link lost. Click Connect to reopen the USB port and resume.",
+      "settings.autostart_title": "SteamOS background service (autostart)",
+      "settings.autostart_desc": "Automatically launch the CecDesk systemd service in both Gaming Mode and Desktop Mode without showing the main window.",
+      "settings.soundbar_sub": "Do not modify SteamOS mixer volume",
+      "settings.soundbar_desc": "Directly adjust volume on TV or soundbar via CEC (eARC) without modifying the SteamOS volume mixer.",
+      "settings.autoheal_desc": "Connection watchdog: continuous USB port monitoring and automatic reconnection if the cable drops or Steam Deck wakes from sleep.",
+      "settings.os_version_title": "SteamOS (Steam Deck)",
+      "action.win_d": "Desktop (Plasma / Super+D)",
+      "settings.wake_pc_on_tv_title": "Wake Steam Deck via USB on TV power on",
+      "settings.wake_pc_on_tv_desc": "The adapter sends a USB Remote Wakeup signal to wake Steam Deck from sleep when the TV turns on or switches to its HDMI input.",
+      "settings.pc_off_on_tv_title": "Sleep Steam Deck when TV turns off",
+      "settings.pc_off_on_tv_desc": "Automatically suspend or power off Steam Deck when the TV enters standby.",
+      "settings.pc_mode_shutdown": "Full Steam Deck Shutdown",
+      "settings.test_sleep_btn": "Sleep Steam Deck",
+      "sys.q_pc_sleep": "Sleep Steam Deck",
+      "settings.standalone_hid_desc": "While Steam Deck is on without CecDesk running, the adapter emulates a Smart Remote (arrows, OK, Esc, digits 0-9) and Mouse mode via USB HID. Stored in controller flash."
+    }
+  }
+};
+
 /**
- * Получение перевода строки по ключу
+ * Получение перевода строки по ключу с учётом активного платформенного профиля
  */
 function t(key, fallback = "") {
+  const variant = (typeof window !== "undefined" && window.platformProfile && window.platformProfile.variant)
+    ? window.platformProfile.variant
+    : null;
+  if (variant && PLATFORM_I18N_OVERRIDES[variant]) {
+    const pDict = PLATFORM_I18N_OVERRIDES[variant][currentLang] || PLATFORM_I18N_OVERRIDES[variant].ru;
+    if (pDict && pDict[key] !== undefined) {
+      return pDict[key];
+    }
+  }
   const dict = I18N_DICTIONARY[currentLang] || I18N_DICTIONARY.ru;
   return dict[key] !== undefined ? dict[key] : (I18N_DICTIONARY.ru[key] !== undefined ? I18N_DICTIONARY.ru[key] : fallback || key);
 }
